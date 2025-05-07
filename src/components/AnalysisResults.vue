@@ -2,27 +2,28 @@
   <div id="jsonResult" class="container">
     <h2>당신의 여행 이미지 분석 결과</h2>
 
-    <!-- 동적으로 카테고리가 추가될 컨테이너 -->
-    <div class="dimensions-container">
-      <div class="dimensions-scores">
-        <div 
-          v-for="(score, dimension) in result" 
-          :key="dimension"
-          class="score-section"
-          :class="getSectionClass(dimension)"
-        >
-          <h3 v-html="getDimensionHeader(dimension)"></h3>
-          <div class="score-item">
-            <div class="score-bar-container">
-              <div 
-                class="score-bar" 
-                :style="{ width: `${score * 100}%` }"
-              ></div>
-            </div>
-            <div class="score-value">{{ score.toFixed(1) }}</div>
-          </div>
-        </div>
-      </div>
+    <!-- 테이블 형식의 분석 결과 표시 -->
+    <div class="analysis-table-container">
+      <table class="analysis-table">
+        <thead>
+          <tr>
+            <th>분석 항목</th>
+            <th>점수</th>
+            <th>그래프</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(score, dimension) in result" :key="dimension">
+            <td class="dimension-name">{{ getDimensionHeader(dimension) }}</td>
+            <td class="dimension-score">{{ score.toFixed(1) }}</td>
+            <td class="dimension-bar">
+              <div class="bar-container">
+                <div class="bar" :style="{ width: `${score * 100}%` }"></div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <!-- 이미지 분석 이후 선택 버튼 영역 추가 -->
@@ -34,12 +35,6 @@
           class="action-btn upload-btn"
         >
           데이터베이스에 저장하기
-        </button>
-        <button 
-          @click="$emit('search-similar')" 
-          class="action-btn search-btn"
-        >
-          유사한 이미지 검색하기
         </button>
       </div>
       <div 
@@ -118,12 +113,6 @@ export default {
       return ''
     })
     
-    // 카테고리 섹션 클래스 생성
-    const getSectionClass = (dimension) => {
-      const index = Object.keys(props.result).indexOf(dimension)
-      return `section-color-${(index % 4) + 1}`
-    }
-    
     // 차원 헤더 생성 - SVG 아이콘 제거
     const getDimensionHeader = (dimension) => {
       const name = dimensionTranslations[dimension] || dimension
@@ -139,7 +128,6 @@ export default {
       showRawResponse,
       statusMessage,
       statusClass,
-      getSectionClass,
       getDimensionHeader,
       toggleRawResponse
     }
@@ -152,108 +140,71 @@ export default {
   margin-top: 30px;
 }
 
-.dimensions-container {
-  margin-top: 20px;
+.analysis-table-container {
+  margin: 20px 0;
+  overflow-x: auto;
 }
 
-.score-section {
+.analysis-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   background-color: white;
-  border-radius: 18px;
-  padding: 22px;
-  margin-bottom: 22px;
-  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.08);
-  border-left: 5px solid;
-  animation: fadeIn 0.6s ease-out;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.section-color-1 {
-  border-left-color: var(--logo-blue);
+.analysis-table th {
+  background-color: var(--logo-blue);
+  color: white;
+  text-align: left;
+  padding: 15px;
+  font-weight: 600;
 }
 
-.section-color-1 h3 {
-  color: var(--logo-blue);
+.analysis-table tr:nth-child(even) {
+  background-color: var(--gray-100);
 }
 
-.section-color-2 {
-  border-left-color: var(--logo-coral);
+.analysis-table td {
+  padding: 12px 15px;
+  border-bottom: 1px solid var(--gray-200);
 }
 
-.section-color-2 h3 {
-  color: var(--logo-coral);
+.analysis-table tr:last-child td {
+  border-bottom: none;
 }
 
-.section-color-3 {
-  border-left-color: var(--logo-yellow);
+.dimension-name {
+  font-weight: 600;
+  color: var(--gray-800);
+  width: 30%;
 }
 
-.section-color-3 h3 {
-  color: var(--logo-yellow);
-}
-
-.section-color-4 {
-  border-left-color: var(--logo-green);
-}
-
-.section-color-4 h3 {
-  color: var(--logo-green);
-}
-
-.score-section:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.1);
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.score-section h3 {
-  margin-top: 0;
-  padding-bottom: 12px;
-  border-bottom: 2px solid var(--gray-200);
-  font-size: 1.3rem;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.score-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 12px;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s ease;
-  animation: fadeIn 0.5s ease-out;
-  animation-fill-mode: both;
-}
-
-.score-bar-container {
-  flex: 2;
-  height: 22px;
-  background-color: rgba(240, 240, 240, 0.8);
-  border-radius: 12px;
-  margin-right: 10px;
-  overflow: hidden;
-  position: relative;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.score-bar {
-  height: 100%;
-  border-radius: 12px;
-  position: relative;
-  transition: width 1s cubic-bezier(0.25, 1, 0.5, 1);
-  background: linear-gradient(90deg, var(--logo-blue), var(--primary-light));
-}
-
-.score-value {
-  width: 40px;
-  text-align: right;
+.dimension-score {
+  text-align: center;
   font-weight: 700;
-  color: var(--primary-dark);
+  color: var(--logo-blue);
+  width: 10%;
+}
+
+.dimension-bar {
+  width: 60%;
+}
+
+.bar-container {
+  width: 100%;
+  height: 20px;
+  background-color: var(--gray-200);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--logo-blue), var(--primary-light));
+  border-radius: 10px;
+  transition: width 1s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 /* 액션 버튼 스타일 */
@@ -301,16 +252,6 @@ export default {
 
 .upload-btn:hover {
   background-color: #5a9d87;
-  transform: translateY(-2px);
-}
-
-.search-btn {
-  background-color: var(--logo-yellow);
-  color: var(--gray-800);
-}
-
-.search-btn:hover {
-  background-color: #e4bd5c;
   transform: translateY(-2px);
 }
 
@@ -368,6 +309,18 @@ export default {
 @media (max-width: 600px) {
   .action-button-group {
     flex-direction: column;
+  }
+  
+  .dimension-name {
+    width: 40%;
+  }
+  
+  .dimension-score {
+    width: 15%;
+  }
+  
+  .dimension-bar {
+    width: 45%;
   }
 }
 </style>

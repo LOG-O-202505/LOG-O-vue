@@ -1,57 +1,123 @@
 <template>
   <div class="header">
-    <div class="title-container">
-      <img src="../assets/logo.png" alt="로고" class="logo-image">
-      <h1>|</h1>
-      <h2>당신의 여행을 기록하다</h2>
+    <div class="header-container">
+      <!-- 왼쪽에 로고 배치 -->
+      <div class="logo-container">
+        <img src="../assets/logo.png" alt="로고" class="logo-image">
+        <span class="logo-title">| 당신의 여행을 기록하다</span>
+      </div>
+      
+      <!-- 오른쪽에 네비게이션과 로그인 버튼 배치 -->
+      <div class="nav-container">
+        <nav class="main-nav">
+          <button class="nav-btn active">홈</button>
+          <button class="nav-btn">갤러리</button>
+          <button class="nav-btn">도움말</button>
+        </nav>
+        <button class="login-btn">로그인</button>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
 export default {
-  // ESLint 오류 수정: 컴포넌트 이름을 두 단어 이상으로 변경
   name: 'AppHeader'
 }
 </script>
 
 <style scoped>
 .header {
-  text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
   position: relative;
+  background-color: var(--white);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  padding: 10px 20px;
+  width: 100%;
+  border-bottom: 1px solid var(--gray-200);
 }
 
-.title-container {
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.logo-container {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 15px;
-  margin-bottom: 10px;
+  gap: 10px;
 }
 
 .logo-image {
-  margin-bottom: 5px;
-  width: 200px;
-  height: 100px;
+  width: 100px;
+  height: 40px;
   object-fit: contain;
 }
 
-h1 {
-  font-family: 'Ownglyph_ParkDaHyun', 'Baloo 2', sans-serif;
-  color: var(--primary);
-  font-size: 3rem;
-  margin: 0;
-  text-shadow: 2px 2px 3px var(--shadow);
-  font-weight: 700;
-  line-height: 1.2;
+.logo-title {
+  color: var(--gray-800);
+  font-size: 1rem;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
-h2 {
-  color: var(--accent-green);
-  text-align: center;
-  font-size: 1.8rem;
-  margin-bottom: 20px;
-  font-weight: 700;
+.nav-container {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.main-nav {
+  display: flex;
+  gap: 5px;
+}
+
+.nav-btn {
+  background: none;
+  border: none;
+  color: var(--gray-700);
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  box-shadow: none;
+}
+
+.nav-btn:hover, .nav-btn.active {
+  background-color: var(--gray-100);
+  color: var(--logo-blue);
+}
+
+.login-btn {
+  background-color: var(--logo-blue);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.login-btn:hover {
+  background-color: var(--primary-dark);
+}
+
+@media (max-width: 600px) {
+  .header-container {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .nav-container {
+    width: 100%;
+    justify-content: space-between;
+  }
 }
 </style>
