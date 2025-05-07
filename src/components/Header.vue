@@ -28,11 +28,11 @@ export default {
 
 <style scoped>
 .header {
-  margin-bottom: 20px;
+  margin-bottom: 25px;
   position: relative;
   background-color: var(--white);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  padding: 10px 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 20px 25px;
   width: 100%;
   border-bottom: 1px solid var(--gray-200);
 }
@@ -43,36 +43,37 @@ export default {
   align-items: center;
   max-width: 1440px;
   margin: 0 auto;
+  height: 50px;
 }
 
 .logo-container {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 15px;
 }
 
 .logo-image {
-  width: 100px;
-  height: 40px;
+  width: 140px;
+  height: 50px;
   object-fit: contain;
 }
 
 .logo-title {
   color: var(--gray-800);
-  font-size: 1rem;
-  font-weight: 500;
+  font-size: 1.25rem;
+  font-weight: 600;
   white-space: nowrap;
 }
 
 .nav-container {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 25px;
 }
 
 .main-nav {
   display: flex;
-  gap: 5px;
+  gap: 10px;
 }
 
 .nav-btn {
@@ -80,9 +81,9 @@ export default {
   border: none;
   color: var(--gray-700);
   font-weight: 500;
-  font-size: 0.9rem;
+  font-size: 1rem;
   cursor: pointer;
-  padding: 8px 12px;
+  padding: 10px 15px;
   border-radius: 4px;
   transition: all 0.2s ease;
   box-shadow: none;
@@ -97,10 +98,10 @@ export default {
   background-color: var(--logo-blue);
   color: white;
   border: none;
-  padding: 8px 16px;
+  padding: 10px 20px;
   border-radius: 4px;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -112,7 +113,8 @@ export default {
 @media (max-width: 600px) {
   .header-container {
     flex-direction: column;
-    gap: 10px;
+    gap: 15px;
+    height: auto;
   }
   
   .nav-container {
