@@ -67,7 +67,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { searchPlaces, getPlaceDetails, createMap, loadGoogleMapsScript } from '@/services/map';
 
 export default {
@@ -155,7 +155,7 @@ export default {
       }, 300);
     };
     
-    // 장소 선택 처리
+    // 장소 선택 처리 - 수정됨: 즉시 지도 표시
     const selectPlace = async (prediction) => {
       try {
         console.log('장소 선택:', prediction.description);
@@ -181,8 +181,9 @@ export default {
         // 부모에게 위치 정보 전달
         emit('location-selected', placeDetails.formatted_address);
         
-        // 지도 표시
-        displayMap();
+        // 즉시 지도 표시
+        await nextTick();
+        displayMap(); 
         isLoading.value = false;
       } catch (error) {
         console.error('장소 상세 정보 가져오기 오류:', error);
@@ -190,15 +191,33 @@ export default {
       }
     };
     
-    // 지도 표시 함수
+    // 지도 표시 함수 - 수정됨: 더 안정적인 지도 표시
     const displayMap = async () => {
-      if (!selectedPlaceDetails.value || !mapContainer.value) {
-        console.warn('지도를 표시할 수 없음: 위치 정보 또는 컨테이너 없음');
+      if (!selectedPlaceDetails.value) {
+        console.warn('지도를 표시할 수 없음: 위치 정보 없음');
+        return;
+      }
+      
+      // 지도 컨테이너 확인
+      if (!mapContainer.value) {
+        console.warn('지도 컨테이너가 없습니다. 다음 틱에서 다시 시도합니다.');
+        await nextTick(); // DOM 업데이트를 기다림
+      }
+      
+      if (!mapContainer.value) {
+        console.error('지도 컨테이너를 찾을 수 없습니다.');
         return;
       }
       
       try {
         console.log('지도 표시 시작');
+        // 기존 지도가 있으면 정리
+        if (mapInstance.value) {
+          console.log('기존 지도 인스턴스 초기화');
+          mapInstance.value = null;
+          mapMarker.value = null;
+        }
+        
         const mapResult = await createMap(
           mapContainer.value,
           selectedPlaceDetails.value

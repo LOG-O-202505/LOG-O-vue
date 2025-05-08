@@ -1,4 +1,5 @@
 // API 호출 관련 함수들
+import config from '@/config.js';
 
 /**
  * 파일을 Base64로 변환하는 유틸리티 함수
@@ -27,12 +28,15 @@ export const analyzeImage = async (imageFile, signal) => {
     // 이미지를 Base64로 변환
     const base64Image = await fileToBase64(imageFile);
     
-    // 모델 이름 고정 - basic으로 시도 (basic_2 대신)
-    const MODEL_NAME = "basic_2";
+    // config에서 모델 이름 사용
+    const MODEL_NAME = config.MODEL_NAME;
     console.log('사용 모델:', MODEL_NAME);
     
+    // config에서 Ollama API URL 사용
+    console.log('API 주소:', `${config.OLLAMA_API}/api/generate`);
+    
     // Ollama API 요청
-    const response = await fetch('http://localhost:11434/api/generate', {
+    const response = await fetch(`${config.OLLAMA_API}/api/generate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -46,8 +50,12 @@ export const analyzeImage = async (imageFile, signal) => {
       signal: signal
     });
     
+    console.log('API 응답 상태:', response.status, response.statusText);
+    
     if (!response.ok) {
-      throw new Error('API 요청 실패: ' + response.status);
+      const errorText = await response.text();
+      console.error('API 응답 에러 내용:', errorText);
+      throw new Error(`API 요청 실패: ${response.status} ${response.statusText}`);
     }
     
     const data = await response.json();
@@ -57,7 +65,9 @@ export const analyzeImage = async (imageFile, signal) => {
     return parseAnalysisResponse(data.response);
     
   } catch (error) {
-    console.error('API 호출 오류:', error);
+    console.error('API 호출 오류 타입:', error.name);
+    console.error('API 호출 오류 메시지:', error.message);
+    console.error('API 호출 오류 스택:', error.stack);
     throw error;
   }
 };
@@ -222,6 +232,7 @@ export const saveToElasticsearch = async (
 ) => {
   try {
     console.log('Elasticsearch 저장 시작:', imageId);
+    console.log('Elasticsearch API 주소:', `${config.ES_API}/travel_images/_doc/${imageId}`);
     
     // 문서 구조 생성
     const document = {
@@ -247,8 +258,8 @@ export const saveToElasticsearch = async (
       }
     };
     
-    // Elasticsearch API 호출
-    const response = await fetch('http://localhost:9200/travel_images/_doc/' + imageId, {
+    // config에서 Elasticsearch API URL 사용
+    const response = await fetch(`${config.ES_API}/travel_images/_doc/${imageId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json'
@@ -256,8 +267,11 @@ export const saveToElasticsearch = async (
       body: JSON.stringify(document)
     });
     
+    console.log('ES 응답 상태:', response.status, response.statusText);
+    
     if (!response.ok) {
       const errorData = await response.json();
+      console.error('ES 응답 에러 내용:', errorData);
       throw new Error('Elasticsearch 오류: ' + JSON.stringify(errorData));
     }
     
@@ -265,7 +279,9 @@ export const saveToElasticsearch = async (
     console.log('Elasticsearch 저장 완료:', result);
     return result;
   } catch (error) {
-    console.error('Elasticsearch 저장 오류:', error);
+    console.error('Elasticsearch 저장 오류 타입:', error.name);
+    console.error('Elasticsearch 저장 오류 메시지:', error.message);
+    console.error('Elasticsearch 저장 오류 스택:', error.stack);
     throw error;
   }
 };
@@ -279,6 +295,7 @@ export const saveToElasticsearch = async (
 export const searchSimilarImages = async (featuresVector, limit = 10) => {
   try {
     console.log('유사 이미지 검색 시작');
+    console.log('검색 API 주소:', `${config.ES_API}/travel_images/_search`);
     
     // KNN 검색 쿼리 구성
     const query = {
@@ -290,8 +307,8 @@ export const searchSimilarImages = async (featuresVector, limit = 10) => {
       }
     };
     
-    // Elasticsearch API 호출
-    const response = await fetch('http://localhost:9200/travel_images/_search', {
+    // config에서 Elasticsearch API URL 사용
+    const response = await fetch(`${config.ES_API}/travel_images/_search`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -303,8 +320,11 @@ export const searchSimilarImages = async (featuresVector, limit = 10) => {
       })
     });
     
+    console.log('검색 응답 상태:', response.status, response.statusText);
+    
     if (!response.ok) {
       const errorData = await response.json();
+      console.error('검색 응답 에러 내용:', errorData);
       throw new Error('검색 오류: ' + JSON.stringify(errorData));
     }
     
@@ -312,7 +332,9 @@ export const searchSimilarImages = async (featuresVector, limit = 10) => {
     console.log('검색 결과 수:', result.hits.hits.length);
     return result.hits.hits;
   } catch (error) {
-    console.error('검색 오류:', error);
+    console.error('검색 오류 타입:', error.name);
+    console.error('검색 오류 메시지:', error.message);
+    console.error('검색 오류 스택:', error.stack);
     throw error;
   }
 };

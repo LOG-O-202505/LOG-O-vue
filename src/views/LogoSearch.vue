@@ -444,7 +444,7 @@ export default {
       }
       
       try {
-        showActionStatus("Elasticsearch에 저장 중...", "pending");
+        showActionStatus("사진을 서버에 저장 중...", "pending");
         
         // 특성 벡터 생성
         const featuresVector = createFeaturesVector(analysisResult.value);
@@ -509,13 +509,6 @@ export default {
     // 상태 메시지 표시 함수
     const showActionStatus = (message, type) => {
       actionStatus.value = { message, type };
-      
-      // 자동 숨김 (성공 메시지인 경우)
-      if (type === "success") {
-        setTimeout(() => {
-          actionStatus.value = { message: "", type: "" };
-        }, 5000);
-      }
     };
     
     // 고유 ID 생성 함수

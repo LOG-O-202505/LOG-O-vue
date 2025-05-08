@@ -1,7 +1,7 @@
 // Google Maps API 관련 서비스
 
-// Google Maps API 키 (실제 사용 시 유효한 키로 변경 필요)
-const GOOGLE_MAPS_API_KEY = 'AIzaSyCPk13Hygbey8XyaTCA4KxkGERHxVBuj7g';
+// Google Maps API 키 (환경 변수에서 가져오기)
+const GOOGLE_MAPS_API_KEY = process.env.VUE_APP_GOOGLE_MAPS_API_KEY;
 
 // 전역 변수
 let googleMapsLoaded = false;
