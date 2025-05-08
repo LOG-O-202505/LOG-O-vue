@@ -1,10 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LogoSearch from '../views/LogoSearch.vue'
+import OnboardingPage from '../views/OnboardingPage.vue'
 
 const routes = [
   {
     path: '/',
-    redirect: '/llamasearch'
+    name: 'OnboardingPage',
+    component: OnboardingPage
   },
   {
     path: '/llamasearch',
