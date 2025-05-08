@@ -1,23 +1,21 @@
 <template>
-  <div class="header">
-    <div class="header-container">
-      <!-- 왼쪽에 로고 배치 -->
-      <div class="logo-container">
-        <img src="../assets/logo.png" alt="로고" class="logo-image">
-        <span class="logo-title">| 당신의 여행을 기록하다</span>
+  <nav class="navbar">
+    <div class="navbar-container">
+      <div class="nav-group">
+        <a href="#" class="nav-item">LOOK AROUND</a>
+        <router-link to="/llamasearch" class="nav-item">SEARCH</router-link>
       </div>
       
-      <!-- 오른쪽에 네비게이션과 로그인 버튼 배치 -->
-      <div class="nav-container">
-        <nav class="main-nav">
-          <button class="nav-btn active">홈</button>
-          <button class="nav-btn">갤러리</button>
-          <button class="nav-btn">도움말</button>
-        </nav>
-        <button class="login-btn">로그인</button>
+      <div class="nav-center">
+        <router-link to="/" class="logo-text">LOG:O</router-link>
+      </div>
+      
+      <div class="nav-group">
+        <a href="#" class="nav-item">LOGIN</a>
+        <a href="#" class="nav-item">SIGN UP</a>
       </div>
     </div>
-  </div>
+  </nav>
 </template>
 
 <script>
@@ -27,99 +25,118 @@ export default {
 </script>
 
 <style scoped>
-.header {
-  margin-bottom: 25px;
-  position: relative;
-  background-color: var(--white);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  padding: 20px 25px;
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
+
+.navbar {
+  background-color: #1C1C1C; /* 이미지에 맞는 짙은 검은색 */
   width: 100%;
-  border-bottom: 1px solid var(--gray-200);
+  padding: 3.5rem 0; /* 온보딩 페이지와 동일한 패딩으로 수정 */
+  position: relative; /* fixed에서 relative로 변경해 스크롤에 따라 움직이게 함 */
+  z-index: 100;
 }
 
-.header-container {
+.navbar-container {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
-  max-width: 1440px;
+  max-width: 1400px;
   margin: 0 auto;
-  height: 50px;
+  padding: 0 2rem;
 }
 
-.logo-container {
+.nav-group {
   display: flex;
+  gap: 2.5rem; /* 간격 조정 */
   align-items: center;
-  gap: 15px;
 }
 
-.logo-image {
-  width: 140px;
-  height: 50px;
-  object-fit: contain;
+.nav-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
-.logo-title {
-  color: var(--gray-800);
-  font-size: 1.25rem;
+.logo-text {
+  font-family: 'Cinzel', serif;
+  font-size: 2.5rem; /* 크기 조정 */
   font-weight: 600;
-  white-space: nowrap;
-}
-
-.nav-container {
-  display: flex;
-  align-items: center;
-  gap: 25px;
-}
-
-.main-nav {
-  display: flex;
-  gap: 10px;
-}
-
-.nav-btn {
-  background: none;
-  border: none;
-  color: var(--gray-700);
-  font-weight: 500;
-  font-size: 1rem;
-  cursor: pointer;
-  padding: 10px 15px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  box-shadow: none;
-}
-
-.nav-btn:hover, .nav-btn.active {
-  background-color: var(--gray-100);
-  color: var(--logo-blue);
-}
-
-.login-btn {
-  background-color: var(--logo-blue);
   color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 4px;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  text-decoration: none;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  letter-spacing: 2px;
 }
 
-.login-btn:hover {
-  background-color: var(--primary-dark);
+.nav-item {
+  font-family: 'Playfair Display', serif; /* 온보딩 페이지와 동일한 폰트로 변경 */
+  color: white;
+  text-decoration: none;
+  font-size: 1.1rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  position: relative;
+  opacity: 0.9;
+}
+
+.nav-item:hover {
+  opacity: 1;
+}
+
+.nav-item::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background-color: white;
+  transition: width 0.3s ease;
+}
+
+.nav-item:hover::after {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .navbar-container {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 0 1rem;
+  }
+  
+  .nav-center {
+    position: relative;
+    left: 0;
+    transform: none;
+    margin-bottom: 1rem;
+    order: -1;
+  }
+  
+  .nav-group {
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .logo-text {
+    font-size: 1.8rem;
+  }
 }
 
 @media (max-width: 600px) {
-  .header-container {
-    flex-direction: column;
-    gap: 15px;
-    height: auto;
+  .navbar {
+    padding: 2rem 0;
   }
   
-  .nav-container {
-    width: 100%;
-    justify-content: space-between;
+  .nav-group {
+    gap: 1rem;
+  }
+  
+  .nav-item {
+    font-size: 0.9rem;
+  }
+  
+  .logo-text {
+    font-size: 1.6rem;
   }
 }
 </style>

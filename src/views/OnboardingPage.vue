@@ -33,7 +33,8 @@
       <div class="navbar-container">
         <div class="nav-group">
           <a href="#" class="nav-item">LOOK AROUND</a>
-          <a href="#" class="nav-item">SEARCH</a>
+          <router-link to="/llamasearch" class="nav-item">SEARCH</router-link>
+          
         </div>
         
         <div class="nav-center">
@@ -41,7 +42,7 @@
         </div>
         
         <div class="nav-group">
-          <router-link to="/llamasearch" class="nav-item">LOGIN</router-link>
+          <a href="#" class="nav-item">LOGIN</a>
           <a href="#" class="nav-item">SIGN UP</a>
         </div>
       </div>
@@ -393,7 +394,7 @@ export default {
     const setupAutoChangeTimer = () => {
       autoChangeTimer = setInterval(() => {
         moveToNextVideo();
-      }, 8000); // 8초마다 자동 전환
+      }, 6000); // 6초마다 자동 전환
     };
     
     // 자동 전환 타이머 재설정

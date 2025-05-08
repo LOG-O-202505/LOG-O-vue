@@ -1,171 +1,240 @@
 <template>
-  <div class="image-upload">
-    <div class="image-preview">
-      <img 
-        v-if="previewUrl" 
-        :src="previewUrl" 
-        alt="이미지 미리보기" 
-        class="preview-image"
-      >
-      <div v-else class="empty-preview">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-        <span>이미지를 선택하면 여기에 표시됩니다</span>
+  <div class="upload-container">
+    <h3 class="section-title">검색을 위한 이미지</h3>
+    
+    <div class="image-upload-area">
+      <div v-if="!previewUrl" class="empty-upload">
+        <div class="icon-container">
+          <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+          </svg>
+        </div>
+        <p class="upload-text">이미지를 선택하면 여기에 표시됩니다</p>
+        <p class="upload-hint">고품질 여행 사진을 선택하세요</p>
+      </div>
+      
+      <div v-else class="preview-container">
+        <img :src="previewUrl" alt="이미지 미리보기" class="preview-image">
       </div>
     </div>
     
-    <!-- 이미지 선택 버튼 추가 -->
-    <div class="select-button-container">
-      <button 
-        type="button" 
-        class="select-image-button"
-        @click="triggerFileInput"
-      >
+    <div class="button-group">
+      <button @click="triggerFileInput" class="upload-button">
+        <span class="button-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+        </span>
         이미지 선택하기
       </button>
-      
-      <div class="file-input-container">
-        <input 
-          type="file" 
-          id="image" 
-          ref="fileInput"
-          accept="image/*"
-          @change="handleFileChange"
-        >
-      </div>
+      <button v-if="previewUrl" @click="analyzeImage" class="analyze-button">이미지 분석하기</button>
+      <button v-if="previewUrl" @click="resetImage" class="reset-button">초기화</button>
     </div>
+    
+    <input
+      type="file"
+      ref="fileInput"
+      @change="handleFileChange"
+      accept="image/*"
+      class="hidden-input"
+    >
   </div>
 </template>
 
 <script>
-import { computed, ref } from 'vue'
-import { useStore } from 'vuex'
-
 export default {
   name: 'ImageUpload',
   
-  emits: ['image-selected'],
-  
-  setup(props, { emit }) {
-    const store = useStore()
-    const fileInput = ref(null)
-    
-    // Vuex 스토어에서 이미지 미리보기 가져오기
-    const previewUrl = computed(() => store.state.image.preview)
-    
-    // 파일 선택 창 열기
-    const triggerFileInput = () => {
-      fileInput.value.click()
-    }
-    
-    // 파일 선택 처리
-    const handleFileChange = (event) => {
-      const file = event.target.files[0]
-      if (file) {
-        emit('image-selected', file)
-      }
-    }
-    
+  data() {
     return {
-      previewUrl,
-      fileInput,
-      triggerFileInput,
-      handleFileChange
+      previewUrl: null
+    }
+  },
+  
+  methods: {
+    triggerFileInput() {
+      this.$refs.fileInput.click();
+    },
+    
+    handleFileChange(event) {
+      const file = event.target.files[0];
+      if (file) {
+        this.previewUrl = URL.createObjectURL(file);
+        this.$emit('image-selected', file);
+      }
+    },
+    
+    analyzeImage() {
+      this.$emit('analyze-image');
+    },
+    
+    resetImage() {
+      this.previewUrl = null;
+      this.$refs.fileInput.value = '';
+      this.$emit('reset');
     }
   }
 }
 </script>
 
 <style scoped>
-.image-upload {
-  margin-bottom: 20px;
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+
+.upload-container {
+  background-color: #1c1c1c;
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  color: white;
 }
 
-/* 이미지 미리보기 영역 */
-.image-preview {
-  margin-bottom: 12px;
+.section-title {
+  font-family: 'Playfair Display', 'Noto Sans KR', serif;
+  font-size: 1.3rem;
+  font-weight: 500;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
   text-align: center;
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px var(--shadow);
-  background-color: var(--gray-200);
   position: relative;
-  min-height: 200px;
+  color: white;
+  letter-spacing: 0.5px;
+}
+
+.section-title::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 2px;
+  background: linear-gradient(90deg, #4299e1, #76b39d);
+}
+
+.image-upload-area {
+  background-color: #2d3748;
+  border: 1px dashed #4a5568;
+  border-radius: 8px;
+  height: 200px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--gray-300);
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.image-upload-area:hover {
+  border-color: #4299e1;
+  box-shadow: 0 0 15px rgba(66, 153, 225, 0.2);
+}
+
+.empty-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.icon-container {
+  color: #4299e1;
+  margin-bottom: 1rem;
+}
+
+.upload-text {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 0.95rem;
+  color: #e2e8f0;
+  margin: 0 0 0.5rem 0;
+}
+
+.upload-hint {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 0.8rem;
+  color: #a0aec0;
+  margin: 0;
+  font-style: italic;
+}
+
+.preview-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .preview-image {
   max-width: 100%;
-  max-height: 300px;
-  border-radius: 10px;
+  max-height: 100%;
+  object-fit: contain;
 }
 
-.empty-preview {
-  padding: 30px 20px;
-  color: var(--gray-500);
-  font-size: 1rem;
+.button-group {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 12px;
+  gap: 0.75rem;
 }
 
-.empty-preview svg {
-  width: 50px;
-  height: 50px;
-  color: var(--gray-400);
-}
-
-/* 파일 선택 버튼 */
-.select-button-container {
+.upload-button, .analyze-button, .reset-button {
   display: flex;
+  align-items: center;
   justify-content: center;
-  margin-top: 15px;
-}
-
-.select-image-button {
-  width: 100%;
-  background-color: var(--logo-coral);
-  color: white;
+  gap: 0.5rem;
+  font-family: 'Noto Sans KR', sans-serif;
+  padding: 0.75rem 1rem;
   border: none;
-  padding: 12px;
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 0.95rem;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(72, 176, 228, 0.2);
 }
 
-.select-image-button:hover {
-  background-color: var(--logo-coral);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(1, 1, 1, 0.3);
+.upload-button {
+  background-color: #4299e1;
+  color: white;
 }
 
-.select-image-button:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(72, 176, 228, 0.2);
+.upload-button:hover {
+  background-color: #3182ce;
+  transform: translateY(-2px);
 }
 
-/* 숨겨진 파일 입력 */
-.file-input-container {
+.analyze-button {
+  background-color: #38a169;
+  color: white;
+}
+
+.analyze-button:hover {
+  background-color: #2f855a;
+  transform: translateY(-2px);
+}
+
+.reset-button {
+  background-color: transparent;
+  border: 1px solid #a0aec0;
+  color: #e2e8f0;
+}
+
+.reset-button:hover {
+  background-color: rgba(160, 174, 192, 0.1);
+}
+
+.button-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hidden-input {
   display: none;
-}
-
-.file-input-container input[type="file"] {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  border: 0;
 }
 </style>

@@ -1,200 +1,255 @@
 <template>
   <div class="logo-search">
+    <!-- 헤더 - 페이지와 함께 스크롤됨 -->
     <Header />
     
-    <div class="main-container">
-      <!-- 왼쪽 패널: 이미지 업로드만 -->
-      <div class="upload-panel">
-        <div class="upload-panel-content">
-          <h2 class="main-heading">검색을 하고싶은 소스 이미지를 입력해주세요</h2>
-          <div class="form-group">
-            <ImageUpload @image-selected="onImageSelected" />
+    <!-- 히어로 섹션 -->
+    <div class="hero-section">
+      <div class="hero-overlay"></div>
+      <div class="hero-content">
+        <h1 class="hero-title">여행 이미지 분석</h1>
+        <p class="hero-subtitle">찾고 있는 분위기의 여행지를 발견하세요</p>
+      </div>
+    </div>
+    
+    <!-- 컨텐츠 영역 - 히어로 섹션과 겹치지 않게 여백 추가 -->
+    <div class="content-wrapper">
+      <!-- 상단 두 컬럼 레이아웃: 이미지 업로드 | 분석 차트 -->
+      <div class="top-section">
+        <!-- 왼쪽: 이미지 업로드 패널 -->
+        <div class="upload-panel">
+          <div class="panel-header">
+            <h3 class="panel-title">검색을 위한 이미지</h3>
           </div>
           
-          <div class="button-group">
-            <button 
-              v-if="imageFile && !isLoading" 
-              @click="analyzeCurrentImage" 
-              class="analyze-btn"
+          <div class="panel-content">
+            <!-- 이미지 미리보기 또는 업로드 안내 -->
+            <div class="image-container">
+              <img v-if="imagePreview" :src="imagePreview" alt="이미지 미리보기" class="preview-image">
+              <div v-else class="upload-placeholder">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                  <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+                <p>이미지를 선택하면 여기에 표시됩니다</p>
+              </div>
+            </div>
+            
+            <!-- 버튼 영역 -->
+            <div class="button-group">
+              <button @click="triggerFileInput" class="btn btn-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                이미지 선택하기
+              </button>
+              
+              <button v-if="imageFile && !isLoading" @click="analyzeCurrentImage" class="btn btn-analyze">
+                이미지 분석하기
+              </button>
+              
+              <button v-if="imageFile && !isLoading" @click="reset" class="btn btn-secondary">
+                초기화
+              </button>
+            </div>
+            
+            <input
+              type="file"
+              ref="fileInput"
+              @change="handleFileChange"
+              accept="image/*"
+              class="hidden-input"
             >
-              이미지 분석하기
-            </button>
-            <button 
-              @click="reset" 
-              class="secondary-btn"
-              :disabled="isLoading"
-            >
-              초기화
-            </button>
-            <button 
-              v-if="isLoading" 
-              @click="cancelAnalysis" 
-              class="cancel-btn"
-            >
-              취소
-            </button>
+          </div>
+        </div>
+        
+        <!-- 오른쪽: 분석 차트 패널 -->
+        <div class="analysis-panel">
+          <div class="panel-header">
+            <h3 class="panel-title">
+              {{ isLoading ? '이미지 분석 중...' : (analysisResult ? '이미지 분석 결과' : '분석 데이터') }}
+            </h3>
           </div>
           
-          <LoadingSpinner v-if="isLoading" />
+          <div class="panel-content">
+            <!-- 로딩 중일 때 -->
+            <div v-if="isLoading" class="loading-state">
+              <div class="loading-spinner"></div>
+              <p class="loading-text">이미지를 분석 중입니다<span>.</span><span>.</span><span>.</span></p>
+            </div>
+            
+            <!-- 분석 결과가 없을 때 -->
+            <div v-else-if="!analysisResult" class="guide-state">
+              <div class="guide-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
+                </svg>
+              </div>
+              
+              <p class="guide-description">
+                원하는 분위기의 이미지를 업로드하면 AI가 분석하여 유사한 여행지를 추천해드립니다
+              </p>
+              
+              <div class="steps-container">
+                <div class="step"><span>1</span> 이미지 선택</div>
+                <div class="step"><span>2</span> 분석 실행</div>
+                <div class="step"><span>3</span> 여행지 추천 확인</div>
+              </div>
+            </div>
+            
+            <!-- 분석 결과 표 -->
+            <div v-else class="analysis-table-container">
+              <table class="analysis-table">
+                <thead>
+                  <tr>
+                    <th>분석 항목</th>
+                    <th>점수</th>
+                    <th>그래프</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(score, dimension) in analysisResult" :key="dimension">
+                    <td class="dimension-name">{{ getDimensionHeader(dimension) }}</td>
+                    <td class="dimension-score">{{ score.toFixed(1) }}</td>
+                    <td class="dimension-bar">
+                      <div class="bar-container">
+                        <div class="bar" :style="{ width: `${score * 100}%` }"></div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
       
-      <!-- 중앙 패널: 분석 결과 + 이미지 정보 입력 -->
-      <div class="analysis-panel" v-if="analysisResult && !isLoading">
-        <div class="analysis-panel-content">
-          <h3>당신의 여행 이미지 분석 결과</h3>
-          
-          <!-- 테이블 형식의 분석 결과 표시 -->
-          <div class="analysis-table-container">
-            <table class="analysis-table">
-              <thead>
-                <tr>
-                  <th>분석 항목</th>
-                  <th>점수</th>
-                  <th>그래프</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(score, dimension) in analysisResult" :key="dimension">
-                  <td class="dimension-name">{{ getDimensionHeader(dimension) }}</td>
-                  <td class="dimension-score">{{ score.toFixed(1) }}</td>
-                  <td class="dimension-bar">
-                    <div class="bar-container">
-                      <div class="bar" :style="{ width: `${score * 100}%` }"></div>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+      <!-- 중간 섹션: 분석 결과 (전체 너비) -->
+      <div v-if="analysisResult && !isLoading" class="middle-section">
+        <div class="results-panel">
+          <div class="panel-header">
+            <h3 class="panel-title">유사한 여행지 추천</h3>
           </div>
           
-          <!-- 이미지 상세 정보 입력 영역 -->
-          <div class="image-details-section">
-            <h3>이미지 정보 입력</h3>
-            <div class="input-group">
-              <label for="image-name">이미지 이름</label>
-              <input 
-                type="text" 
-                id="image-name"
-                v-model="imageDetails.name"
-                placeholder="이미지 이름을 입력하세요"
-                class="text-input"
+          <div class="panel-content">
+            <div v-if="searchResults.length === 0" class="no-results">
+              <p>검색 결과가 없습니다</p>
+              <p class="hint">다른 이미지로 다시 시도해보세요</p>
+            </div>
+            
+            <div v-else class="results-grid">
+              <div 
+                v-for="(result, index) in sortedSearchResults" 
+                :key="result._id"
+                class="result-card"
               >
-            </div>
-            
-            <div class="input-group">
-              <label for="image-location">위치 정보</label>
-              <LocationSearch @location-selected="onLocationSelected" />
-            </div>
-            
-            <div class="input-group">
-              <label for="image-tags">태그</label>
-              <input 
-                type="text" 
-                id="image-tags"
-                v-model="imageDetails.tags"
-                placeholder="쉼표로 구분된 태그를 입력하세요 (예: 바다,산,휴양지)"
-                class="text-input"
-              >
-            </div>
-            
-            <div class="input-group">
-              <label for="image-description">이미지 설명</label>
-              <textarea 
-                id="image-description"
-                v-model="imageDetails.description"
-                placeholder="이미지에 대한 간단한 설명을 입력하세요"
-                class="text-area"
-              ></textarea>
-            </div>
-            
-            <!-- 저장 버튼 -->
-            <button 
-              @click="saveToElasticsearchHandler" 
-              class="save-btn"
-            >
-              데이터베이스에 저장하기
-            </button>
-            
-            <div 
-              v-if="statusMessage" 
-              class="status-message" 
-              :class="statusClass"
-            >
-              {{ statusMessage }}
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- 오른쪽 패널: 추천 여행지 랭킹 -->
-      <div class="results-panel" v-if="analysisResult && !isLoading">
-        <div class="results-panel-content">
-          <h3>유사도 높은 추천 여행지 랭킹</h3>
-          
-          <div v-if="searchResults.length > 0" class="travel-ranking">
-            <div 
-              v-for="(result, index) in sortedSearchResults" 
-              :key="result._id"
-              class="ranking-item"
-            >
-              <div class="ranking-badge">{{ index + 1 }}</div>
-              <div class="ranking-card">
-                <div class="ranking-image-container">
-                  <img 
-                    :src="`data:image/jpeg;base64,${result._source.image_data}`" 
-                    :alt="result._source.image_name"
-                    class="ranking-image"
-                  >
+                <div class="result-rank">{{ index + 1 }}</div>
+                <div class="result-image-container">
+                  <img :src="`data:image/jpeg;base64,${result._source.image_data}`" :alt="result._source.image_name" class="result-image">
                 </div>
-                <div class="ranking-info">
-                  <h4 class="ranking-title">{{ result._source.image_name }}</h4>
-                  <p class="ranking-location">{{ result._source.image_location }}</p>
-                  <div class="ranking-score">
-                    <span class="score-label">유사도:</span>
-                    <span class="score-value">{{ (Math.round(result._score * 100) / 100).toFixed(2) }}</span>
+                <div class="result-info">
+                  <h4 class="result-name">{{ result._source.image_name }}</h4>
+                  <div class="result-location">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                      <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
+                    {{ result._source.image_location }}
+                  </div>
+                  <div class="result-similarity">
+                    <span>유사도:</span>
+                    <div class="similarity-bar">
+                      <div class="similarity-fill" :style="{ width: `${Math.round(result._score * 100) / 100 * 100}%` }"></div>
+                    </div>
+                    <span class="similarity-value">{{ (Math.round(result._score * 100) / 100).toFixed(2) }}</span>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-          <div v-else class="no-results-message">
-            검색 결과가 없습니다.
-          </div>
         </div>
       </div>
       
-      <!-- 초기 안내 메시지 (분석 전) -->
-      <div class="guide-panel" v-if="!analysisResult && !isLoading">
-        <div class="guide-panel-content">
-          <div class="search-guide">
-            <div class="guide-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </div>
-            <h2 class="guide-title">사진으로 여행지를 검색해보세요!!</h2>
-            <p class="guide-description">당신이 원하는 분위기의 여행지를 찾아드립니다.<br>
-            사진을 업로드하고 분석 버튼을 클릭하면 유사한 여행지를 추천해드립니다.</p>
-            <div class="guide-steps">
-              <div class="step">
-                <div class="step-number">1</div>
-                <div class="step-text">이미지 선택</div>
+      <!-- 하단 섹션: 이미지 정보 입력 (전체 너비) -->
+      <div v-if="analysisResult && !isLoading" class="bottom-section">
+        <div class="details-panel">
+          <div class="panel-header">
+            <h3 class="panel-title">이미지 정보 입력</h3>
+          </div>
+          
+          <div class="panel-content">
+            <div class="details-form">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="image-name">이미지 이름</label>
+                  <input 
+                    type="text" 
+                    id="image-name"
+                    v-model="imageDetails.name"
+                    placeholder="이미지 이름을 입력하세요"
+                  >
+                </div>
+                
+                <div class="form-group">
+                  <label for="image-location">위치 정보</label>
+                  <LocationSearch @location-selected="onLocationSelected" />
+                </div>
+                
+                <div class="form-group">
+                  <label for="image-tags">태그</label>
+                  <input 
+                    type="text" 
+                    id="image-tags"
+                    v-model="imageDetails.tags"
+                    placeholder="쉼표로 구분된 태그를 입력하세요 (예: 바다,산,휴양지)"
+                  >
+                </div>
+                
+                <div class="form-group">
+                  <label for="image-description">이미지 설명</label>
+                  <textarea 
+                    id="image-description"
+                    v-model="imageDetails.description"
+                    placeholder="이미지에 대한 간단한 설명을 입력하세요"
+                  ></textarea>
+                </div>
               </div>
-              <div class="step">
-                <div class="step-number">2</div>
-                <div class="step-text">분석 실행</div>
-              </div>
-              <div class="step">
-                <div class="step-number">3</div>
-                <div class="step-text">여행지 추천 확인</div>
+              
+              <div class="form-actions">
+                <button 
+                  @click="saveToElasticsearchHandler" 
+                  class="btn btn-save"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                  </svg>
+                  데이터베이스에 저장하기
+                </button>
+                
+                <div 
+                  v-if="statusMessage" 
+                  class="status-message" 
+                  :class="statusClass"
+                >
+                  {{ statusMessage }}
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
+    
+    <!-- 푸터 -->
+    <footer class="footer">
+      <p>© 2025 LOG:O - 당신의 여행을 기록하다</p>
+    </footer>
   </div>
 </template>
 
@@ -202,9 +257,7 @@
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useStore } from "vuex";
 import Header from "@/components/Header.vue";
-import ImageUpload from "@/components/ImageUpload.vue";
 import LocationSearch from "@/components/LocationSearch.vue";
-import LoadingSpinner from "@/components/LoadingSpinner.vue";
 import { 
   analyzeImage as callAnalyzeImage, 
   saveToElasticsearch as callSaveToElasticsearch,
@@ -215,14 +268,15 @@ import { createMap } from "@/services/map";
 
 export default {
   name: "LogoSearch",
+  
   components: {
     Header,
-    ImageUpload,
-    LocationSearch,
-    LoadingSpinner
+    LocationSearch
   },
+  
   setup() {
     const store = useStore();
+    const fileInput = ref(null);
     
     // 상태 관리
     const imageFile = computed(() => store.state.image.file);
@@ -234,7 +288,7 @@ export default {
     const actionStatus = ref({ message: "", type: "" });
     const mapInitialized = ref(false);
     
-    // 이미지 정보 관리 - 이제 직접 관리
+    // 이미지 정보 관리
     const imageDetails = reactive({
       name: '',
       location: '',
@@ -300,9 +354,17 @@ export default {
       }
     });
     
-    // 이미지 선택 처리
-    const onImageSelected = (file) => {
-      store.commit("image/setFile", file);
+    // 파일 선택 창 열기
+    const triggerFileInput = () => {
+      fileInput.value.click();
+    };
+    
+    // 파일 선택 처리
+    const handleFileChange = (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        store.commit("image/setFile", file);
+      }
     };
     
     // 위치 선택 처리
@@ -411,16 +473,6 @@ export default {
       }
     };
     
-    // 취소 처리
-    const cancelAnalysis = () => {
-      if (abortController.value) {
-        console.log("분석 취소");
-        abortController.value.abort();
-        abortController.value = null;
-        isLoading.value = false;
-      }
-    };
-    
     // 초기화 처리
     const reset = () => {
       console.log("초기화");
@@ -526,10 +578,11 @@ export default {
       sortedSearchResults,
       statusMessage,
       statusClass,
-      onImageSelected,
+      fileInput,
+      triggerFileInput,
+      handleFileChange,
       onLocationSelected,
       analyzeCurrentImage,
-      cancelAnalysis,
       reset,
       saveToElasticsearchHandler,
       searchSimilarHandler,
@@ -539,506 +592,651 @@ export default {
 };
 </script>
 
-<style lang="scss">
-// 기본 레이아웃
+<style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+
 .logo-search {
-  font-family: "Nunito", "Noto Sans KR", sans-serif;
+  font-family: 'Noto Sans KR', sans-serif;
   min-height: 100vh;
-  background-color: var(--gray-100);
+  background-color: #121212;
+  color: white;
+  display: flex;
+  flex-direction: column;
 }
 
-// 메인 컨테이너 - 전체 패널을 감싸는 컨테이너
-.main-container {
-  display: flex;
+/* 히어로 섹션 */
+.hero-section {
+  position: relative;
+  height: 320px;
+  background-image: url('https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1470');
+  background-size: cover;
+  background-position: center;
+}
+
+.hero-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
+  height: 100%;
+  background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7));
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 2rem;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0 15px;
-  gap: 15px;
 }
 
-// 공통 패널 스타일
-.upload-panel, .analysis-panel, .results-panel, .guide-panel {
-  background-color: white;
+.hero-title {
+  font-size: 3rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+}
+
+.hero-subtitle {
+  font-size: 1.3rem;
+  font-weight: 300;
+  margin: 0;
+  opacity: 0.9;
+}
+
+/* 컨텐츠 영역 */
+.content-wrapper {
+  position: relative;
+  padding: 2rem 0.5rem 3rem; /* 좌우 패딩을 1rem에서 0.5rem으로 줄임 */
+  z-index: 2;
+  max-width: 1600px; /* 최대 너비를 1400px에서 1600px로 증가 */
+  margin: 0 auto;
+  width: 95%; /* 화면 너비의 95%를 사용하도록 설정 */
+}
+
+/* 상단 두 컬럼 레이아웃 */
+.top-section {
+  display: grid;
+  grid-template-columns: 400px 1fr; /* 왼쪽 컬럼 고정, 오른쪽 컬럼 확장 */
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* 중간 및 하단 섹션 */
+.middle-section,
+.bottom-section {
+  margin-bottom: 1.5rem;
+}
+
+/* 패널 공통 스타일 */
+.upload-panel, 
+.analysis-panel, 
+.results-panel, 
+.details-panel {
+  background-color: #1c1c1c;
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   overflow: hidden;
-  margin-bottom: 15px;
-  height: fit-content;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
-.upload-panel-content, .analysis-panel-content, .results-panel-content, .guide-panel-content {
-  padding: 20px;
+.panel-header {
+  padding: 1rem 1.5rem;
+  background-color: #1c1c1c;
+  border-bottom: 1px solid #2d3748;
 }
 
-// 메인 헤딩 스타일
-.main-heading {
-  font-family: "Nunito", "Noto Sans KR", sans-serif;
-  font-size: 1.4rem;
-  color: var(--gray-800);
-  margin-top: 0;
-  margin-bottom: 20px;
+.panel-title {
+  font-family: 'Playfair Display', 'Noto Sans KR', serif;
+  font-size: 1.3rem;
+  font-weight: 500;
+  margin: 0;
   text-align: center;
-  font-weight: 700;
-  line-height: 1.3;
+  color: white;
+  letter-spacing: 0.5px;
 }
 
-// 왼쪽 패널 - 이미지 업로드
-.upload-panel {
-  flex: 0 0 280px;
-  width: 280px;
+.panel-content {
+  padding: 1.5rem;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
 }
 
-// 버튼 그룹
+/* 이미지 업로드 패널 */
+.image-container {
+  background-color: #2d3748;
+  border-radius: 8px;
+  height: 250px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+  border: 1px dashed #4a5568;
+}
+
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #a0aec0;
+  padding: 2rem;
+  text-align: center;
+}
+
+.upload-placeholder svg {
+  margin-bottom: 1rem;
+  color: #4299e1;
+}
+
+.upload-placeholder p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* 버튼 스타일 */
 .button-group {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 15px;
-  
-  .analyze-btn, .secondary-btn, .cancel-btn {
-    width: 100%;
-    padding: 12px;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 0.95rem;
-    cursor: pointer;
-    border: none;
-    transition: all 0.2s ease;
-  }
-  
-  .analyze-btn {
-    background-color: var(--logo-blue);
-    color: white;
-    box-shadow: 0 2px 4px rgba(72, 176, 228, 0.2);
-    
-    &:hover {
-      background-color: var(--primary-dark);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(72, 176, 228, 0.3);
-    }
-  }
-  
-  .secondary-btn {
-    background-color: var(--gray-300);
-    color: var(--gray-700);
-    
-    &:hover {
-      background-color: var(--gray-400);
-    }
-  }
-  
-  .cancel-btn {
-    background-color: var(--logo-coral);
-    color: white;
-    
-    &:hover {
-      background-color: darken(#ff8e7f, 5%);
-    }
-  }
+  gap: 0.75rem;
 }
 
-// 중앙 패널 - 분석 결과 및 이미지 정보
-.analysis-panel {
-  flex: 1;
-  min-width: 400px;
-  
-  h3 {
-    margin-top: 0;
-    margin-bottom: 15px;
-    font-size: 1.2rem;
-    color: var(--gray-800);
-    font-weight: 700;
-  }
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 4px;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-// 분석 테이블
+.btn svg {
+  flex-shrink: 0;
+}
+
+.btn-primary {
+  background-color: #4299e1;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #3182ce;
+  transform: translateY(-2px);
+}
+
+.btn-analyze {
+  background-color: #38a169;
+  color: white;
+}
+
+.btn-analyze:hover {
+  background-color: #2f855a;
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  border: 1px solid #a0aec0;
+  color: #e2e8f0;
+}
+
+.btn-secondary:hover {
+  background-color: rgba(160, 174, 192, 0.1);
+}
+
+.btn-save {
+  background-color: #38a169;
+  color: white;
+  margin-bottom: 1rem;
+}
+
+.btn-save:hover {
+  background-color: #2f855a;
+  transform: translateY(-2px);
+}
+
+.hidden-input {
+  display: none;
+}
+
+/* 분석 패널 - 로딩 상태 */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 2rem;
+  min-height: 250px; /* 최소 높이 설정 */
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(72, 176, 228, 0.3);
+  border-radius: 50%;
+  border-top-color: #4299e1;
+  animation: spin 1s ease-in-out infinite;
+  margin-bottom: 1.5rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 1.1rem;
+  color: #e2e8f0;
+  margin: 0;
+}
+
+.loading-text span {
+  display: inline-block;
+  animation: dots 1.5s infinite;
+}
+
+.loading-text span:nth-child(2) {
+  animation-delay: 0.3s;
+}
+
+.loading-text span:nth-child(3) {
+  animation-delay: 0.6s;
+}
+
+@keyframes dots {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+/* 가이드 상태 */
+.guide-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+  min-height: 250px;
+}
+
+.guide-icon {
+  color: #4299e1;
+  margin-bottom: 1.5rem;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.guide-description {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #e2e8f0;
+  margin: 0 0 1.5rem 0;
+  max-width: 400px;
+}
+
+.steps-container {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  color: #a0aec0;
+  font-size: 0.9rem;
+}
+
+.step span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, #4299e1, #3182ce);
+  color: white;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+/* 분석 결과 표 */
 .analysis-table-container {
-  margin-bottom: 20px;
+  overflow: auto;
+  border-radius: 8px;
+  height: 100%;
+  min-height: 250px;
 }
 
 .analysis-table {
   width: 100%;
   border-collapse: collapse;
-  border-radius: 6px;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  
-  th {
-    background-color: var(--logo-blue);
-    color: white;
-    text-align: left;
-    padding: 10px 12px;
-    font-size: 0.9rem;
-    font-weight: 600;
-  }
-  
-  td {
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--gray-200);
-    font-size: 0.9rem;
-  }
-  
-  tr:last-child td {
-    border-bottom: none;
-  }
-  
-  tr:nth-child(even) {
-    background-color: var(--gray-50);
-  }
-  
-  .dimension-name {
-    color: var(--gray-800);
-    font-weight: 600;
-    width: 35%;
-  }
-  
-  .dimension-score {
-    text-align: center;
-    font-weight: 700;
-    color: var(--logo-blue);
-    width: 15%;
-  }
-  
-  .dimension-bar {
-    width: 50%;
-  }
-  
-  .bar-container {
-    width: 100%;
-    height: 12px;
-    background-color: var(--gray-200);
-    border-radius: 6px;
-    overflow: hidden;
-  }
-  
-  .bar {
-    height: 100%;
-    background-color: var(--logo-blue);
-    border-radius: 6px;
-  }
 }
 
-// 이미지 상세 정보 영역
-.image-details-section {
-  background-color: var(--gray-50);
-  border-radius: 8px;
-  padding: 15px;
-  margin-top: 20px;
-  border: 1px solid var(--gray-200);
-  
-  h3 {
-    margin-top: 0;
-    font-size: 1.1rem;
-  }
-  
-  .input-group {
-    margin-bottom: 15px;
-  }
-  
-  label {
-    display: block;
-    margin-bottom: 5px;
-    font-size: 0.9rem;
-    color: var(--gray-700);
-    font-weight: 600;
-  }
-  
-  .text-input, .text-area {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid var(--gray-300);
-    border-radius: 6px;
-    font-size: 0.95rem;
-    background-color: white;
-    transition: border-color 0.2s ease;
-    
-    &:focus {
-      outline: none;
-      border-color: var(--logo-blue);
-      box-shadow: 0 0 0 2px rgba(72, 176, 228, 0.1);
-    }
-  }
-  
-  .text-area {
-    min-height: 100px;
-    resize: vertical;
-  }
-}
-
-// 저장 버튼
-.save-btn {
-  width: 100%;
-  padding: 12px;
-  background-color: var(--logo-green);
+.analysis-table th {
+  background-color: #2d3748;
   color: white;
-  border: none;
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(118, 179, 157, 0.2);
-  
-  &:hover {
-    background-color: darken(#76b39d, 10%);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px rgba(118, 179, 157, 0.3);
-  }
-}
-
-// 상태 메시지
-.status-message {
-  margin-top: 12px;
-  padding: 10px 12px;
-  border-radius: 6px;
+  text-align: left;
+  padding: 0.75rem 1rem;
   font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.analysis-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #2d3748;
+}
+
+.analysis-table tr:last-child td {
+  border-bottom: none;
+}
+
+.dimension-name {
+  color: #e2e8f0;
   font-weight: 500;
-  
-  &.status-success {
-    background-color: rgba(118, 179, 157, 0.1);
-    border: 1px solid rgba(118, 179, 157, 0.3);
-    color: darken(#76b39d, 30%);
-  }
-  
-  &.status-error {
-    background-color: rgba(255, 142, 127, 0.1);
-    border: 1px solid rgba(255, 142, 127, 0.3);
-    color: darken(#ff8e7f, 30%);
-  }
 }
 
-// 오른쪽 패널 - 랭킹 형식 결과
-.results-panel {
-  flex: 0 0 350px;
-  width: 350px;
-  
-  h3 {
-    margin-top: 0;
-    margin-bottom: 15px;
-    font-size: 1.2rem;
-    color: var(--gray-800);
-    font-weight: 700;
-    text-align: center;
-  }
-}
-
-// 검색 결과 없음 메시지
-.no-results-message {
+.dimension-score {
+  color: #4299e1;
+  font-weight: 600;
   text-align: center;
-  padding: 40px 20px;
-  background-color: var(--gray-100);
-  border-radius: 6px;
-  color: var(--gray-600);
-  font-style: italic;
 }
 
-// 여행지 랭킹 스타일
-.travel-ranking {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
+.dimension-bar {
+  width: 50%;
 }
 
-.ranking-item {
+.bar-container {
+  height: 10px;
+  background-color: #2d3748;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4299e1, #76b39d);
+  border-radius: 5px;
+  transition: width 1s ease;
+}
+
+/* 결과 그리드 */
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.5rem;
+  padding: 0.5rem;
+}
+
+.result-card {
   position: relative;
-  padding-left: 30px;
+  background-color: #2d3748;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
 }
 
-.ranking-badge {
+.result-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.result-rank {
   position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 10px;
+  right: 10px;
   width: 24px;
   height: 24px;
-  background-color: var(--logo-blue);
+  background: linear-gradient(135deg, #4299e1, #3182ce);
   color: white;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
   font-size: 0.8rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-  
-  // 상위 3개 랭킹 강조
-  &:nth-child(1), &:nth-child(2), &:nth-child(3) {
-    background: linear-gradient(to right, var(--logo-yellow), var(--logo-coral));
-  }
+  font-weight: 600;
+  z-index: 1;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
 }
 
-.ranking-card {
-  display: flex;
-  background-color: white;
-  border-radius: 8px;
+.result-card:nth-child(1) .result-rank {
+  background: linear-gradient(135deg, #f6e05e, #d69e2e);
+}
+
+.result-card:nth-child(2) .result-rank {
+  background: linear-gradient(135deg, #e2e8f0, #a0aec0);
+}
+
+.result-card:nth-child(3) .result-rank {
+  background: linear-gradient(135deg, #ed8936, #c05621);
+}
+
+.result-image-container {
+  height: 180px;
+  width: 100%;
   overflow: hidden;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
-  }
 }
 
-.ranking-image-container {
-  width: 80px;
-  height: 80px;
-  flex-shrink: 0;
-}
-
-.ranking-image {
+.result-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.5s ease;
 }
 
-.ranking-info {
-  padding: 10px;
-  flex-grow: 1;
+.result-card:hover .result-image {
+  transform: scale(1.1);
+}
+
+.result-info {
+  padding: 1rem;
+}
+
+.result-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  color: white;
+}
+
+.result-location {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: #a0aec0;
+  margin-bottom: 0.75rem;
 }
 
-.ranking-title {
-  margin: 0 0 5px 0;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--gray-800);
-  line-height: 1.2;
+.result-location svg {
+  color: #4299e1;
+  flex-shrink: 0;
 }
 
-.ranking-location {
-  margin: 0 0 5px 0;
+.result-similarity {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 0.8rem;
-  color: var(--gray-600);
-  line-height: 1.3;
+  color: #a0aec0;
 }
 
-.ranking-score {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  
-  .score-label {
-    font-size: 0.75rem;
-    color: var(--gray-500);
-  }
-  
-  .score-value {
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: var(--logo-blue);
-  }
+.similarity-bar {
+  flex-grow: 1;
+  height: 6px;
+  background-color: #4a5568;
+  border-radius: 3px;
+  overflow: hidden;
 }
 
-// 가이드 패널 (초기 안내 메시지)
-.guide-panel {
-  flex: 1;
+.similarity-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4299e1, #76b39d);
+  border-radius: 3px;
+  transition: width 1s ease;
 }
 
-// 검색 안내 메시지
-.search-guide {
+.similarity-value {
+  color: #e2e8f0;
+  font-weight: 600;
+  min-width: 30px;
+  text-align: right;
+}
+
+/* 이미지 정보 입력 */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #e2e8f0;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #2d3748;
+  border: 1px solid #4a5568;
+  border-radius: 4px;
+  color: white;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  border-color: #4299e1;
+  box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.2);
+  outline: none;
+}
+
+.form-group textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.form-actions {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  margin-top: 1rem;
+  grid-column: span 2;
+}
+
+.status-message {
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  margin-top: 1rem;
+  display: inline-block;
+}
+
+.status-success {
+  background-color: rgba(56, 161, 105, 0.2);
+  border: 1px solid rgba(56, 161, 105, 0.3);
+  color: #9ae6b4;
+}
+
+.status-error {
+  background-color: rgba(229, 62, 62, 0.2);
+  border: 1px solid rgba(229, 62, 62, 0.3);
+  color: #feb2b2;
+}
+
+/* 푸터 */
+.footer {
+  margin-top: auto;
+  background-color: #121212;
+  padding: 1.5rem;
   text-align: center;
-  padding: 30px 20px;
-  height: 100%;
-  
-  .guide-icon {
-    width: 80px;
-    height: 80px;
-    margin-bottom: 20px;
-    color: var(--logo-blue);
-    opacity: 0.7;
-    
-    svg {
-      width: 100%;
-      height: 100%;
-    }
-  }
-  
-  .guide-title {
-    font-size: 1.6rem;
-    color: var(--logo-blue);
-    margin: 0 0 15px 0;
-    font-weight: 700;
-  }
-  
-  .guide-description {
-    max-width: 500px;
-    color: var(--gray-600);
-    font-size: 1.05rem;
-    margin-bottom: 25px;
-    line-height: 1.6;
-  }
-  
-  .guide-steps {
-    display: flex;
-    gap: 20px;
-    margin-bottom: 20px;
-    
-    .step {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      
-      .step-number {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background-color: var(--logo-blue);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        margin-bottom: 10px;
-      }
-      
-      .step-text {
-        color: var(--gray-700);
-        font-size: 0.95rem;
-        font-weight: 600;
-      }
-    }
-  }
+  border-top: 1px solid #2d3748;
 }
 
-// 반응형 스타일
-@media (max-width: 1200px) {
-  .main-container {
-    flex-wrap: wrap;
-  }
-  
-  .upload-panel {
-    flex: 0 0 280px;
-    width: 280px;
-  }
-  
-  .analysis-panel {
-    flex: 1;
-    min-width: 400px;
-  }
-  
-  .results-panel, .guide-panel {
-    flex: 1;
-    min-width: 300px;
-  }
+.footer p {
+  font-size: 0.9rem;
+  color: #a0aec0;
+  margin: 0;
 }
 
+/* 반응형 스타일 */
 @media (max-width: 900px) {
-  .main-container {
-    flex-direction: column;
+  .top-section {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
   }
   
-  .upload-panel, .analysis-panel, .results-panel, .guide-panel {
-    flex: none;
-    width: 100%;
+  .hero-title {
+    font-size: 2.5rem;
+  }
+  
+  .hero-subtitle {
+    font-size: 1.1rem;
+  }
+  
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .form-actions {
+    grid-column: span 1;
+  }
+  
+  .results-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .hero-section {
+    height: 250px;
+  }
+  
+  .hero-title {
+    font-size: 2rem;
+  }
+  
+  .content-wrapper {
+    padding: 1.5rem 1rem;
+  }
+  
+  .results-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>
