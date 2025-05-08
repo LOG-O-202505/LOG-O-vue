@@ -24,7 +24,6 @@
         <div class="nav-group">
           <a href="#" class="nav-item">소개</a>
           <a href="#" class="nav-item">갤러리</a>
-          <a href="#" class="nav-item">예약하기</a>
         </div>
         
         <div class="nav-center">
@@ -33,8 +32,7 @@
         
         <div class="nav-group">
           <a href="#" class="nav-item">여행지</a>
-          <a href="#" class="nav-item">이벤트</a>
-          <router-link to="/llamasearch" class="nav-item highlight">시작하기</router-link>
+          <router-link to="/llamasearch" class="nav-item highlight">LOGIN</router-link>
         </div>
       </div>
     </nav>
@@ -47,7 +45,7 @@
         </h1>
         
         <p class="korean-subtitle">
-          당신이 걸어간 그 길을 기억합니다
+          여행의 가장 아름다운 순간을 함께합니다
         </p>
         
         <div class="cta-container">
@@ -68,7 +66,7 @@
             <circle cx="12" cy="10" r="3"></circle>
           </svg>
         </span>
-        <span class="location-text">서울 특별시, 강남구 역삼동</span>
+        <span class="location-text">{{ currentLocation }}</span>
       </div>
     </main>
     
@@ -249,9 +247,19 @@ export default {
       'videos/city'
     ];
     
-    // 현재 재생 중인 비디오
+    // 각 비디오 위치 정보 매핑
+    const videoLocations = {
+      'videos/train': 'Interlaken, Switzerland',
+      'videos/river': 'Bahamas',
+      'videos/europe': 'Arc de Triomphe, Paris, France',
+      'videos/canyon': 'Sedona, Arizona',
+      'videos/city': 'Seville Cathedral, Spain'
+    };
+    
+    // 현재 재생 중인 비디오 및 위치 정보
     const currentVideoName = ref(videoNames[0]);
     const currentVideoSrc = ref(videoNames[0]);
+    const currentLocation = ref(videoLocations[videoNames[0]]);
     const backgroundVideo = ref(null);
     
     // 자동 전환 타이머
@@ -259,20 +267,32 @@ export default {
     
     // 동영상 변경 함수
     const changeVideo = (videoName) => {
-      currentVideoName.value = videoName;
-      currentVideoSrc.value = videoName;
-      
-      // 비디오 요소 재설정 및 재생
+      // 페이드 아웃 효과 적용
       if (backgroundVideo.value) {
-        // 현재 비디오 일시 정지
-        backgroundVideo.value.pause();
+        backgroundVideo.value.classList.add('fade-out');
+      }
+      
+      // 짧은 지연 후 비디오 소스 변경 (페이드 아웃 효과 동안)
+      setTimeout(() => {
+        currentVideoName.value = videoName;
+        currentVideoSrc.value = videoName;
+        currentLocation.value = videoLocations[videoName];
         
-        // 새 비디오 로드 후 재생
-        setTimeout(() => {
+        // 비디오 요소 재설정 및 재생
+        if (backgroundVideo.value) {
+          // 현재 비디오 일시 정지
+          backgroundVideo.value.pause();
+          
+          // 새 비디오 로드 후 재생
           backgroundVideo.value.load();
           tryPlayVideo();
-        }, 100);
-      }
+          
+          // 페이드 인 효과 적용
+          setTimeout(() => {
+            backgroundVideo.value.classList.remove('fade-out');
+          }, 50);
+        }
+      }, 300);
       
       // 자동 전환 타이머 재설정
       resetAutoChangeTimer();
@@ -295,13 +315,13 @@ export default {
       }
     };
     
-    // 자동 전환 타이머 설정
+    // 자동 전환 타이머 설정 - 5초로 변경
     const setupAutoChangeTimer = () => {
       autoChangeTimer = setInterval(() => {
         const currentIndex = videoNames.indexOf(currentVideoName.value);
         const nextIndex = (currentIndex + 1) % videoNames.length;
         changeVideo(videoNames[nextIndex]);
-      }, 7000); // 30초마다 자동 전환
+      }, 5000); // 5초마다 자동 전환
     };
     
     // 자동 전환 타이머 재설정
@@ -435,6 +455,7 @@ export default {
       backgroundVideo,
       currentVideoSrc,
       currentVideoName,
+      currentLocation,
       videoNames,
       changeVideo,
       destinationImages
@@ -473,6 +494,12 @@ export default {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: opacity 0.5s ease-in-out;
+}
+
+/* 비디오 페이드 효과 */
+.background-video.fade-out {
+  opacity: 0.3;
 }
 
 .overlay {
@@ -612,24 +639,43 @@ export default {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background-color: rgba(0, 0, 0, 0.3);
-  padding: 0.5rem 1rem;
-  border-radius: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  padding: 0.8rem 1.2rem;
+  border-radius: 8px;
   backdrop-filter: blur(5px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 5;
+}
+
+.location-info:hover {
+  background-color: rgba(0, 0, 0, 0.7);
+  transform: translateY(-3px);
 }
 
 .location-icon {
   display: flex;
   align-items: center;
   color: white;
+  animation: pulseLocation 1.5s infinite alternate ease-in-out;
+}
+
+@keyframes pulseLocation {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1.2);
+  }
 }
 
 .location-text {
-  font-size: 0.9rem;
+  font-size: 1rem;
   color: white;
   font-family: 'Cormorant Garamond', serif;
   letter-spacing: 1px;
+  font-weight: 600;
 }
 
 /* 카드 위치 정보 */
