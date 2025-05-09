@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="_레이어_2" data-name="레이어 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8.42 5.96">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #a3a3a3;
+        fill-rule: evenodd;
+        stroke: #f9f9f9;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: .25px;
+      }
+    </style>
+  </defs>
+  <g id="South_Korea" data-name="South Korea">
+    <polygon id="Kwangju-gwangyoksi" class="cls-1" points="7.39 .99 8.29 3.49 6.53 5.84 3.78 5.4 1.35 3.93 .12 1.25 1.09 .33 2.69 .76 3.86 .49 5.09 .12 7.39 .99"/>
+  </g>
+</svg>
