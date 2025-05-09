@@ -53,7 +53,7 @@
       </div>
     </div>
     
-    <!-- 지도 표시 -->
+    <!-- 지도 표시 - 세로로 길게 -->
     <div 
       v-if="selectedLocation" 
       class="location-map-container"
@@ -62,6 +62,20 @@
         ref="mapContainer" 
         class="location-map"
       ></div>
+    </div>
+    
+    <!-- 지도가 없을 때 표시할 영역 (높이 유지) -->
+    <div 
+      v-else
+      class="empty-map-container"
+    >
+      <div class="empty-map-message">
+        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+          <circle cx="12" cy="10" r="3"></circle>
+        </svg>
+        <p>위치를 검색하면 지도가 여기에 표시됩니다</p>
+      </div>
     </div>
   </div>
 </template>
@@ -155,7 +169,7 @@ export default {
       }, 300);
     };
     
-    // 장소 선택 처리 - 수정됨: 즉시 지도 표시
+    // 장소 선택 처리
     const selectPlace = async (prediction) => {
       try {
         console.log('장소 선택:', prediction.description);
@@ -191,7 +205,7 @@ export default {
       }
     };
     
-    // 지도 표시 함수 - 수정됨: 더 안정적인 지도 표시
+    // 지도 표시 함수
     const displayMap = async () => {
       if (!selectedPlaceDetails.value) {
         console.warn('지도를 표시할 수 없음: 위치 정보 없음');
@@ -263,6 +277,14 @@ export default {
 </script>
 
 <style scoped>
+/* 위치 검색 컴포넌트 전체 스타일 */
+.location-search {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 400px;
+}
+
 /* Google Places 검색 관련 스타일 */
 .location-search-container {
   position: relative;
@@ -277,6 +299,7 @@ export default {
   font-family: 'Nunito', 'Noto Sans KR', sans-serif;
   font-size: 1rem;
   background-color: var(--white);
+  color: var(--gray-800); /* 텍스트 색상 명시적 지정 */
   transition: all 0.3s ease;
 }
 
@@ -300,6 +323,7 @@ export default {
   z-index: 10;
   width: 100%;
   max-width: 100%;
+  color: var(--gray-800); /* 검색 결과 텍스트 색상 */
 }
 
 .location-result-item {
@@ -307,10 +331,12 @@ export default {
   cursor: pointer;
   border-bottom: 1px solid var(--gray-200);
   transition: background-color 0.2s ease;
+  color: var(--gray-700); /* 검색 결과 항목 색상 */
 }
 
 .location-result-item:hover {
   background-color: rgba(72, 176, 228, 0.08);
+  color: var(--gray-900);
 }
 
 .location-result-item:last-child {
@@ -325,7 +351,7 @@ export default {
 }
 
 .selected-location-display {
-  margin-top: 12px;
+  margin-bottom: 12px;
 }
 
 .selected-location {
@@ -366,20 +392,56 @@ export default {
   color: var(--logo-coral);
 }
 
-/* 지도 관련 스타일 */
+/* 지도 관련 스타일 - 세로로 길게 */
 .location-map-container {
-  margin-top: 15px;
+  flex-grow: 1;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 5px 10px rgba(0, 0, 0, 0.08);
   border: 1px solid var(--gray-300);
   width: 100%;
   max-width: 100%;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
 }
 
 .location-map {
   width: 100%;
-  height: 300px;
+  height: 100%;
+  min-height: 400px; /* 세로로 길게 설정 */
   background-color: var(--gray-200);
+  flex-grow: 1;
+}
+
+/* 빈 지도 영역 - 높이 유지 */
+.empty-map-container {
+  flex-grow: 1;
+  border-radius: 12px;
+  border: 1px dashed var(--gray-300);
+  background-color: var(--gray-100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px; /* 세로로 길게 설정 */
+}
+
+.empty-map-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 20px;
+  color: var(--gray-500);
+}
+
+.empty-map-message svg {
+  margin-bottom: 12px;
+  color: var(--gray-400);
+}
+
+.empty-map-message p {
+  margin: 0;
+  font-size: 0.9rem;
 }
 </style>

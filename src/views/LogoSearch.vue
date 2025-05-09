@@ -74,11 +74,14 @@
             </h3>
           </div>
           
-          <div class="panel-content">
-            <!-- 로딩 중일 때 -->
+          <div class="panel-content" :class="{ 'no-padding': isLoading }">
+            <!-- 로딩 중일 때 - 업데이트된 LoadingSpinner 사용 -->
             <div v-if="isLoading" class="loading-state">
-              <div class="loading-spinner"></div>
-              <p class="loading-text">이미지를 분석 중입니다<span>.</span><span>.</span><span>.</span></p>
+              <LoadingSpinner 
+                :current-phase="loadingPhase" 
+                :analysis-duration="analysisDuration" 
+                :search-duration="searchDuration" 
+              />
             </div>
             
             <!-- 분석 결과가 없을 때 -->
@@ -258,6 +261,7 @@ import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useStore } from "vuex";
 import Header from "@/components/Header.vue";
 import LocationSearch from "@/components/LocationSearch.vue";
+import LoadingSpinner from "@/components/LoadingSpinner.vue";
 import { 
   analyzeImage as callAnalyzeImage, 
   saveToElasticsearch as callSaveToElasticsearch,
@@ -271,7 +275,8 @@ export default {
   
   components: {
     Header,
-    LocationSearch
+    LocationSearch,
+    LoadingSpinner
   },
   
   setup() {
@@ -287,6 +292,11 @@ export default {
     const abortController = ref(null);
     const actionStatus = ref({ message: "", type: "" });
     const mapInitialized = ref(false);
+    
+    // 추가된 API 단계 및 타이밍 상태
+    const loadingPhase = ref('analysis');
+    const analysisDuration = ref(null);
+    const searchDuration = ref(null);
     
     // 이미지 정보 관리
     const imageDetails = reactive({
@@ -405,7 +415,7 @@ export default {
       }
     };
     
-    // 이미지 분석 처리
+    // 이미지 분석 처리 - 업데이트됨
     const analyzeCurrentImage = async () => {
       if (!imageFile.value) {
         alert("먼저 이미지를 선택해주세요.");
@@ -413,7 +423,11 @@ export default {
       }
       
       try {
+        // 상태 초기화 및 로딩 시작
         isLoading.value = true;
+        loadingPhase.value = 'analysis';
+        analysisDuration.value = null;
+        searchDuration.value = null;
         
         // AbortController 설정
         abortController.value = new AbortController();
@@ -422,18 +436,30 @@ export default {
         
         // 직접 API 호출
         try {
+          const analysisStartTime = performance.now();
+          
           // 이미지 분석 API 호출
           const result = await callAnalyzeImage(
             imageFile.value, 
             abortController.value.signal
           );
           
+          // 분석 시간 계산
+          const analysisEndTime = performance.now();
+          analysisDuration.value = ((analysisEndTime - analysisStartTime) / 1000).toFixed(1);
+          
           // 결과 저장
           analysisResult.value = result;
           console.log("분석 결과:", result);
           
+          // 검색 단계로 전환
+          loadingPhase.value = 'search';
+          
           // 분석이 완료되면 자동으로 유사 이미지 검색 실행
+          const searchStartTime = performance.now();
           await searchSimilarHandler();
+          const searchEndTime = performance.now();
+          searchDuration.value = ((searchEndTime - searchStartTime) / 1000).toFixed(1);
           
         } catch (apiError) {
           console.error("API 호출 오류:", apiError);
@@ -454,10 +480,19 @@ export default {
               "Shopping Potential": 0.0
             };
             
+            // 테스트 데이터용 시간 설정
+            analysisDuration.value = '0.5'; // 가상 시간
+            
             alert("API 연결 오류로 테스트 데이터를 사용합니다. 실제 서버 상태를 확인하세요.");
             
+            // 검색 단계로 전환
+            loadingPhase.value = 'search';
+            
             // 테스트 데이터로도 유사 이미지 검색 실행
+            const searchStartTime = performance.now();
             await searchSimilarHandler();
+            const searchEndTime = performance.now();
+            searchDuration.value = ((searchEndTime - searchStartTime) / 1000).toFixed(1);
           }
         }
       } catch (error) {
@@ -468,6 +503,7 @@ export default {
           alert("오류: " + error.message);
         }
       } finally {
+        loadingPhase.value = 'completed';
         isLoading.value = false;
         abortController.value = null;
       }
@@ -579,6 +615,9 @@ export default {
       statusMessage,
       statusClass,
       fileInput,
+      loadingPhase, // 추가된 상태
+      analysisDuration, // 추가된 상태
+      searchDuration, // 추가된 상태
       triggerFileInput,
       handleFileChange,
       onLocationSelected,
