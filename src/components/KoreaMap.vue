@@ -251,3 +251,108 @@
     }
   };
   </script>
+
+<style scoped>
+.korea-map-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.korea-map {
+  width: 100%;
+  max-width: 500px;
+  height: auto;
+  transition: transform 0.3s ease;
+}
+
+.region {
+  transition: all 0.3s ease;
+  cursor: pointer;
+  stroke: #fff;
+  stroke-width: 0.5;
+}
+
+.region:hover {
+  fill: #bc5151 !important;
+  filter: drop-shadow(0 0 5px rgba(188, 81, 81, 0.5));
+  transform: translateY(-2px);
+}
+
+.region.active {
+  fill: #bc5151 !important;
+  stroke: #fff;
+  stroke-width: 1;
+  filter: drop-shadow(0 0 8px rgba(188, 81, 81, 0.7));
+}
+
+.region-tooltip {
+  position: absolute;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  pointer-events: none;
+  z-index: 10;
+  transform: translate(-50%, -100%);
+  margin-top: -10px;
+  white-space: nowrap;
+}
+
+.region-tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid rgba(0, 0, 0, 0.7);
+}
+
+/* 3D 효과 */
+.korea-map {
+  filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.2));
+}
+
+/* 애니메이션 효과 */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.005);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.region.active {
+  animation: pulse 2s infinite ease-in-out;
+}
+
+/* 반응형 스타일 */
+@media (max-width: 768px) {
+  .korea-map {
+    max-width: 400px;
+  }
+  
+  .region-tooltip {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .korea-map {
+    max-width: 300px;
+  }
+}
+</style>
