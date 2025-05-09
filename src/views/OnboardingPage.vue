@@ -28,11 +28,11 @@
       </template>
     </div>
     
-    <!-- 상단 네비게이션 바 -->
-    <nav class="navbar">
+     <!-- 상단 네비게이션 바 -->
+     <nav class="navbar">
       <div class="navbar-container">
         <div class="nav-group">
-          <a href="#" class="nav-item">LOOK AROUND</a>
+          <router-link to="/lookAround" class="nav-item">LOOK AROUND</router-link>
           <router-link to="/llamasearch" class="nav-item">SEARCH</router-link>
           
         </div>

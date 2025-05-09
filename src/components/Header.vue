@@ -2,7 +2,7 @@
   <nav class="navbar">
     <div class="navbar-container">
       <div class="nav-group">
-        <a href="#" class="nav-item">LOOK AROUND</a>
+        <router-link to="/lookAround" class="nav-item">LOOK AROUND</router-link>
         <router-link to="/llamasearch" class="nav-item">SEARCH</router-link>
       </div>
       
@@ -94,6 +94,16 @@ export default {
 
 .nav-item:hover::after {
   width: 100%;
+}
+
+.router-link-active {
+  opacity: 1;
+}
+
+.router-link-active::after {
+  width: 100%;
+  background-color: var(--logo-blue, #48b0e4);
+  height: 2px;
 }
 
 @media (max-width: 900px) {
