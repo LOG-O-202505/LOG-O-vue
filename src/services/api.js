@@ -1,5 +1,6 @@
 // API 호출 관련 함수들
 import config from '@/config.js';
+import regionMapping from '@/data/regionMapping.js';
 
 /**
  * 파일을 Base64로 변환하는 유틸리티 함수
@@ -209,6 +210,66 @@ export const createFeaturesVector = (analysisResult) => {
 };
 
 /**
+ * 위치 문자열에서 지역 정보 찾기
+ * @param {string} locationString - 위치 문자열 (예: '서울특별시 강남구')
+ * @returns {Object} - 찾은 지역 정보 (province, city)
+ */
+export const findRegionInfoFromLocation = (locationString) => {
+  if (!locationString) return null;
+  
+  console.log('=== 위치 문자열에서 지역 정보 찾기 시작 ===');
+  console.log('입력된 위치 문자열:', locationString);
+  
+  const result = {
+    full_text: locationString,
+    province_code: null,
+    province_name: null,
+    city_code: null,
+    city_name: null
+  };
+  
+  // 광역시/도 검색
+  console.log('광역시/도 검색 시작...');
+  for (const provinceCode in regionMapping) {
+    const province = regionMapping[provinceCode];
+    
+    // 광역시/도 이름이 위치 문자열에 포함되어 있는지 확인
+    if (locationString.includes(province.name)) {
+      console.log(`광역시/도 매칭 성공: ${province.name} (코드: ${province.code})`);
+      result.province_code = province.code;
+      result.province_name = province.name;
+      
+      // 하위 시군구 검색
+      console.log(`${province.name}의 하위 시군구 검색 시작...`);
+      let cityMatched = false;
+      for (const city of province.children) {
+        if (locationString.includes(city.name)) {
+          console.log(`시군구 매칭 성공: ${city.name} (코드: ${city.code})`);
+          result.city_code = city.code;
+          result.city_name = city.name;
+          cityMatched = true;
+          break;
+        }
+      }
+      
+      if (!cityMatched) {
+        console.log(`${province.name}에서 매칭되는 시군구를 찾지 못했습니다.`);
+      }
+      
+      break;
+    }
+  }
+  
+  if (!result.province_code) {
+    console.log('위치 문자열에서 매칭되는 광역시/도를 찾지 못했습니다.');
+  }
+  
+  console.log('최종 지역 정보 결과:', result);
+  console.log('=== 위치 문자열에서 지역 정보 찾기 끝 ===');
+  return result;
+};
+
+/**
  * Elasticsearch에 이미지 저장
  * @param {string} imageId - 이미지 ID
  * @param {string} name - 이미지 이름
@@ -218,6 +279,7 @@ export const createFeaturesVector = (analysisResult) => {
  * @param {string} imageBase64 - Base64 인코딩된 이미지
  * @param {Object} analysisResult - 분석 결과
  * @param {Array<number>} featuresVector - 특성 벡터
+ * @param {Object} locationData - 지역 정보 데이터 (optional)
  * @returns {Promise<Object>} - Elasticsearch 응답
  */
 export const saveToElasticsearch = async (
@@ -228,17 +290,34 @@ export const saveToElasticsearch = async (
   description,
   imageBase64,
   analysisResult,
-  featuresVector
+  featuresVector,
+  locationData = null
 ) => {
   try {
+    console.log('=== Elasticsearch 저장 데이터 로깅 시작 ===');
+    console.log('이미지 ID:', imageId);
+    console.log('이미지 이름:', name);
+    console.log('위치 정보 (텍스트):', location);
+    console.log('태그:', tags);
+    console.log('설명:', description);
+    console.log('이미지 Base64 길이:', imageBase64?.split(',')[1]?.length || 0, '자');
+    console.log('분석 결과:', analysisResult);
+    console.log('특성 벡터:', featuresVector);
+    console.log('구조화된 위치 데이터:', locationData);
+    
     console.log('Elasticsearch 저장 시작:', imageId);
     console.log('Elasticsearch API 주소:', `${config.ES_API}/travel_images/_doc/${imageId}`);
+    
+    // 위치 정보에서 지역 정보 추출 (locationData가 없을 경우)
+    const finalLocationData = locationData || findRegionInfoFromLocation(location);
+    console.log('최종 위치 데이터:', finalLocationData);
     
     // 문서 구조 생성
     const document = {
       image_id: imageId,
       image_name: name,
-      image_location: location,
+      image_location: location, // 기존 필드 유지 (하위 호환성)
+      location: finalLocationData, // 새로운 구조화된 위치 정보
       image_tags: tags,
       image_description: description,
       image_data: imageBase64.split(',')[1], // base64 데이터만 저장
@@ -257,6 +336,12 @@ export const saveToElasticsearch = async (
         shopping_potential: analysisResult["Shopping Potential"]
       }
     };
+    
+    console.log('최종 문서 구조 (이미지 데이터 제외):');
+    const documentCopy = {...document};
+    delete documentCopy.image_data;
+    console.log(JSON.stringify(documentCopy, null, 2));
+    console.log('=== Elasticsearch 저장 데이터 로깅 끝 ===');
     
     // config에서 Elasticsearch API URL 사용
     const response = await fetch(`${config.ES_API}/travel_images/_doc/${imageId}`, {
@@ -335,6 +420,83 @@ export const searchSimilarImages = async (featuresVector, limit = 10) => {
     console.error('검색 오류 타입:', error.name);
     console.error('검색 오류 메시지:', error.message);
     console.error('검색 오류 스택:', error.stack);
+    throw error;
+  }
+};
+
+/**
+ * 키워드로 이미지 검색
+ * @param {string} keyword - 검색할 키워드
+ * @param {number} size - 검색 결과 제한 (한 번에 가져올 결과 수)
+ * @param {number} from - 결과 시작 위치 (페이지네이션용)
+ * @returns {Promise<Object>} - 검색 결과와 총 결과 수
+ */
+export const searchImagesByKeyword = async (keyword, size = 10, from = 0) => {
+  try {
+    console.log('키워드 검색 시작:', keyword);
+    console.log('검색 API 주소:', `${config.ES_API}/travel_images/_search`);
+    
+    // 검색 쿼리 구성
+    const query = {
+      multi_match: {
+        query: keyword,
+        fields: [
+          "image_name", 
+          "image_tags", 
+          "image_description", 
+          "image_location",
+          // 새로운 구조화된 위치 필드 추가
+          "location.full_text",
+          "location.province_name",
+          "location.city_name"
+        ],
+        type: "best_fields",
+        operator: "or"
+      }
+    };
+    
+    // config에서 Elasticsearch API URL 사용
+    const response = await fetch(`${config.ES_API}/travel_images/_search`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        size: size,
+        from: from,
+        query: query,
+        _source: [
+          "image_id", 
+          "image_name", 
+          "image_location", 
+          "location", 
+          "image_tags", 
+          "image_data", 
+          "dimensions"
+        ]
+      })
+    });
+    
+    console.log('검색 응답 상태:', response.status, response.statusText);
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('검색 응답 에러 내용:', errorData);
+      throw new Error('검색 오류: ' + JSON.stringify(errorData));
+    }
+    
+    const result = await response.json();
+    console.log('검색 결과 수:', result.hits.hits.length, '총 결과 수:', result.hits.total?.value || 0);
+    
+    // 결과와 함께 총 결과 수 반환
+    return {
+      hits: result.hits.hits,
+      total: result.hits.total?.value || result.hits.hits.length
+    };
+  } catch (error) {
+    console.error('키워드 검색 오류 타입:', error.name);
+    console.error('키워드 검색 오류 메시지:', error.message);
+    console.error('키워드 검색 오류 스택:', error.stack);
     throw error;
   }
 };

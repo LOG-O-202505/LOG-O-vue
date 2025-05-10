@@ -83,6 +83,7 @@
 <script>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { searchPlaces, getPlaceDetails, createMap, loadGoogleMapsScript } from '@/services/map';
+import { findRegionInfoFromLocation } from '@/services/api';
 
 export default {
   name: 'LocationSearch',
@@ -173,6 +174,7 @@ export default {
     const selectPlace = async (prediction) => {
       try {
         console.log('장소 선택:', prediction.description);
+        console.log('장소 prediction 객체:', prediction);
         isLoading.value = true;
         
         // 선택된 장소 상세 정보 가져오기
@@ -184,6 +186,8 @@ export default {
           return;
         }
         
+        console.log('장소 상세 정보:', placeDetails);
+        
         // 검색 결과 숨기기 및 검색어 설정
         showResults.value = false;
         searchQuery.value = prediction.description;
@@ -192,8 +196,20 @@ export default {
         selectedLocation.value = placeDetails.formatted_address;
         selectedPlaceDetails.value = placeDetails;
         
-        // 부모에게 위치 정보 전달
-        emit('location-selected', placeDetails.formatted_address);
+        // 위치 문자열에서 지역 정보 찾기
+        console.log('지역 정보 찾기 시작 - 주소:', placeDetails.formatted_address);
+        const regionInfo = findRegionInfoFromLocation(placeDetails.formatted_address);
+        console.log('지역 정보 찾기 결과:', regionInfo);
+        
+        // 부모에게 전달할 데이터 구성
+        const locationData = {
+          formatted_address: placeDetails.formatted_address,
+          region_info: regionInfo
+        };
+        console.log('부모 컴포넌트에 전달할 locationData:', locationData);
+        
+        // 부모에게 위치 정보 전달 (주소와 지역 정보)
+        emit('location-selected', locationData);
         
         // 즉시 지도 표시
         await nextTick();
@@ -258,7 +274,7 @@ export default {
       searchQuery.value = '';
       
       // 부모에게 초기화 알림
-      emit('location-selected', '');
+      emit('location-selected', null);
     };
     
     return {

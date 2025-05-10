@@ -4,6 +4,7 @@
       <div class="nav-group">
         <router-link to="/lookAround" class="nav-item">HOT PLACE</router-link>
         <router-link to="/llamasearch" class="nav-item">SEARCH</router-link>
+        <router-link to="/keyword" class="nav-item">KEYWORD</router-link>
       </div>
       
       <div class="nav-center">

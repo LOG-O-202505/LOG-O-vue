@@ -301,7 +301,8 @@ export default {
     // 이미지 정보 관리
     const imageDetails = reactive({
       name: '',
-      location: '',
+      location: '', // 사용자에게 보이는 주소 문자열
+      locationData: null, // 지역 정보 데이터 (province_code, city_code 등)
       tags: '',
       description: ''
     });
@@ -378,12 +379,28 @@ export default {
     };
     
     // 위치 선택 처리
-    const onLocationSelected = (location) => {
-      imageDetails.location = location;
+    const onLocationSelected = (locationData) => {
+      console.log('=== onLocationSelected 호출 ===');
+      console.log('locationData 전체:', locationData);
+      
+      if (!locationData) {
+        // 위치 초기화된 경우
+        console.log('위치 초기화됨');
+        imageDetails.location = '';
+        imageDetails.locationData = null;
+        return;
+      }
+      
+      // 새로운 형식: { formatted_address, region_info }
+      imageDetails.location = locationData.formatted_address;
+      imageDetails.locationData = locationData.region_info;
+      
+      console.log("위치 정보 선택됨:", imageDetails.location);
+      console.log("지역 정보:", JSON.stringify(imageDetails.locationData, null, 2));
       
       // 위치가 선택되면 지도 업데이트
-      if (location && mapInitialized.value) {
-        updateMapDisplay(location);
+      if (locationData.formatted_address && mapInitialized.value) {
+        updateMapDisplay(locationData.formatted_address);
       }
     };
     
@@ -520,12 +537,24 @@ export default {
       // 이미지 정보 초기화
       imageDetails.name = '';
       imageDetails.location = '';
+      imageDetails.locationData = null;
       imageDetails.tags = '';
       imageDetails.description = '';
     };
     
     // Elasticsearch에 저장 핸들러
     const saveToElasticsearchHandler = async () => {
+      console.log('=== saveToElasticsearchHandler 호출 ===');
+      console.log('현재 이미지 정보:', {
+        name: imageDetails.name || "무제",
+        location: imageDetails.location || "미지정",
+        locationData: imageDetails.locationData,
+        tags: imageDetails.tags
+            ? imageDetails.tags.split(",").map((tag) => tag.trim())
+            : [],
+        description: imageDetails.description || ""
+      });
+      
       if (!analysisResult.value) {
         showActionStatus("이미지를 먼저 분석해주세요.", "error");
         return;
@@ -536,25 +565,40 @@ export default {
         
         // 특성 벡터 생성
         const featuresVector = createFeaturesVector(analysisResult.value);
+        console.log('생성된 특성 벡터:', featuresVector);
         
         // 이미지를 Base64로 변환
         const imageBase64 = imagePreview.value;
+        console.log('이미지 Base64 길이:', imageBase64?.split(',')[1]?.length || 0, '자');
         
         // 고유 ID 생성
         const imageId = generateUniqueId();
+        console.log('생성된 이미지 ID:', imageId);
+        
+        const locationVal = imageDetails.location || "미지정";
+        const tagsArray = imageDetails.tags
+          ? imageDetails.tags.split(",").map((tag) => tag.trim())
+          : [];
+        
+        console.log('Elasticsearch 저장 직전 데이터:');
+        console.log('- 이미지 ID:', imageId);
+        console.log('- 이미지 이름:', imageDetails.name || "무제");
+        console.log('- 위치 정보:', locationVal);
+        console.log('- 태그:', tagsArray);
+        console.log('- 설명:', imageDetails.description || "");
+        console.log('- 지역 데이터:', imageDetails.locationData);
         
         // Elasticsearch에 저장
         await callSaveToElasticsearch(
           imageId,
           imageDetails.name || "무제",
-          imageDetails.location || "미지정",
-          imageDetails.tags
-            ? imageDetails.tags.split(",").map((tag) => tag.trim())
-            : [],
+          locationVal,
+          tagsArray,
           imageDetails.description || "",
           imageBase64,
           analysisResult.value,
-          featuresVector
+          featuresVector,
+          imageDetails.locationData
         );
         
         showActionStatus("이미지가 성공적으로 저장되었습니다!", "success");
