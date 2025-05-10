@@ -166,7 +166,7 @@
         />
       </svg>
       
-      <!-- 지역 이름 호버 표시 -->
+      <!-- 지역 이름 호버 표시 - 수정된 위치 계산 적용 -->
       <div v-if="hoveredRegion" class="region-tooltip" :style="tooltipStyle">
         {{ getRegionName(hoveredRegion) }}
       </div>
@@ -190,6 +190,7 @@
       return {
         hoveredRegion: null,
         mousePosition: { x: 0, y: 0 },
+        // 수정된 regionNames 객체 - SVG path ID와 정확히 일치시킴
         regionNames: {
           seoul: '서울',
           incheon: '인천',
@@ -199,35 +200,37 @@
           chungnam: '충청남도',
           daejeon: '대전',
           jeonbuk: '전라북도',
-          gwangju: '전라남도',
-          gwangjucity: '광주',
-          daegu: '경상북도',
-          daegucity: '대구',
+          gwangju: '광주',
+          Jeonnam: '전라남도',
+          daegu: '대구',
+          Gyeongbuk: '경상북도',
           gyeongnam: '경상남도',
           busan: '부산',
           ulsan: '울산',
-          jeju: '제주도'
+          jeju: '제주도',
+          north: '북한'
         }
       };
     },
     
     computed: {
       tooltipStyle() {
+        // 툴팁 위치 개선 - 마우스 위치보다 약간 위에 표시
         return {
           left: `${this.mousePosition.x}px`,
-          top: `${this.mousePosition.y}px`
+          top: `${this.mousePosition.y - 30}px` // 마우스 커서보다 위에 표시
         };
       }
     },
     
     mounted() {
-      // 마우스 이동 감지 이벤트 리스너
-      document.addEventListener('mousemove', this.updateMousePosition);
+      // document 대신 window에 마우스 이벤트 등록
+      window.addEventListener('mousemove', this.updateMousePosition);
     },
     
     beforeUnmount() {
-      // 컴포넌트 제거 전 이벤트 리스너 정리
-      document.removeEventListener('mousemove', this.updateMousePosition);
+      // 컴포넌트 제거 전 이벤트 리스너 제거
+      window.removeEventListener('mousemove', this.updateMousePosition);
     },
     
     methods: {
@@ -244,13 +247,15 @@
       },
       
       getRegionName(regionId) {
+        // regionNames에 해당 ID가 있는지 확인하고 이름 반환
         return this.regionNames[regionId] || regionId;
       },
       
       updateMousePosition(event) {
+        // 마우스 위치 업데이트
         this.mousePosition = {
           x: event.clientX,
-          y: event.clientY - 50  // 툴팁이 커서 위에 표시되도록 약간 위로 조정
+          y: event.clientY
         };
       }
     }
@@ -295,17 +300,18 @@
   }
   
   .region-tooltip {
-    position: absolute;
-    background-color: rgba(0, 0, 0, 0.7);
+    position: fixed; /* absolute 대신 fixed 사용 */
+    background-color: rgba(0, 0, 0, 0.8); /* 불투명도 높임 */
     color: white;
-    padding: 5px 10px;
+    padding: 6px 12px;
     border-radius: 4px;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
+    font-weight: 500;
     pointer-events: none;
-    z-index: 10;
+    z-index: 1000; /* z-index 높임 */
     transform: translate(-50%, -100%);
-    margin-top: -10px;
     white-space: nowrap;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   }
   
   .region-tooltip::after {
@@ -316,9 +322,9 @@
     transform: translateX(-50%);
     width: 0;
     height: 0;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 5px solid rgba(0, 0, 0, 0.7);
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid rgba(0, 0, 0, 0.8);
   }
   
   /* 3D 효과 */
@@ -350,8 +356,8 @@
     }
     
     .region-tooltip {
-      font-size: 0.75rem;
-      padding: 4px 8px;
+      font-size: 0.8rem;
+      padding: 5px 10px;
     }
   }
   
