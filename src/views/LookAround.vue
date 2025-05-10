@@ -54,21 +54,22 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- 모든 여행지 리스트 -->
                     <div class="all-destinations">
                         <h3 class="section-title">모든 여행지</h3>
                         <div class="destinations-grid">
                             <div v-for="destination in getActiveRegion.destinations" :key="destination.id"
                                 class="destination-card">
-                                <div class="destination-image" :style="{ backgroundImage: `url(${destination.imageUrl})` }">
+                                <div class="destination-image"
+                                    :style="{ backgroundImage: `url(${destination.imageUrl})` }">
                                 </div>
                                 <div class="destination-content">
                                     <h3 class="destination-name">{{ destination.name }}</h3>
                                     <div class="destination-location">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
-                                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                            stroke-linejoin="round">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
                                             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                                             <circle cx="12" cy="10" r="3"></circle>
                                         </svg>
@@ -126,11 +127,11 @@ export default {
         // 호버된 지역 이름
         const hoveredRegionName = computed(() => {
             if (!hoveredRegion.value || !geoData.value) return '';
-            
-            const feature = geoData.value.features.find(f => 
+
+            const feature = geoData.value.features.find(f =>
                 f.properties.code === hoveredRegion.value
             );
-            
+
             return feature ? feature.properties.name : '';
         });
 
@@ -253,25 +254,23 @@ export default {
                 .attr('stroke-width', 0.5)
                 .style('cursor', 'pointer');
 
-            // 지역 호버 이벤트 (위로 살짝 올라오는 효과는 CSS로 처리)
-            regions.on('mouseover', function(event, d) {
+            // 지역 호버 이벤트
+            regions.on('mouseover', function (event, d) {  // event와 d 매개변수 모두 유지
                 console.log("Hover detected on:", d.properties.name);
-                
+
                 const regionCode = d.properties.code;
                 hoveredRegion.value = regionCode;
-                
-                // hover 효과는 CSS로 처리하므로 여기서는 툴팁 표시만 처리
             });
 
             // 지역 호버 아웃 이벤트
-            regions.on('mouseout', function(event, d) {
+            regions.on('mouseout', function () {  // 매개변수가 필요 없으면 생략 가능
                 hoveredRegion.value = null;
             });
 
             // 지역 클릭 이벤트
-            regions.on('click', function(event, d) {
+            regions.on('click', function (event, d) {  // event와 d 매개변수 모두 유지
                 console.log("Click detected on:", d.properties.name);
-                
+
                 const regionCode = d.properties.code;
                 selectRegion(regionCode);
             });
@@ -295,7 +294,7 @@ export default {
             };
 
             window.addEventListener('resize', resizeMap);
-            
+
             return () => {
                 window.removeEventListener('resize', resizeMap);
             };
@@ -310,7 +309,7 @@ export default {
         onMounted(() => {
             // 마우스 이벤트 리스너 등록
             window.addEventListener('mousemove', updateMousePosition);
-            
+
             // 지도 렌더링
             renderMap();
         });
@@ -340,7 +339,8 @@ export default {
 .look-around-page {
     font-family: 'Noto Sans KR', sans-serif;
     min-height: 100vh;
-    background-color: #f3f4f6; /* 변경된 배경색 - 밝은 회색 */
+    background-color: #f3f4f6;
+    /* 변경된 배경색 - 밝은 회색 */
     color: #333;
     display: flex;
     flex-direction: column;
@@ -361,7 +361,8 @@ export default {
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(118, 179, 157, 0.9)); /* 변경된 그라디언트 색상 */
+    background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(118, 179, 157, 0.9));
+    /* 변경된 그라디언트 색상 */
 }
 
 .hero-content {
@@ -414,7 +415,8 @@ export default {
 }
 
 .tab-button {
-    background-color: #76b39d; /* 변경된 버튼 색상 - 로고 그린 */
+    background-color: #76b39d;
+    /* 변경된 버튼 색상 - 로고 그린 */
     color: white;
     border: none;
     padding: 0.8rem 3rem;
@@ -428,7 +430,8 @@ export default {
 }
 
 .tab-button:hover {
-    background-color: #40c4aa; /* 호버 시 색상 - 로고 틸 */
+    background-color: #40c4aa;
+    /* 호버 시 색상 - 로고 틸 */
     transform: translateY(-2px);
 }
 
@@ -438,7 +441,8 @@ export default {
     justify-content: center;
     align-items: center;
     width: 100%;
-    height: 650px; /* 높이 증가 */
+    height: 650px;
+    /* 높이 증가 */
     background-color: white;
     border-radius: 15px;
     overflow: hidden;
@@ -455,19 +459,20 @@ export default {
 
 /* 지역 호버 및 선택 효과 */
 :deep(.region) {
-  transition: transform 0.3s ease, fill 0.3s ease, filter 0.3s ease, stroke-width 0.2s ease;
-  cursor: pointer;
-  transform-origin: center center;
+    transition: transform 0.3s ease, fill 0.3s ease, filter 0.3s ease, stroke-width 0.2s ease;
+    cursor: pointer;
+    transform-origin: center center;
 }
 
 :deep(.region:hover:not(.selected)) {
-  transform: translate(0, -4px) scale(1.02);
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2));
+    transform: translate(0, -4px) scale(1.02);
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2));
 }
 
 :deep(.region.selected) {
-  fill: #76b39d !important; /* 선택된 상태는 여전히 색상 변경 */
-  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.3));
+    fill: #76b39d !important;
+    /* 선택된 상태는 여전히 색상 변경 */
+    filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.3));
 }
 
 /* 지역 툴팁 */
@@ -517,7 +522,8 @@ export default {
 
 .region-info-panel.active {
     padding: 2.5rem 2rem 2rem;
-    max-height: 5000px; /* 크기 증가 - 콘텐츠 증가에 따라 */
+    max-height: 5000px;
+    /* 크기 증가 - 콘텐츠 증가에 따라 */
     opacity: 1;
 }
 
@@ -550,7 +556,8 @@ export default {
     font-size: 2rem;
     font-weight: 700;
     margin-bottom: 1rem;
-    color: #76b39d; /* 변경된 색상 - 로고 그린 */
+    color: #76b39d;
+    /* 변경된 색상 - 로고 그린 */
 }
 
 .region-description {
@@ -565,7 +572,8 @@ export default {
     font-size: 1.5rem;
     font-weight: 600;
     margin: 2rem 0 1rem;
-    color: #48b0e4; /* 로고 블루 색상 */
+    color: #48b0e4;
+    /* 로고 블루 색상 */
     border-left: 4px solid #48b0e4;
     padding-left: 12px;
 }
@@ -598,7 +606,8 @@ export default {
 
 .popular-image {
     height: 150px;
-    background-color: #e5e7eb; /* 플레이스홀더 색상 */
+    background-color: #e5e7eb;
+    /* 플레이스홀더 색상 */
     background-size: cover;
     background-position: center;
 }
@@ -615,7 +624,8 @@ export default {
 }
 
 .popular-rating {
-    color: #ffd166; /* 별 색상 - 로고 옐로우 */
+    color: #ffd166;
+    /* 별 색상 - 로고 옐로우 */
     font-size: 0.9rem;
 }
 
@@ -685,7 +695,8 @@ export default {
 
 .destination-button {
     padding: 0.5rem 1rem;
-    background-color: #48b0e4; /* 로고 블루 색상 */
+    background-color: #48b0e4;
+    /* 로고 블루 색상 */
     color: white;
     border: none;
     border-radius: 5px;
@@ -695,7 +706,8 @@ export default {
 }
 
 .destination-button:hover {
-    background-color: #3283ad; /* 더 진한 블루 색상 */
+    background-color: #3283ad;
+    /* 더 진한 블루 색상 */
     transform: translateY(-2px);
 }
 
@@ -718,7 +730,7 @@ export default {
     .map-section {
         height: 600px;
     }
-    
+
     .popular-grid {
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     }
@@ -740,7 +752,7 @@ export default {
     .map-section {
         height: 500px;
     }
-    
+
     .popular-grid {
         grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     }
@@ -762,7 +774,7 @@ export default {
     .destinations-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .popular-grid {
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     }
