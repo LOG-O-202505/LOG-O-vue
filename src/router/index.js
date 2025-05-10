@@ -2,6 +2,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import LogoSearch from '../views/LogoSearch.vue'
 import OnboardingPage from '../views/OnboardingPage.vue'
 import LookAround from '../views/LookAround.vue'
+import LookAroundFinal from '../views/LookAroundFinal.vue'
+
 const routes = [
   {
     path: '/',
@@ -17,6 +19,11 @@ const routes = [
     path: '/lookAround',
     name: 'LookAround',
     component: LookAround
+  },
+  {
+    path: '/lookAroundFinal',
+    name: 'LookAroundFinal',
+    component: LookAroundFinal
   },
 ]
 

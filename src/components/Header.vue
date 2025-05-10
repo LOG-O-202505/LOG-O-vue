@@ -3,6 +3,8 @@
     <div class="navbar-container">
       <div class="nav-group">
         <router-link to="/lookAround" class="nav-item">LOOK AROUND</router-link>
+        <router-link to="/lookAroundAll" class="nav-item">시군구 지도</router-link>
+        <router-link to="/lookAroundFinal" class="nav-item">통합 지도</router-link>
         <router-link to="/llamasearch" class="nav-item">SEARCH</router-link>
       </div>
       
