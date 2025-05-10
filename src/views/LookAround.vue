@@ -14,15 +14,10 @@
 
         <!-- 메인 콘텐츠 -->
         <div class="content-wrapper">
-            <!-- 맵 뷰 선택 탭 -->
-            <div class="map-view-tabs">
-                <button class="tab-button active">
-                    D3 지도
-                </button>
-            </div>
 
             <!-- 지도 섹션 -->
             <div class="map-section">
+                <div class="map-background"></div>
                 <div id="d3-map-container" class="map-component" ref="mapContainer"></div>
 
                 <!-- 지역 이름 호버 툴팁 -->
@@ -100,7 +95,7 @@ import koreaGeoJson from '@/assets/korea.json';
 import regionsData from '@/data/regionData.js'; // 지역 데이터 import
 
 export default {
-    name: 'LookAround2',
+    name: 'LookAround',
 
     components: {
         Header
@@ -120,7 +115,7 @@ export default {
         const tooltipStyle = computed(() => {
             return {
                 left: `${mousePosition.value.x}px`,
-                top: `${mousePosition.value.y - 30}px`
+                top: `${mousePosition.value.y - 40}px`
             };
         });
 
@@ -184,18 +179,29 @@ export default {
         const updateMapSelection = () => {
             if (!map) return;
 
-            // 모든 지역 선택 상태 초기화
+            // 모든 지역 선택 상태 초기화 (기본 민트색으로)
             map.selectAll('.region')
                 .classed('selected', false)
-                .attr('fill', '#eaeaea')
-                .attr('stroke-width', 0.5);
+                .attr('fill', (d) => {
+                    // 북쪽은 살짝 밝게, 남쪽은 조금 진하게 (그러나 차이는 미세하게)
+                    const y = d.geometry.coordinates[0][0][1] || 35; // 위도 (fallback to 35)
+                    const latitude = (typeof y === 'number') ? y : 35;
+                    
+                    // 위도에 따른 색상 계산 (36-38도가 중부, 34-36이 남부, 38 이상이 북부)
+                    if (latitude > 38) {  // 북부: 약간 더 밝은 색상
+                        return '#8DE0CA';
+                    } else if (latitude < 35) {  // 남부: 약간 더 진한 색상
+                        return '#62CCA8';
+                    } else {  // 중부: 기본 색상
+                        return '#75D7B8';
+                    }
+                });
 
-            // 선택된 지역 강조
+            // 선택된 지역 강조 (핑크색으로)
             if (activeRegion.value) {
                 map.select(`#region-${activeRegion.value}`)
                     .classed('selected', true)
-                    .attr('fill', '#76b39d')
-                    .attr('stroke-width', 1.5);
+                    .attr('fill', '#ff9d9d'); // 핑크색
             }
         };
 
@@ -207,7 +213,7 @@ export default {
             };
         };
 
-        // D3.js로 지도 렌더링
+        // D3.js로 지도 렌더링 (간단한 3D 효과)
         const renderMap = () => {
             const container = mapContainer.value;
             if (!container) return;
@@ -227,8 +233,79 @@ export default {
                 .style('width', '100%')
                 .style('height', '100%');
 
+            // 3D 효과를 위한 정의 영역
+            const defs = svg.append('defs');
+
+            // 그림자 필터 정의
+            const dropShadowFilter = defs.append('filter')
+                .attr('id', 'dropshadow')
+                .attr('height', '130%');
+
+            dropShadowFilter.append('feGaussianBlur')
+                .attr('in', 'SourceAlpha')
+                .attr('stdDeviation', 4)
+                .attr('result', 'blur');
+
+            dropShadowFilter.append('feOffset')
+                .attr('in', 'blur')
+                .attr('dx', 0)
+                .attr('dy', 6)
+                .attr('result', 'offsetBlur');
+
+            const feComponentTransfer = dropShadowFilter.append('feComponentTransfer')
+                .attr('in', 'offsetBlur')
+                .attr('result', 'offsetBlur');
+                
+            feComponentTransfer.append('feFuncA')
+                .attr('type', 'linear')
+                .attr('slope', 0.4);
+
+            const feMerge = dropShadowFilter.append('feMerge');
+            feMerge.append('feMergeNode')
+                .attr('in', 'offsetBlur');
+            feMerge.append('feMergeNode')
+                .attr('in', 'SourceGraphic');
+
+            // 엠보싱 효과
+            const embossFilter = defs.append('filter')
+                .attr('id', 'emboss')
+                .attr('height', '130%');
+
+            // 빛을 받는 면의 조명 효과
+            embossFilter.append('feSpecularLighting')
+                .attr('in', 'SourceAlpha')
+                .attr('surfaceScale', 2)
+                .attr('specularConstant', 0.8)
+                .attr('specularExponent', 20)
+                .attr('lighting-color', '#FFFFFF')
+                .attr('result', 'specOut')
+                .append('fePointLight')
+                .attr('x', width * 0.3)
+                .attr('y', height * 0.2)
+                .attr('z', 100);
+
+            // 조명 효과 합성
+            embossFilter.append('feComposite')
+                .attr('in', 'specOut')
+                .attr('in2', 'SourceAlpha')
+                .attr('operator', 'in')
+                .attr('result', 'specOut');
+
+            embossFilter.append('feComposite')
+                .attr('in', 'SourceGraphic')
+                .attr('in2', 'specOut')
+                .attr('operator', 'arithmetic')
+                .attr('k1', 0)
+                .attr('k2', 1)
+                .attr('k3', 1)
+                .attr('k4', 0)
+                .attr('result', 'litPaint');
+
             // 지도 그룹 요소
-            const g = svg.append('g');
+            const g = svg.append('g')
+                .attr('class', 'map-group')
+                .attr('filter', 'url(#dropshadow)'); // 그림자 필터 적용
+            
             map = g; // 전역 참조 저장
 
             // 지도 투영법 설정
@@ -241,7 +318,7 @@ export default {
             const path = d3.geoPath().projection(projection);
 
             // 지도 데이터 로드 및 그리기
-            const regions = g.selectAll('path')
+            const regionPaths = g.selectAll('path')
                 .data(koreaGeoJson.features)
                 .enter()
                 .append('path')
@@ -249,30 +326,59 @@ export default {
                 .attr('id', d => `region-${d.properties.code}`)
                 .attr('data-name', d => d.properties.name)
                 .attr('d', path)
-                .attr('fill', '#eaeaea') // 기본 색상 - 연한 회색
+                .attr('fill', d => {
+                    // 북쪽은 살짝 밝게, 남쪽은 조금 진하게 (그러나 차이는 미세하게)
+                    const y = d.geometry.coordinates[0][0][1] || 35; // 위도 (fallback to 35)
+                    const latitude = (typeof y === 'number') ? y : 35;
+                    
+                    // 위도에 따른 색상 계산 (36-38도가 중부, 34-36이 남부, 38 이상이 북부)
+                    if (latitude > 38) {  // 북부: 약간 더 밝은 색상
+                        return '#8DE0CA';
+                    } else if (latitude < 35) {  // 남부: 약간 더 진한 색상
+                        return '#62CCA8';
+                    } else {  // 중부: 기본 색상
+                        return '#75D7B8';
+                    }
+                })
                 .attr('stroke', '#ffffff')
                 .attr('stroke-width', 0.5)
+                .attr('filter', 'url(#emboss)') // 엠보싱 필터 적용
                 .style('cursor', 'pointer');
 
             // 지역 호버 이벤트
-            regions.on('mouseover', function (event, d) {  // event와 d 매개변수 모두 유지
-                console.log("Hover detected on:", d.properties.name);
-
-                const regionCode = d.properties.code;
-                hoveredRegion.value = regionCode;
+            regionPaths.on('mouseover', function (event, d) {
+                hoveredRegion.value = d.properties.code;
+                
+                // 툴팁 위치 설정
+                const bounds = this.getBoundingClientRect();
+                mousePosition.value = {
+                    x: bounds.left + bounds.width / 2,
+                    y: bounds.top
+                };
+                
+                // 호버 효과
+                d3.select(this)
+                    .transition()
+                    .duration(200)
+                    .attr('stroke-width', 1.5);
             });
 
             // 지역 호버 아웃 이벤트
-            regions.on('mouseout', function () {  // 매개변수가 필요 없으면 생략 가능
+            regionPaths.on('mouseout', function () {
                 hoveredRegion.value = null;
+                
+                // 호버 효과 제거 (선택된 지역 제외)
+                if (!d3.select(this).classed('selected')) {
+                    d3.select(this)
+                        .transition()
+                        .duration(200)
+                        .attr('stroke-width', 0.5);
+                }
             });
 
             // 지역 클릭 이벤트
-            regions.on('click', function (event, d) {  // event와 d 매개변수 모두 유지
-                console.log("Click detected on:", d.properties.name);
-
-                const regionCode = d.properties.code;
-                selectRegion(regionCode);
+            regionPaths.on('click', function (event, d) {
+                selectRegion(d.properties.code);
             });
 
             // 초기 선택된 지역이 있으면 표시
@@ -290,7 +396,7 @@ export default {
                 projection.scale(newWidth * 4.5)
                     .translate([newWidth / 2, newHeight / 2]);
 
-                regions.attr('d', path);
+                regionPaths.attr('d', path);
             };
 
             window.addEventListener('resize', resizeMap);
@@ -340,7 +446,6 @@ export default {
     font-family: 'Noto Sans KR', sans-serif;
     min-height: 100vh;
     background-color: #f3f4f6;
-    /* 변경된 배경색 - 밝은 회색 */
     color: #333;
     display: flex;
     flex-direction: column;
@@ -362,7 +467,6 @@ export default {
     width: 100%;
     height: 100%;
     background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(118, 179, 157, 0.9));
-    /* 변경된 그라디언트 색상 */
 }
 
 .hero-content {
@@ -416,7 +520,6 @@ export default {
 
 .tab-button {
     background-color: #76b39d;
-    /* 변경된 버튼 색상 - 로고 그린 */
     color: white;
     border: none;
     padding: 0.8rem 3rem;
@@ -431,19 +534,17 @@ export default {
 
 .tab-button:hover {
     background-color: #40c4aa;
-    /* 호버 시 색상 - 로고 틸 */
     transform: translateY(-2px);
 }
 
-/* 지도 섹션 - 높이 증가 */
+/* 지도 섹션 */
 .map-section {
     display: flex;
     justify-content: center;
     align-items: center;
     width: 100%;
-    height: 650px;
-    /* 높이 증가 */
-    background-color: white;
+    height: 750px;
+    background-color: #fcfcfa;
     border-radius: 15px;
     overflow: hidden;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
@@ -451,28 +552,36 @@ export default {
     margin-bottom: 2rem;
 }
 
+.map-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #fcfcfa;
+    z-index: 1;
+}
+
 .map-component {
     width: 100%;
     height: 100%;
     position: relative;
+    z-index: 2;
 }
 
 /* 지역 호버 및 선택 효과 */
-:deep(.region) {
-    transition: transform 0.3s ease, fill 0.3s ease, filter 0.3s ease, stroke-width 0.2s ease;
+.region {
+    transition: all 0.3s ease;
     cursor: pointer;
-    transform-origin: center center;
 }
 
-:deep(.region:hover:not(.selected)) {
-    transform: translate(0, -4px) scale(1.02);
-    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2));
+.region:hover {
+    filter: brightness(1.05);
 }
 
-:deep(.region.selected) {
-    fill: #76b39d !important;
-    /* 선택된 상태는 여전히 색상 변경 */
-    filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.3));
+.region.selected {
+    stroke-width: 1.5px;
+    filter: brightness(1.05);
 }
 
 /* 지역 툴팁 */
@@ -480,15 +589,17 @@ export default {
     position: fixed;
     background-color: rgba(0, 0, 0, 0.8);
     color: white;
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 0.9rem;
-    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
     pointer-events: none;
     z-index: 1000;
     transform: translate(-50%, -100%);
     white-space: nowrap;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 3px 15px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    min-width: 80px;
 }
 
 .region-tooltip::after {
@@ -523,7 +634,6 @@ export default {
 .region-info-panel.active {
     padding: 2.5rem 2rem 2rem;
     max-height: 5000px;
-    /* 크기 증가 - 콘텐츠 증가에 따라 */
     opacity: 1;
 }
 
@@ -557,7 +667,6 @@ export default {
     font-weight: 700;
     margin-bottom: 1rem;
     color: #76b39d;
-    /* 변경된 색상 - 로고 그린 */
 }
 
 .region-description {
@@ -573,7 +682,6 @@ export default {
     font-weight: 600;
     margin: 2rem 0 1rem;
     color: #48b0e4;
-    /* 로고 블루 색상 */
     border-left: 4px solid #48b0e4;
     padding-left: 12px;
 }
@@ -607,7 +715,6 @@ export default {
 .popular-image {
     height: 150px;
     background-color: #e5e7eb;
-    /* 플레이스홀더 색상 */
     background-size: cover;
     background-position: center;
 }
@@ -625,7 +732,6 @@ export default {
 
 .popular-rating {
     color: #ffd166;
-    /* 별 색상 - 로고 옐로우 */
     font-size: 0.9rem;
 }
 
@@ -696,7 +802,6 @@ export default {
 .destination-button {
     padding: 0.5rem 1rem;
     background-color: #48b0e4;
-    /* 로고 블루 색상 */
     color: white;
     border: none;
     border-radius: 5px;
@@ -707,7 +812,6 @@ export default {
 
 .destination-button:hover {
     background-color: #3283ad;
-    /* 더 진한 블루 색상 */
     transform: translateY(-2px);
 }
 
