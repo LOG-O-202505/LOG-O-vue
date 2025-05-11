@@ -172,13 +172,16 @@
       
       <!-- 4. 시간별 여행 타임라인 -->
       <div class="travel-timeline">
-        <h2 class="section-title">여행 타임라인</h2>
+        <h2 class="section-title">{{ timelineTitle }}</h2>
         <div class="timeline-container">
-          <div class="timeline-year" v-for="(year, yearIndex) in filteredTimeline" :key="yearIndex">
-            <div class="year-label">{{ year.year }}</div>
-            <div class="year-trips">
+          <div v-if="filteredTimeline.length === 0" class="no-trips">
+            <p>선택한 지역의 여행 기록이 없습니다.</p>
+          </div>
+          <div v-else v-for="(yearData, yearIndex) in filteredTimeline" :key="yearIndex" class="timeline-year">
+            <div class="year-label">{{ yearData.year }}년</div>
+            <div class="trips-wrapper">
               <div 
-                v-for="(trip, tripIndex) in year.trips" 
+                v-for="(trip, tripIndex) in yearData.trips" 
                 :key="tripIndex" 
                 class="trip-item"
                 :class="getSeasonClass(trip.season)"
@@ -395,7 +398,10 @@ export default {
             image_location: '제주도 서귀포시',
             image_tags: ['바다', '제주도', '휴양'],
             created_at: '2025-03-15',
-            region_info: { region_code: '50' },
+            region_info: { 
+              region_code: '50',
+              sig_code: '50130'
+            },
             dimensions: { 
               "Natural Elements": 0.9, 
               "Water Features": 0.85,
@@ -412,7 +418,10 @@ export default {
             image_location: '강원도 평창군',
             image_tags: ['겨울', '스키', '설경'],
             created_at: '2025-01-20',
-            region_info: { region_code: '42' },
+            region_info: { 
+              region_code: '42',
+              sig_code: '42230'
+            },
             dimensions: { 
               "Seasonal Appeal": 0.92, 
               "Relaxation Potential": 0.88,
@@ -434,7 +443,10 @@ export default {
             image_location: '전라남도 담양군',
             image_tags: ['가을', '단풍', '숲'],
             created_at: '2024-10-05',
-            region_info: { region_code: '46' },
+            region_info: { 
+              region_code: '46',
+              sig_code: '46170'
+            },
             dimensions: { 
               "Natural Elements": 0.88, 
               "Seasonal Appeal": 0.94,
@@ -451,7 +463,10 @@ export default {
             image_location: '부산 해운대구',
             image_tags: ['바다', '해변', '여름'],
             created_at: '2024-08-15',
-            region_info: { region_code: '26' },
+            region_info: { 
+              region_code: '26',
+              sig_code: '26110'
+            },
             dimensions: { 
               "Water Features": 0.95, 
               "Activity Opportunities": 0.85,
@@ -468,7 +483,10 @@ export default {
             image_location: '서울 종로구',
             image_tags: ['한옥', '역사', '문화'],
             created_at: '2024-05-22',
-            region_info: { region_code: '11' },
+            region_info: { 
+              region_code: '11',
+              sig_code: '11110'
+            },
             dimensions: { 
               "Urban Character": 0.82, 
               "Historical/Cultural Value": 0.78,
@@ -490,7 +508,10 @@ export default {
             image_location: '강원도 속초시',
             image_tags: ['겨울', '설경', '동해'],
             created_at: '2023-12-24',
-            region_info: { region_code: '42' },
+            region_info: { 
+              region_code: '42',
+              sig_code: '42210'
+            },
             dimensions: { 
               "Natural Elements": 0.85, 
               "Relaxation Potential": 0.9,
@@ -507,7 +528,10 @@ export default {
             image_location: '경상북도 경주시',
             image_tags: ['역사', '문화', '불교'],
             created_at: '2023-07-10',
-            region_info: { region_code: '47' },
+            region_info: { 
+              region_code: '47',
+              sig_code: '47130'
+            },
             dimensions: { 
               "Historical/Cultural Value": 0.94, 
               "Urban Character": 0.45,
@@ -639,15 +663,81 @@ export default {
     
     // 필터링된 타임라인 계산
     const filteredTimeline = computed(() => {
-      // 년도 필터 적용
-      let filtered = [...travelTimeline];
+      // 모든 여행 목록을 날짜순으로 정렬하기 위해 먼저 평탄화
+      let allTrips = [];
+      
+      travelTimeline.forEach(yearData => {
+        yearData.trips.forEach(trip => {
+          // 여행에 연도 정보 추가
+          allTrips.push({
+            ...trip,
+            year: yearData.year
+          });
+        });
+      });
+      
+      // 지역 필터 적용
+      if (activeRegion.value) {
+        // 특정 광역시도가 선택된 경우
+        allTrips = allTrips.filter(trip => 
+          trip.region_info && trip.region_info.region_code === activeRegion.value
+        );
+        
+        // 시군구가 선택된 경우 추가 필터링
+        if (activeSig.value && currentMapLevel.value === 'sig') {
+          allTrips = allTrips.filter(trip => 
+            trip.region_info && 
+            trip.region_info.sig_code && 
+            trip.region_info.sig_code.substring(0, 5) === activeSig.value.substring(0, 5)
+          );
+        }
+      }
       
       // 년도 필터 적용
       if (selectedYear.value !== 'all') {
-        filtered = filtered.filter(year => year.year === parseInt(selectedYear.value));
+        allTrips = allTrips.filter(trip => trip.year === parseInt(selectedYear.value));
       }
       
-      return filtered;
+      // 연도별로 그룹화
+      const tripsByYear = {};
+      
+      allTrips.forEach(trip => {
+        if (!tripsByYear[trip.year]) {
+          tripsByYear[trip.year] = [];
+        }
+        tripsByYear[trip.year].push(trip);
+      });
+      
+      // 연도별로 정렬된 배열로 변환 (연도는 내림차순)
+      const result = Object.entries(tripsByYear)
+        .map(([year, trips]) => ({
+          year: parseInt(year),
+          trips: trips.sort((a, b) => new Date(b.date) - new Date(a.date)) // 각 연도 내에서는 최신순
+        }))
+        .sort((a, b) => b.year - a.year); // 연도는 내림차순
+      
+      return result;
+    });
+    
+    // 타임라인 제목 계산
+    const timelineTitle = computed(() => {
+      if (activeRegion.value) {
+        // 광역시도 이름 찾기
+        const region = propertiesData.find(r => r.CTPRVN_CD === activeRegion.value);
+        const regionName = region ? region.CTP_KOR_NM : '전체';
+        
+        if (activeSig.value && currentMapLevel.value === 'sig') {
+          // 시군구 이름 찾기
+          const sig = sigPropertiesData.find(s => s.SIG_CD === activeSig.value);
+          const sigName = sig ? sig.SIG_KOR_NM : '';
+          
+          return `${regionName} ${sigName} 여행 타임라인`;
+        }
+        
+        return `${regionName} 여행 타임라인`;
+      }
+      
+      return '전체 여행 타임라인';
     });
     
     // 년도 목록 계산
@@ -1503,6 +1593,7 @@ export default {
       topCategories,
       filteredTimeline,
       availableYears,
+      timelineTitle,
       
       // 메서드
       selectRegion,
@@ -1543,6 +1634,121 @@ export default {
   font-weight: 600;
   color: #4299e1;
   text-align: right;
+}
+
+/* 여행 타임라인 */
+.travel-timeline {
+  margin-bottom: 60px;
+}
+
+.timeline-container {
+  background-color: #f7fafc;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.timeline-year {
+  margin-bottom: 30px;
+}
+
+.timeline-year:last-child {
+  margin-bottom: 0;
+}
+
+.year-label {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 15px;
+  color: #2D3748;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #E2E8F0;
+}
+
+.trips-wrapper {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 20px;
+  padding: 10px 0;
+  scroll-behavior: smooth;
+}
+
+.trip-item {
+  flex: 0 0 280px;
+  border-radius: 12px;
+  background-color: white;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.trip-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.12);
+}
+
+.trip-date {
+  padding: 10px 15px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #4a5568;
+  background-color: #f3f4f6;
+}
+
+.trip-image-preview {
+  height: 160px;
+  overflow: hidden;
+}
+
+.trip-image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.trip-item:hover .trip-image-preview img {
+  transform: scale(1.05);
+}
+
+.trip-details {
+  padding: 15px;
+}
+
+.trip-location {
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.trip-season {
+  font-size: 0.85rem;
+  color: #718096;
+}
+
+/* 계절별 색상 테마 */
+.season-spring {
+  border-top: 4px solid #FC8181;
+}
+
+.season-summer {
+  border-top: 4px solid #4FD1C5;
+}
+
+.season-fall {
+  border-top: 4px solid #F6AD55;
+}
+
+.season-winter {
+  border-top: 4px solid #63B3ED;
+}
+
+.no-trips {
+  padding: 30px;
+  text-align: center;
+  color: #718096;
+  font-size: 1.1rem;
 }
 
 /* 나머지 스타일은 외부 CSS에서 임포트 */
