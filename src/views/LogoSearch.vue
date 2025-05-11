@@ -115,12 +115,12 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(score, dimension) in analysisResult" :key="dimension">
+                  <tr v-for="(score, dimension) in dimensionResults" :key="dimension">
                     <td class="dimension-name">{{ getDimensionHeader(dimension) }}</td>
-                    <td class="dimension-score">{{ score.toFixed(1) }}</td>
+                    <td class="dimension-score">{{ typeof score === 'number' ? score.toFixed(1) : score }}</td>
                     <td class="dimension-bar">
                       <div class="bar-container">
-                        <div class="bar" :style="{ width: `${score * 100}%` }"></div>
+                        <div class="bar" :style="{ width: `${typeof score === 'number' ? score * 100 : 0}%` }"></div>
                       </div>
                     </td>
                   </tr>
@@ -199,7 +199,7 @@
                 
                 <div class="form-group">
                   <label for="image-location">위치 정보</label>
-                  <LocationSearch @location-selected="onLocationSelected" />
+                  <LocationSearch @location-selected="onLocationSelected" ref="locationSearchRef" />
                 </div>
                 
                 <div class="form-group">
@@ -268,7 +268,6 @@ import {
   searchSimilarImages,
   createFeaturesVector
 } from "@/services/api";
-import { createMap } from "@/services/map";
 
 export default {
   name: "LogoSearch",
@@ -282,6 +281,9 @@ export default {
   setup() {
     const store = useStore();
     const fileInput = ref(null);
+    
+    // LocationSearch 컴포넌트 참조
+    const locationSearchRef = ref(null);
     
     // 상태 관리
     const imageFile = computed(() => store.state.image.file);
@@ -305,6 +307,34 @@ export default {
       locationData: null, // 지역 정보 데이터 (province_code, city_code 등)
       tags: '',
       description: ''
+    });
+    
+    // 분석 결과에서 차원 데이터만 필터링
+    const dimensionResults = computed(() => {
+      if (!analysisResult.value) return null;
+      
+      const dimensionKeys = [
+        "Natural Elements",
+        "Urban Character",
+        "Water Features",
+        "Seasonal Appeal",
+        "Relaxation Potential",
+        "Romantic Atmosphere",
+        "Activity Opportunities",
+        "Historical/Cultural Value",
+        "Food Experience",
+        "Shopping Potential"
+      ];
+      
+      // 차원 데이터만 추출
+      const result = {};
+      dimensionKeys.forEach(key => {
+        if (key in analysisResult.value) {
+          result[key] = analysisResult.value[key];
+        }
+      });
+      
+      return result;
     });
     
     // 검색 결과를 유사도 순으로 정렬
@@ -398,38 +428,167 @@ export default {
       console.log("위치 정보 선택됨:", imageDetails.location);
       console.log("지역 정보:", JSON.stringify(imageDetails.locationData, null, 2));
       
-      // 위치가 선택되면 지도 업데이트
-      if (locationData.formatted_address && mapInitialized.value) {
-        updateMapDisplay(locationData.formatted_address);
+      // 위치가 수동으로 선택된 경우에만 지도 업데이트
+      // 분석 결과에서 자동으로 설정된 경우에는 이미 updateMapFromGeoLocation에서 처리됨
+      if (locationData.manuallySelected && locationData.formatted_address && mapInitialized.value) {
+        if (locationSearchRef.value && locationSearchRef.value.displayMapFromAddress) {
+          locationSearchRef.value.displayMapFromAddress(locationData.formatted_address);
+        }
       }
     };
     
-    // 지도 업데이트 함수 (구글 지도 문제 해결용)
-    const updateMapDisplay = async (location) => {
-      // 지도를 표시할 컨테이너 찾기
-      const mapContainers = document.querySelectorAll('.map-container');
-      if (mapContainers.length === 0) {
-        console.warn("지도 컨테이너를 찾을 수 없습니다");
+    // 위치 정보에서 지도 업데이트 함수 개선
+    const updateMapFromGeoLocation = (geoLocation) => {
+      if (!geoLocation || !geoLocation.coordinates || !mapInitialized.value) {
+        console.warn("지도 업데이트를 위한 위치 정보가 없거나 지도가 초기화되지 않았습니다");
         return;
       }
       
-      // 위치 정보로 가짜 장소 객체 생성
-      const place = {
-        name: location,
-        formatted_address: location,
-        geometry: {
-          location: null // createMap 함수가 기본 위치(서울)를 사용하도록 null
+      // 약간의 지연을 두어 컴포넌트가 렌더링될 시간을 확보
+      setTimeout(() => {
+        // 컴포넌트 메서드를 직접 호출하여 지도 설정
+        if (locationSearchRef.value && locationSearchRef.value.setMapFromCoordinates) {
+          locationSearchRef.value.setMapFromCoordinates(
+            geoLocation.coordinates.latitude,
+            geoLocation.coordinates.longitude
+          );
+          console.log("위치 정보 기반 지도 업데이트 성공");
+        } else {
+          console.warn("LocationSearch 컴포넌트를 찾을 수 없거나 setMapFromCoordinates 메서드가 없습니다");
         }
-      };
+      }, 500);
+    };
+    
+    // 분석 결과를 기반으로 태그 제안
+    const generateSuggestedTags = () => {
+      if (!analysisResult.value) return;
       
-      // 지도 생성 시도
-      try {
-        const mapContainer = mapContainers[0];
-        await createMap(mapContainer, place);
-        console.log("지도 업데이트 성공");
-      } catch (error) {
-        console.error("지도 업데이트 오류:", error);
+      // 태그가 이미 설정되어 있으면 건너뜀
+      if (imageDetails.tags) return;
+      
+      const result = analysisResult.value;
+      const tags = [];
+      
+      // 자연 요소가 높은 경우
+      if (result["Natural Elements"] > 0.6) {
+        tags.push("자연", "풍경");
       }
+      
+      // 도시 특성이 높은 경우
+      if (result["Urban Character"] > 0.6) {
+        tags.push("도시", "건축물");
+      }
+      
+      // 수경 요소가 높은 경우
+      if (result["Water Features"] > 0.6) {
+        tags.push("물", "바다", "강");
+      }
+      
+      // 계절적 매력이 높은 경우
+      if (result["Seasonal Appeal"] > 0.6) {
+        // 현재 계절 파악
+        const month = new Date().getMonth() + 1;
+        if (month >= 3 && month <= 5) tags.push("봄");
+        else if (month >= 6 && month <= 8) tags.push("여름");
+        else if (month >= 9 && month <= 11) tags.push("가을");
+        else tags.push("겨울");
+      }
+      
+      // 휴식 잠재력이 높은 경우
+      if (result["Relaxation Potential"] > 0.6) {
+        tags.push("휴식", "힐링");
+      }
+      
+      // 로맨틱한 분위기가 높은 경우
+      if (result["Romantic Atmosphere"] > 0.6) {
+        tags.push("로맨틱", "데이트");
+      }
+      
+      // 액티비티 기회가 높은 경우
+      if (result["Activity Opportunities"] > 0.6) {
+        tags.push("액티비티", "활동");
+      }
+      
+      // 역사/문화적 가치가 높은 경우
+      if (result["Historical/Cultural Value"] > 0.6) {
+        tags.push("역사", "문화");
+      }
+      
+      // 식도락 경험이 높은 경우
+      if (result["Food Experience"] > 0.6) {
+        tags.push("맛집", "음식");
+      }
+      
+      // 쇼핑 잠재력이 높은 경우
+      if (result["Shopping Potential"] > 0.6) {
+        tags.push("쇼핑");
+      }
+      
+      // 위치 정보에서 태그 추가
+      if (result.geoLocation && result.geoLocation.address) {
+        if (result.geoLocation.address.province) {
+          tags.push(result.geoLocation.address.province);
+        }
+        if (result.geoLocation.address.city) {
+          tags.push(result.geoLocation.address.city);
+        }
+      }
+      
+      // 중복 제거 및 최대 5개 태그만 사용
+      const uniqueTags = [...new Set(tags)].slice(0, 5);
+      imageDetails.tags = uniqueTags.join(", ");
+      console.log("자동 생성된 태그:", imageDetails.tags);
+    };
+    
+    // 분석 결과를 기반으로 설명 생성
+    const generateSuggestedDescription = () => {
+      if (!analysisResult.value) return;
+      
+      // 설명이 이미 설정되어 있으면 건너뜀
+      if (imageDetails.description) return;
+      
+      const result = analysisResult.value;
+      let description = '';
+      let locationText = '';
+      
+      // 위치 정보에서 설명 시작 문구 생성
+      if (result.geoLocation && result.geoLocation.address) {
+        const address = result.geoLocation.address;
+        if (address.province || address.city) {
+          const location = [address.province, address.city]
+            .filter(Boolean)
+            .join(' ');
+          
+          if (location) {
+            locationText = `${location}에서 `;
+          }
+        }
+      }
+      
+      // 특성 기반 설명 생성
+      const features = [];
+      
+      // 주요 특성 확인 (0.7 이상이면 주요 특성으로 간주)
+      if (result["Natural Elements"] > 0.7) features.push("자연 풍경");
+      if (result["Urban Character"] > 0.7) features.push("도시 경관");
+      if (result["Water Features"] > 0.7) features.push("수변 공간");
+      if (result["Relaxation Potential"] > 0.7) features.push("휴식 공간");
+      if (result["Romantic Atmosphere"] > 0.7) features.push("로맨틱한 분위기");
+      if (result["Food Experience"] > 0.7) features.push("맛집 체험");
+      if (result["Shopping Potential"] > 0.7) features.push("쇼핑 장소");
+      
+      // 주요 특성으로 문장 구성
+      if (features.length > 0) {
+        description = `${locationText}촬영한 ${features.join(', ')} 사진입니다.`;
+      } else {
+        // 주요 특성이 없으면 간단히 구성
+        description = `${locationText}촬영한 여행 사진입니다.`;
+      }
+      
+      // URL은 별도 description에 추가하지 않음 (이미 geoLocation.googleMapsUrl로 저장됨)
+      
+      imageDetails.description = description;
+      console.log("자동 생성된 설명:", description);
     };
     
     // 이미지 분석 처리 - 업데이트됨
@@ -468,6 +627,41 @@ export default {
           // 결과 저장
           analysisResult.value = result;
           console.log("분석 결과:", result);
+          
+          // 위치 정보가 있다면 이미지 이름과 위치정보 자동 설정
+          if (result.geoLocation) {
+            // 제안된 이름이 있으면 이미지 이름으로 설정
+            if (result.suggestedName) {
+              imageDetails.name = result.suggestedName;
+            }
+            
+            // 위치 정보가 있는 경우 위치 정보 설정
+            if (result.geoLocation.address) {
+              const address = result.geoLocation.address;
+              // 위치 정보 텍스트 구성
+              const locationText = [
+                address.province, 
+                address.city, 
+                address.district, 
+                address.road
+              ].filter(Boolean).join(' ');
+              
+              // 위치 정보 및 지역 데이터 설정
+              imageDetails.location = locationText || address.display_name;
+              imageDetails.locationData = address.regionInfo;
+              
+              // 위치 정보가 있으면 지도 업데이트를 위한 별도 함수 사용
+              if (result.geoLocation) {
+                updateMapFromGeoLocation(result.geoLocation);
+              }
+            }
+          }
+          
+          // 분석 결과를 기반으로 태그 제안
+          generateSuggestedTags();
+          
+          // 분석 결과를 기반으로 설명 제안
+          generateSuggestedDescription();
           
           // 검색 단계로 전환
           loadingPhase.value = 'search';
@@ -540,6 +734,11 @@ export default {
       imageDetails.locationData = null;
       imageDetails.tags = '';
       imageDetails.description = '';
+      
+      // LocationSearch 컴포넌트의 지도 초기화
+      if (locationSearchRef.value && locationSearchRef.value.clearLocation) {
+        locationSearchRef.value.clearLocation();
+      }
     };
     
     // Elasticsearch에 저장 핸들러
@@ -669,7 +868,9 @@ export default {
       reset,
       saveToElasticsearchHandler,
       searchSimilarHandler,
-      getDimensionHeader
+      getDimensionHeader,
+      dimensionResults,
+      locationSearchRef // LocationSearch 컴포넌트 참조 노출
     };
   }
 };

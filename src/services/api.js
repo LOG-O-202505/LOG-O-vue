@@ -1,18 +1,97 @@
 // API 호출 관련 함수들
 import config from '@/config.js';
 import regionMapping from '@/data/regionMapping.js';
+import EXIF from 'exif-js';
 
 /**
  * 파일을 Base64로 변환하는 유틸리티 함수
  * @param {File} file - 변환할 파일
  * @returns {Promise<string>} - Base64 인코딩된 문자열
  */
+/* 기존 함수 주석 처리
 export const fileToBase64 = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = () => resolve(reader.result);
     reader.onerror = error => reject(error);
+  });
+};
+*/
+
+/**
+ * 파일을 조정된 크기의 Base64로 변환하는 유틸리티 함수
+ * 이미지의 비율을 유지하면서 짧은 쪽이 640px이 되도록 조정
+ * @param {File} file - 변환할 파일
+ * @returns {Promise<string>} - 크기가 조정된 Base64 인코딩된 문자열
+ */
+export const fileToBase64 = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        // 원본 이미지 크기
+        const originWidth = img.width;
+        const originHeight = img.height;
+        console.log(`원본 이미지 크기: ${originWidth}x${originHeight}`);
+        
+        // 짧은 쪽을 기준으로 비율 계산
+        const targetSize = 640;
+        let ratio;
+        let newWidth, newHeight;
+        
+        if (originWidth < originHeight) {
+          // 가로가 더 짧은 경우
+          ratio = targetSize / originWidth;
+          newWidth = targetSize;
+          newHeight = Math.round(originHeight * ratio);
+        } else {
+          // 세로가 더 짧은 경우
+          ratio = targetSize / originHeight;
+          newHeight = targetSize;
+          newWidth = Math.round(originWidth * ratio);
+        }
+        
+        // 만약 원본이 이미 targetSize보다 작다면 그대로 사용
+        if (originWidth <= targetSize && originHeight <= targetSize) {
+          newWidth = originWidth;
+          newHeight = originHeight;
+        }
+        
+        console.log(`조정된 이미지 크기: ${newWidth}x${newHeight} (비율: ${ratio})`);
+        
+        // Canvas를 사용하여 이미지 크기 조정
+        const canvas = document.createElement('canvas');
+        canvas.width = newWidth;
+        canvas.height = newHeight;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, newWidth, newHeight);
+        
+        // 품질 조정 (0.9 = 90% 품질)
+        const resizedBase64 = canvas.toDataURL('image/jpeg', 0.9);
+        
+        // 원본과 조정된 이미지 크기 비교 로깅
+        console.log(`원본 Base64 길이: ${event.target.result.length} 바이트`);
+        console.log(`조정된 Base64 길이: ${resizedBase64.length} 바이트`);
+        console.log(`크기 감소: ${((1 - resizedBase64.length / event.target.result.length) * 100).toFixed(2)}%`);
+        
+        resolve(resizedBase64);
+      };
+      
+      img.onerror = () => {
+        reject(new Error('이미지 로드 실패'));
+      };
+      
+      img.src = event.target.result;
+    };
+    
+    reader.onerror = (error) => {
+      reject(error);
+    };
+    
+    reader.readAsDataURL(file);
   });
 };
 
@@ -26,8 +105,20 @@ export const analyzeImage = async (imageFile, signal) => {
   try {
     console.log('분석 시작:', imageFile ? imageFile.name : 'No file');
     
-    // 이미지를 Base64로 변환
+    // 이미지 파일 타입 확인
+    if (!imageFile.type.startsWith('image/')) {
+      throw new Error('유효한 이미지 파일이 아닙니다.');
+    }
+    
+    console.log('이미지 파일 타입:', imageFile.type);
+    console.log('이미지 파일 크기:', (imageFile.size / 1024).toFixed(2), 'KB');
+    
+    // 이미지에서 위치 정보 추출
+    const geoLocationData = await extractGeoLocationData(imageFile);
+    
+    // 이미지를 Base64로 변환 (크기 조정됨)
     const base64Image = await fileToBase64(imageFile);
+    console.log('이미지 변환 완료: Base64');
     
     // config에서 모델 이름 사용
     const MODEL_NAME = config.MODEL_NAME;
@@ -63,7 +154,15 @@ export const analyzeImage = async (imageFile, signal) => {
     console.log('API 응답 수신:', data ? '성공' : '실패');
     
     // 응답 파싱
-    return parseAnalysisResponse(data.response);
+    const analysisResult = parseAnalysisResponse(data.response);
+    
+    // 위치 정보와 분석 결과 통합
+    return {
+      ...analysisResult,
+      geoLocation: geoLocationData, // 위치 정보 포함
+      suggestedName: geoLocationData?.suggestedName || '', // 제안된 이미지 이름
+      googleMapsUrl: geoLocationData?.googleMapsUrl || '' // 구글 지도 URL
+    };
     
   } catch (error) {
     console.error('API 호출 오류 타입:', error.name);
@@ -133,12 +232,15 @@ const parseAnalysisResponse = (responseText) => {
       "Shopping Potential"
     ];
     
+    // 차원 데이터만 추출하여 정규화된 결과 생성
+    const normalizedDimensions = {};
+    
     // 필요한 차원이 있는지 확인
     let missingDimensions = false;
     for (const dim of expectedDimensions) {
       if (!(dim in jsonData)) {
         console.warn(`누락된 차원: ${dim}`);
-        jsonData[dim] = 0.5; // 기본값
+        normalizedDimensions[dim] = 0.5; // 기본값
         missingDimensions = true;
       } else {
         // 값 정규화 (0-1 범위, 0.1 단위)
@@ -160,7 +262,7 @@ const parseAnalysisResponse = (responseText) => {
         }
         
         // 0.1 단위로 반올림
-        jsonData[dim] = Math.round(value * 10) / 10;
+        normalizedDimensions[dim] = Math.round(value * 10) / 10;
       }
     }
     
@@ -169,8 +271,11 @@ const parseAnalysisResponse = (responseText) => {
       console.warn("일부 차원이 누락되어 기본값을 사용했습니다");
     }
     
-    console.log("최종 파싱 결과:", jsonData);
-    return jsonData;
+    // 파싱된 차원 데이터만 사용하여 정규화된 결과 반환
+    // 다른 메타데이터(geoLocation 등)는 호출 함수에서 추가
+    
+    console.log("최종 파싱 결과:", normalizedDimensions);
+    return normalizedDimensions;
   } catch (error) {
     console.error("응답 파싱 오류:", error);
     // 오류 발생 시 기본값 반환
@@ -195,18 +300,26 @@ const parseAnalysisResponse = (responseText) => {
  * @returns {Array<number>} - 특성 벡터
  */
 export const createFeaturesVector = (analysisResult) => {
-  return [
-    analysisResult["Natural Elements"],
-    analysisResult["Urban Character"],
-    analysisResult["Water Features"],
-    analysisResult["Seasonal Appeal"],
-    analysisResult["Relaxation Potential"],
-    analysisResult["Romantic Atmosphere"],
-    analysisResult["Activity Opportunities"],
-    analysisResult["Historical/Cultural Value"],
-    analysisResult["Food Experience"],
-    analysisResult["Shopping Potential"]
+  // 결과 객체에서 차원 데이터만 추출
+  const dimensions = [
+    "Natural Elements",
+    "Urban Character",
+    "Water Features",
+    "Seasonal Appeal",
+    "Relaxation Potential",
+    "Romantic Atmosphere",
+    "Activity Opportunities",
+    "Historical/Cultural Value",
+    "Food Experience",
+    "Shopping Potential"
   ];
+  
+  // 각 차원의 값을 안전하게 추출하여 벡터 생성
+  return dimensions.map(dim => {
+    const value = analysisResult[dim];
+    // 값이 숫자가 아니면 기본값 0.5 사용
+    return typeof value === 'number' ? value : 0.5;
+  });
 };
 
 /**
@@ -300,7 +413,13 @@ export const saveToElasticsearch = async (
     console.log('위치 정보 (텍스트):', location);
     console.log('태그:', tags);
     console.log('설명:', description);
-    console.log('이미지 Base64 길이:', imageBase64?.split(',')[1]?.length || 0, '자');
+    
+    // Base64 이미지 크기 계산 및 로깅
+    const base64Data = imageBase64.split(',')[1];
+    const base64Length = base64Data ? base64Data.length : 0;
+    console.log('이미지 Base64 길이:', base64Length, '자');
+    console.log('이미지 Base64 크기:', (base64Length * 0.75 / 1024).toFixed(2), 'KB (디코딩 후 예상)');
+    
     console.log('분석 결과:', analysisResult);
     console.log('특성 벡터:', featuresVector);
     console.log('구조화된 위치 데이터:', locationData);
@@ -500,3 +619,288 @@ export const searchImagesByKeyword = async (keyword, size = 10, from = 0) => {
     throw error;
   }
 };
+
+/**
+ * 위도/경도를 주소로 변환 (역지오코딩)
+ * @param {number} latitude - 위도
+ * @param {number} longitude - 경도
+ * @returns {Promise<Object>} - 주소 정보
+ */
+export const reverseGeocode = async (latitude, longitude) => {
+  try {
+    console.log(`위도(${latitude}), 경도(${longitude})에 대한 역지오코딩 시작`);
+    
+    // Nominatim API를 사용하여 역지오코딩 요청
+    // 참고: 실제 서비스에서는 요청 제한이 있으므로 주의 필요
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1&accept-language=ko`;
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'LOGO Travel App' // Nominatim API는 User-Agent 헤더를 요구함
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('역지오코딩 API 호출 실패');
+    }
+    
+    const data = await response.json();
+    console.log('역지오코딩 결과:', data);
+    
+    // 한국 주소 형식으로 결과 구성
+    let address = {
+      country: data.address.country || '',
+      province: data.address.province || data.address.state || '',
+      city: data.address.city || data.address.town || data.address.village || '',
+      district: data.address.suburb || data.address.neighbourhood || '',
+      road: data.address.road || '',
+      display_name: data.display_name || '',
+    };
+    
+    console.log('추출된 주소 정보:', address);
+    
+    // 지역 코드 매핑 시도
+    const regionInfo = mapAddressToRegionCode(address);
+    
+    return {
+      ...address,
+      regionInfo
+    };
+  } catch (error) {
+    console.error('역지오코딩 오류:', error);
+    return null;
+  }
+};
+
+/**
+ * 주소 정보를 지역 코드로 매핑
+ * @param {Object} address - 주소 정보
+ * @returns {Object} - 지역 코드 정보
+ */
+const mapAddressToRegionCode = (address) => {
+  try {
+    console.log('주소를 지역 코드로 매핑 시작');
+    
+    // 기본 결과 객체
+    const result = {
+      province_code: null,
+      province_name: null,
+      city_code: null,
+      city_name: null
+    };
+    
+    // 광역시/도 찾기
+    for (const provinceCode in regionMapping) {
+      const province = regionMapping[provinceCode];
+      // 정확한 이름 일치 또는 부분 매칭
+      if (address.province && (
+          address.province === province.name || 
+          address.province.includes(province.name) || 
+          province.name.includes(address.province))
+      ) {
+        console.log(`광역시/도 매칭 성공: ${province.name} (코드: ${provinceCode})`);
+        result.province_code = provinceCode;
+        result.province_name = province.name;
+        
+        // 시/군/구 찾기
+        const city = address.city || address.district;
+        if (city && province.children) {
+          for (const cityInfo of province.children) {
+            if (city === cityInfo.name || 
+                city.includes(cityInfo.name) || 
+                cityInfo.name.includes(city)) {
+              console.log(`시/군/구 매칭 성공: ${cityInfo.name} (코드: ${cityInfo.code})`);
+              result.city_code = cityInfo.code;
+              result.city_name = cityInfo.name;
+              break;
+            }
+          }
+        }
+        
+        break;
+      }
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('지역 코드 매핑 오류:', error);
+    return {
+      province_code: null,
+      province_name: null,
+      city_code: null,
+      city_name: null
+    };
+  }
+};
+
+/**
+ * 위치 정보를 기반으로 제안된 이미지 이름 생성
+ * @param {Object} locationInfo - 위치 정보
+ * @returns {string} - 제안된 이미지 이름
+ */
+export const generateImageNameFromLocation = (locationInfo) => {
+  if (!locationInfo) return '';
+  
+  let parts = [];
+  
+  // 행정구역명 추가
+  if (locationInfo.regionInfo && locationInfo.regionInfo.province_name) {
+    parts.push(locationInfo.regionInfo.province_name);
+    
+    if (locationInfo.regionInfo.city_name) {
+      parts.push(locationInfo.regionInfo.city_name);
+    }
+  } else if (locationInfo.province) {
+    parts.push(locationInfo.province);
+    
+    if (locationInfo.city) {
+      parts.push(locationInfo.city);
+    }
+    
+    if (locationInfo.district) {
+      parts.push(locationInfo.district);
+    }
+  }
+  
+  // 도로명 또는 상세 정보 추가
+  if (locationInfo.road) {
+    parts.push(locationInfo.road);
+  }
+  
+  // 이름 생성
+  if (parts.length > 0) {
+    return `${parts.join(' ')}에서 찍은 사진`;
+  }
+  
+  // 대비책: 특정 정보가 없는 경우
+  if (locationInfo.display_name) {
+    return `${locationInfo.display_name}에서 찍은 사진`;
+  }
+  
+  return '';
+};
+
+/**
+ * 위도/경도를 기반으로 구글 지도 URL 생성
+ * @param {number} latitude - 위도
+ * @param {number} longitude - 경도
+ * @returns {string} - 구글 지도 URL
+ */
+export const getGoogleMapsUrl = (latitude, longitude) => {
+  return `https://www.google.com/maps?q=${latitude},${longitude}`;
+};
+
+/**
+ * 이미지 파일에서 위치 정보 추출 및 처리
+ * @param {File} imageFile - 이미지 파일
+ * @returns {Promise<Object|null>} - 위치 정보 객체 또는 null
+ */
+export const extractGeoLocationData = async (imageFile) => {
+  try {
+    if (!imageFile || !imageFile.type.startsWith('image/')) {
+      console.log('위치 정보 추출: 이미지 파일이 아닙니다');
+      return null;
+    }
+    
+    // EXIF 데이터 추출을 Promise로 감싸기
+    const exifData = await new Promise((resolve) => {
+      EXIF.getData(imageFile, function() {
+        const tags = EXIF.getAllTags(this);
+        resolve(tags);
+      });
+    });
+    
+    console.log('==== 이미지 EXIF 정보 ====');
+    console.log('촬영 날짜:', exifData.DateTime || exifData.DateTimeOriginal || '정보 없음');
+    console.log('카메라 모델:', exifData.Model || '정보 없음');
+    console.log('렌즈 정보:', exifData.LensModel || '정보 없음');
+    console.log('노출 시간:', exifData.ExposureTime ? `1/${Math.round(1/exifData.ExposureTime)}초` : '정보 없음');
+    console.log('ISO:', exifData.ISOSpeedRatings || '정보 없음');
+    
+    // GPS 정보가 없는 경우
+    if (!exifData.GPSLatitude || !exifData.GPSLongitude) {
+      console.log('위치 정보: 없음');
+      return null;
+    }
+    
+    // GPS 좌표 변환 함수
+    const convertCoordinate = (coordinate, ref) => {
+      if (!coordinate || coordinate.length !== 3) return null;
+      
+      // 도, 분, 초 형식의 GPS 데이터를 십진수 각도로 변환
+      let value = coordinate[0] + 
+                 coordinate[1]/60 + 
+                 coordinate[2]/3600;
+      
+      // 남반구 또는 서반구인 경우 음수로 변환
+      if (ref === 'S' || ref === 'W') {
+        value = -value;
+      }
+      
+      return value;
+    };
+    
+    // 위도 및 경도 추출 및 변환
+    const latitude = convertCoordinate(exifData.GPSLatitude, exifData.GPSLatitudeRef);
+    const longitude = convertCoordinate(exifData.GPSLongitude, exifData.GPSLongitudeRef);
+    
+    if (latitude === null || longitude === null) {
+      console.log('위치 정보 추출: 좌표 변환 실패');
+      return null;
+    }
+    
+    console.log('위치 정보:');
+    console.log(' - 위도:', latitude);
+    console.log(' - 경도:', longitude);
+    
+    // 구글 지도 URL 생성
+    const googleMapsUrl = getGoogleMapsUrl(latitude, longitude);
+    console.log(' - 구글맵 링크:', googleMapsUrl);
+    
+    // 역지오코딩으로 주소 정보 가져오기
+    const addressInfo = await reverseGeocode(latitude, longitude);
+    
+    // 이미지 이름 제안
+    const suggestedName = addressInfo ? generateImageNameFromLocation(addressInfo) : '';
+    if (suggestedName) {
+      console.log('제안된 이미지 이름:', suggestedName);
+    }
+    
+    const result = {
+      coordinates: {
+        latitude,
+        longitude
+      },
+      dateTime: exifData.DateTimeOriginal || exifData.DateTime,
+      googleMapsUrl,
+      address: addressInfo,
+      suggestedName,
+      regionInfo: addressInfo?.regionInfo
+    };
+    
+    console.log('위치 정보 추출 결과:', result);
+    console.log('=========================');
+    
+    return result;
+  } catch (error) {
+    console.error('위치 정보 추출 중 오류:', error);
+    return null;
+  }
+};
+
+/*
+ * 이미지 위치 정보 추출 및 구글 지도 연동 사용 방법:
+ *
+ * 1. 이미지를 선택하면 extractGeoLocationData 함수로 위치 정보를 추출합니다.
+ *    const geoInfo = await api.extractGeoLocationData(imageFile);
+ *
+ * 2. 추출된 위치 정보를 사용하여 다음을 수행할 수 있습니다:
+ *    - 구글 지도 링크 표시: geoInfo.googleMapsUrl
+ *    - 제안된 이미지 이름 사용: geoInfo.suggestedName
+ *    - 지역 코드 가져오기: geoInfo.regionInfo.province_code, geoInfo.regionInfo.city_code
+ *
+ * 3. 이미지 분석 시 위치 정보가 자동으로 포함됩니다:
+ *    const analysisResult = await api.analyzeImage(imageFile);
+ *    console.log(analysisResult.suggestedName);
+ *    console.log(analysisResult.googleMapsUrl);
+ */

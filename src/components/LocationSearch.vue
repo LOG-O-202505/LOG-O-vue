@@ -204,7 +204,8 @@ export default {
         // 부모에게 전달할 데이터 구성
         const locationData = {
           formatted_address: placeDetails.formatted_address,
-          region_info: regionInfo
+          region_info: regionInfo,
+          manuallySelected: true // 수동 선택 플래그 추가
         };
         console.log('부모 컴포넌트에 전달할 locationData:', locationData);
         
@@ -277,6 +278,94 @@ export default {
       emit('location-selected', null);
     };
     
+    // 주소로부터 지도 표시 (외부에서 호출용)
+    const displayMapFromAddress = async (address) => {
+      console.log(`주소로 지도 설정 시작: ${address}`);
+      
+      try {
+        // Google Maps API가 로드되었는지 확인
+        await loadGoogleMapsScript();
+        
+        // 검색 상태와 선택된 상태 설정
+        searchQuery.value = address;
+        selectedLocation.value = address;
+        
+        // 장소 객체 생성 (기본 위치는 서울시청)
+        selectedPlaceDetails.value = {
+          name: "검색 위치",
+          formatted_address: address,
+          geometry: {
+            location: {
+              lat: 37.5665, // 기본값: 서울시청
+              lng: 126.9780
+            }
+          }
+        };
+        
+        // 다음 틱에서 지도 컨테이너 확인 및 지도 표시
+        await nextTick();
+        
+        // 지도 표시
+        await displayMap();
+        console.log('주소 기반 지도 표시 완료');
+      } catch (error) {
+        console.error('주소 기반 지도 설정 오류:', error);
+      }
+    };
+    
+    // 좌표로부터 직접 지도 설정 (외부에서 호출용)
+    const setMapFromCoordinates = async (latitude, longitude) => {
+      console.log(`좌표로 지도 설정 시작: 위도=${latitude}, 경도=${longitude}`);
+      
+      // 이미 선택된 위치가 있으면 지도 표시 중단 (중복 방지)
+      if (selectedLocation.value) {
+        console.log('이미 위치가 선택되어 있어 지도 업데이트를 스킵합니다.');
+        return;
+      }
+      
+      try {
+        // Google Maps API가 로드되었는지 확인
+        await loadGoogleMapsScript();
+        
+        // 위치 정보 설정
+        const coordsText = `위도: ${latitude}, 경도: ${longitude}`;
+        selectedLocation.value = coordsText;
+        
+        // 좌표로 장소 정보 생성
+        selectedPlaceDetails.value = {
+          name: "촬영 위치",
+          formatted_address: coordsText,
+          geometry: {
+            location: {
+              lat: latitude,
+              lng: longitude
+            }
+          }
+        };
+        
+        // 다음 틱에서 지도 컨테이너 확인 및 지도 표시
+        await nextTick();
+        
+        // 지도 표시
+        if (mapContainer.value) {
+          const mapResult = await createMap(
+            mapContainer.value,
+            selectedPlaceDetails.value
+          );
+          
+          if (mapResult) {
+            mapInstance.value = mapResult.map;
+            mapMarker.value = mapResult.marker;
+            console.log('GPS 좌표로 지도 표시 완료');
+          }
+        } else {
+          console.warn('지도 컨테이너를 찾을 수 없습니다');
+        }
+      } catch (error) {
+        console.error('GPS 좌표로 지도 설정 오류:', error);
+      }
+    };
+    
     return {
       searchQuery,
       predictions,
@@ -286,7 +375,9 @@ export default {
       isLoading,
       onSearchInput,
       selectPlace,
-      clearLocation
+      clearLocation,
+      setMapFromCoordinates,
+      displayMapFromAddress
     };
   }
 };
