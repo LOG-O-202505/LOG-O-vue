@@ -7,7 +7,7 @@ import MyTravel from '../views/MyTravel.vue'
 
 const routes = [
   {
-    path: '/blind',
+    path: '/',
     name: 'OnboardingPage',
     component: OnboardingPage
   },

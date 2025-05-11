@@ -61,15 +61,15 @@ export default {
   align-items: center;
   justify-content: center;
   padding: 2rem 1rem;
-  /* 그림자와 배경색 제거 */
+  /* 그림자와 배경색 제거 - 이미 패널에 적용됨 */
 }
 
 .spinner {
   width: 60px;
   height: 60px;
-  border: 3px solid rgba(72, 176, 228, 0.3);
+  border: 4px solid #d1e9ff; /* 더 밝고 연한 파랑 배경 */
   border-radius: 50%;
-  border-top-color: #4299e1;
+  border-top-color: #007bff; /* 더 진한 파란색 */
   animation: spin 1s ease-in-out infinite;
   margin-bottom: 2rem;
 }
@@ -81,7 +81,7 @@ export default {
 .loading-text {
   font-family: 'Noto Sans KR', sans-serif;
   font-size: 1.2rem;
-  color: #e2e8f0;
+  color: #495057; /* 어두운 회색으로 변경 */
   margin: 0 0 2rem 0;
   text-align: center;
 }
@@ -130,47 +130,56 @@ export default {
   right: -32px;
   width: 30px;
   height: 2px;
-  background-color: rgba(72, 176, 228, 0.3);
+  background-color: #adb5bd; /* 연결선 색상 변경 (연한 회색) */
 }
 
 .step.completed:not(:last-child)::after {
-  background-color: #38a169;
+  background-color: #007bff; /* 완료된 연결선 (진한 파랑) */
 }
 
 .step-circle {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background-color: rgba(72, 176, 228, 0.3);
+  background-color: #e9ecef; /* 기본 원 배경 (매우 연한 회색) */
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: #495057; /* 기본 원 글자색 (어두운 회색) */
   font-weight: bold;
+  border: 1px solid #ced4da; /* 테두리 추가 */
 }
 
 .step.active .step-circle {
-  background-color: #4299e1;
+  background-color: #007bff; /* 활성 원 배경 (진한 파랑) */
+  color: white; /* 활성 원 글자색 (흰색) */
+  border-color: #0056b3;
   animation: pulse 1.5s infinite;
 }
 
 .step.completed .step-circle {
-  background-color: #38a169;
+  background-color: #28a745; /* 완료 원 배경 (초록색) */
+  color: white; /* 완료 원 글자색 (흰색) */
+  border-color: #1e7e34;
 }
 
 .step-label {
   font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.7);
+  color: #6c757d; /* 기본 라벨 글자색 (회색) */
 }
 
 .step.active .step-label {
-  color: white;
+  color: #0056b3; /* 활성 라벨 글자색 (더 진한 파랑) */
   font-weight: 500;
+}
+
+.step.completed .step-label {
+  color: #1e7e34; /* 완료 라벨 글자색 (더 진한 초록) */
 }
 
 .step-time {
   font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: #6c757d; /* 시간 표시 글자색 (회색) */
 }
 
 @keyframes pulse {

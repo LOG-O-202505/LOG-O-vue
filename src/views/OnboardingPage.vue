@@ -32,9 +32,9 @@
      <nav class="navbar">
       <div class="navbar-container">
         <div class="nav-group">
-          <router-link to="/lookAround" class="nav-item">LOOK AROUND</router-link>
+          <router-link to="/lookAround" class="nav-item">HOT PLACE</router-link>
           <router-link to="/llamasearch" class="nav-item">SEARCH</router-link>
-          
+          <router-link to="/keyword" class="nav-item">KEYWORD</router-link>
         </div>
         
         <div class="nav-center">
@@ -42,9 +42,9 @@
         </div>
         
         <div class="nav-group">
-          <a href="#" class="nav-item">LOGIN</a>
-          <a href="#" class="nav-item">SIGN UP</a>
-        </div>
+          <router-link to="/" class="nav-item">COMMUNITY</router-link>
+          <router-link to="/mytravel" class="nav-item">MY JOURNEY</router-link>
+      </div>
       </div>
     </nav>
     

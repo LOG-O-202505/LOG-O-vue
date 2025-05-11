@@ -12,7 +12,7 @@
       </div>
       
       <div class="nav-group">
-        <router-link to="/blind" class="nav-item">COMMUNITY</router-link>
+        <router-link to="/" class="nav-item">COMMUNITY</router-link>
         <router-link to="/mytravel" class="nav-item">MY JOURNEY</router-link>
       </div>
     </div>
@@ -29,11 +29,14 @@ export default {
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
 
 .navbar {
-  background-color: #1C1C1C; /* 이미지에 맞는 짙은 검은색 */
+  /* background-color: #1C1C1C; */ /* 기존 배경색 제거 */
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), transparent); /* 반투명 그라데이션 배경 적용 */
   width: 100%;
   padding: 3.5rem 0; /* 온보딩 페이지와 동일한 패딩으로 수정 */
-  position: relative; /* fixed에서 relative로 변경해 스크롤에 따라 움직이게 함 */
-  z-index: 100;
+  position: fixed; /* fixed로 변경하여 상단에 고정 */
+  top: 0;
+  left: 0;
+  z-index: 1000; /* 다른 요소들 위에 표시되도록 z-index 설정 */
 }
 
 .navbar-container {

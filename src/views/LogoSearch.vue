@@ -38,7 +38,10 @@
             
             <!-- 버튼 영역 -->
             <div class="button-group">
-              <button @click="triggerFileInput" class="btn btn-primary">
+              <button 
+                v-if="!analysisResult && !isLoading" 
+                @click="triggerFileInput" 
+                class="btn btn-primary">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                   <polyline points="17 8 12 3 7 8"></polyline>
@@ -47,11 +50,17 @@
                 이미지 선택하기
               </button>
               
-              <button v-if="imageFile && !isLoading" @click="analyzeCurrentImage" class="btn btn-analyze">
+              <button 
+                v-if="imageFile && !analysisResult && !isLoading" 
+                @click="analyzeCurrentImage" 
+                class="btn btn-analyze">
                 이미지 분석하기
               </button>
               
-              <button v-if="imageFile && !isLoading" @click="reset" class="btn btn-secondary">
+              <button 
+                v-if="(imageFile || analysisResult) && !isLoading" 
+                @click="reset" 
+                class="btn btn-secondary">
                 초기화
               </button>
             </div>
@@ -82,6 +91,13 @@
                 :analysis-duration="analysisDuration" 
                 :search-duration="searchDuration" 
               />
+              <button @click="cancelAnalysis" class="btn btn-danger btn-cancel-analysis">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+                분석 취소하기
+              </button>
             </div>
             
             <!-- 분석 결과가 없을 때 -->
@@ -847,6 +863,16 @@ export default {
       return Date.now().toString(36) + Math.random().toString(36).substring(2);
     };
     
+    // cancelAnalysis 함수 추가
+    const cancelAnalysis = () => {
+      if (abortController.value) {
+        abortController.value.abort();
+        // analyzeCurrentImage 함수의 catch(error) 블록에서 AbortError를 처리하고
+        // finally 블록에서 isLoading = false 및 abortController.value = null 등을 수행합니다.
+      }
+      reset(); // 상태를 초기화합니다.
+    };
+    
     return {
       imageFile,
       imagePreview,
@@ -870,7 +896,8 @@ export default {
       searchSimilarHandler,
       getDimensionHeader,
       dimensionResults,
-      locationSearchRef // LocationSearch 컴포넌트 참조 노출
+      locationSearchRef, // LocationSearch 컴포넌트 참조 노출
+      cancelAnalysis // cancelAnalysis 함수 노출
     };
   }
 };
@@ -891,18 +918,20 @@ export default {
 }
 
 .analysis-table th {
-  background-color: #2d3748;
-  color: white;
+  background-color: #f8f9fa; /* 밝은 헤더 배경색 */
+  color: #333; /* 어두운 헤더 글자색 */
   text-align: left;
   padding: 0.75rem 1rem;
   font-size: 0.9rem;
   font-weight: 600;
+  border-bottom: 2px solid #dee2e6; /* 헤더 하단 구분선 */
 }
 
 .analysis-table td {
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid #2d3748;
+  border-bottom: 1px solid #e9ecef; /* 밝은 셀 구분선 */
   vertical-align: middle;
+  color: #495057; /* 셀 글자색 */
 }
 
 .analysis-table tr:last-child td {
@@ -910,13 +939,12 @@ export default {
 }
 
 .dimension-name {
-  color: #e2e8f0;
   font-weight: 500;
   width: 20%;
 }
 
 .dimension-score {
-  color: #4299e1;
+  color: #0d6efd; /* 파란색 계열 유지 또는 변경 */
   font-weight: 600;
   text-align: center;
   width: 10%;
@@ -930,7 +958,7 @@ export default {
 
 .bar-container {
   height: 16px;
-  background-color: rgba(5, 14, 30, 0.2);
+  background-color: #e9ecef; /* 밝은 막대 배경색 */
   border-radius: 8px;
   overflow: hidden;
   position: relative;
@@ -939,7 +967,7 @@ export default {
 
 .bar {
   height: 100%;
-  background: linear-gradient(90deg, #3182ce, #63b3ed);
+  background: linear-gradient(90deg, #0d6efd, #4dabf7); /* 파란색 계열 그라데이션 유지 또는 변경 */
   border-radius: 8px;
   position: absolute;
   top: 0;
@@ -947,6 +975,659 @@ export default {
   transition: width 0.5s ease;
 }
 
-/* 나머지 글로벌 스타일은 LogoSearch.css에서 임포트 */
-@import '../styles/LogoSearch.css';
+/* 취소 버튼 스타일 추가 */
+.btn-cancel-analysis {
+  margin-top: 1.5rem;
+  background-color: #dc3545; /* 부트스트랩 danger 색상 */
+  color: white;
+  padding: 0.6rem 1.2rem;
+  font-size: 0.9rem;
+}
+
+.btn-cancel-analysis:hover {
+  background-color: #c82333; /* 더 어두운 danger 색상 */
+  transform: translateY(-1px);
+}
+
+.btn-cancel-analysis svg {
+  margin-right: 0.4rem;
+}
+
+/* --- src/styles/LogoSearch.css 내용 시작 --- */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+
+.logo-search {
+  font-family: 'Noto Sans KR', sans-serif;
+  min-height: 100vh;
+  background-color: #f8f9fa;
+  color: #333;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 히어로 섹션 */
+.hero-section {
+  position: relative;
+  height: 320px;
+  background-image: url('https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1470'); /* 새 배경 이미지 */
+  background-size: cover;
+  background-position: center;
+  margin-bottom: 0; /* 추가 */
+  padding-top: 7rem; /* 추가 */
+}
+
+.hero-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7));
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.hero-title {
+  font-size: 2.5rem; /* 수정 */
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  color: white; /* 추가 */
+}
+
+.hero-subtitle {
+  font-size: 1.2rem; /* 수정 */
+  font-weight: 300;
+  margin: 0;
+  opacity: 0.9;
+  color: white; /* 추가 */
+}
+
+/* 컨텐츠 영역 */
+.content-wrapper {
+  position: relative;
+  padding: 2rem 0.5rem 3rem;
+  z-index: 2;
+  max-width: 1600px;
+  margin: 0 auto;
+  width: 95%;
+}
+
+/* 상단 두 컬럼 레이아웃 */
+.top-section {
+  display: grid;
+  grid-template-columns: 400px 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+/* 중간 및 하단 섹션 */
+.middle-section,
+.bottom-section {
+  margin-bottom: 1.5rem;
+}
+
+/* 패널 공통 스타일 */
+.upload-panel, 
+.analysis-panel, 
+.results-panel, 
+.details-panel {
+  background-color: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-header {
+  padding: 1rem 1.5rem;
+  background-color: white;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.panel-title {
+  font-family: 'Playfair Display', 'Noto Sans KR', serif;
+  font-size: 1.3rem;
+  font-weight: 500;
+  margin: 0;
+  text-align: center;
+  color: #2d3748;
+  letter-spacing: 0.5px;
+}
+
+.panel-content {
+  padding: 1.5rem;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 패널 콘텐츠 패딩 제거 (로딩 중일 때) */
+.panel-content.no-padding {
+  padding: 0;
+}
+
+/* 이미지 업로드 패널 */
+.image-container {
+  background-color: #e9ecef;
+  border-radius: 8px;
+  height: 250px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+  border: 2px dashed #ced4da;
+}
+
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #6c757d;
+  padding: 2rem;
+  text-align: center;
+}
+
+.upload-placeholder svg {
+  margin-bottom: 1rem;
+  color: #0d6efd;
+}
+
+.upload-placeholder p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* 버튼 스타일 */
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 4px;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn svg {
+  flex-shrink: 0;
+}
+
+.btn-primary {
+  background-color: #0d6efd;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #0b5ed7;
+  transform: translateY(-2px);
+}
+
+.btn-analyze {
+  background-color: #198754;
+  color: white;
+}
+
+.btn-analyze:hover {
+  background-color: #157347;
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  border: 1px solid #ced4da;
+  color: #333;
+}
+
+.btn-secondary:hover {
+  background-color: #e9ecef;
+}
+
+.btn-save {
+  background-color: #198754;
+  color: white;
+  margin-bottom: 1rem;
+}
+
+.btn-save:hover {
+  background-color: #157347;
+  transform: translateY(-2px);
+}
+
+.hidden-input {
+  display: none;
+}
+
+/* 분석 패널 - 로딩 상태 (수정됨) */
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  padding: 0;
+  min-height: 300px;
+  background-color: transparent;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(13, 110, 253, 0.3);
+  border-radius: 50%;
+  border-top-color: #0d6efd;
+  animation: spin 1s ease-in-out infinite;
+  margin-bottom: 1.5rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 1.1rem;
+  color: #6c757d;
+  margin: 0;
+}
+
+.loading-text span {
+  display: inline-block;
+  animation: dots 1.5s infinite;
+}
+
+.loading-text span:nth-child(2) {
+  animation-delay: 0.3s;
+}
+
+.loading-text span:nth-child(3) {
+  animation-delay: 0.6s;
+}
+
+@keyframes dots {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+/* 가이드 상태 */
+.guide-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+  min-height: 250px;
+}
+
+.guide-icon {
+  color: #0d6efd;
+  margin-bottom: 1.5rem;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.guide-description {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #6c757d;
+  margin: 0 0 1.5rem 0;
+  max-width: 400px;
+}
+
+.steps-container {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.step span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, #0d6efd, #0a58ca);
+  color: white;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+/* 결과 그리드 */
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.5rem;
+  padding: 0.5rem;
+}
+
+.result-card {
+  position: relative;
+  background-color: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.result-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.result-rank {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, #0d6efd, #0a58ca);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  z-index: 1;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+.result-card:nth-child(1) .result-rank {
+  background: linear-gradient(135deg, #ffca2c, #ffab00);
+}
+
+.result-card:nth-child(2) .result-rank {
+  background: linear-gradient(135deg, #e0e0e0, #b0b0b0);
+}
+
+.result-card:nth-child(3) .result-rank {
+  background: linear-gradient(135deg, #d98936, #b0732f);
+}
+
+.result-image-container {
+  height: 180px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.result-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.result-card:hover .result-image {
+  transform: scale(1.1);
+}
+
+.result-info {
+  padding: 1rem;
+}
+
+.result-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 0.25rem 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.result-location {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin-bottom: 0.5rem;
+}
+
+.result-location svg {
+  flex-shrink: 0;
+  color: #6c757d;
+}
+
+.result-similarity {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+.similarity-bar {
+  flex-grow: 1;
+  height: 6px;
+  background-color: #e9ecef;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.similarity-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0d6efd, #4dabf7);
+  border-radius: 3px;
+  transition: width 1s ease;
+}
+
+.similarity-value {
+  color: #333;
+  font-weight: 600;
+  min-width: 30px;
+  text-align: right;
+}
+
+/* 이미지 정보 입력 */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #495057;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  background-color: white;
+  color: #333;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  border-color: #86b7fe;
+  outline: 0;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.form-group textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.form-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 1rem;
+  grid-column: span 2;
+}
+
+.status-message {
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  margin-top: 1rem;
+  display: inline-block;
+}
+
+.status-success {
+  background-color: #d1e7dd;
+  border: 1px solid #badbcc;
+  color: #0f5132;
+}
+
+.status-error {
+  background-color: #f8d7da;
+  border: 1px solid #f5c2c7;
+  color: #842029;
+}
+
+/* 푸터 */
+.footer {
+  margin-top: auto;
+  background-color: #e9ecef;
+  padding: 1.5rem;
+  text-align: center;
+  border-top: 1px solid #dee2e6;
+}
+
+.footer p {
+  font-size: 0.9rem;
+  color: #333;
+  margin: 0;
+}
+
+.dimension-name {
+  color: #495057;
+  font-weight: 500;
+  width: 20%;
+}
+
+.dimension-score {
+  color: #0d6efd;
+  font-weight: 600;
+  text-align: center;
+  width: 10%;
+}
+
+.dimension-bar {
+  padding-right: 1rem;
+  width: 70%;
+  background-color: transparent;
+}
+
+.bar-container {
+  height: 16px;
+  background-color: #e9ecef;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.bar {
+  height: 100%;
+  background: linear-gradient(90deg, #0d6efd, #6ebcff);
+  border-radius: 8px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  transition: width 1s ease;
+}
+
+/* 반응형 스타일 */
+@media (max-width: 900px) {
+  .top-section {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .hero-title {
+    font-size: 2.5rem;
+  }
+  
+  .hero-subtitle {
+    font-size: 1.1rem;
+  }
+  
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .form-actions {
+    grid-column: span 1;
+  }
+  
+  .results-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .hero-section {
+    height: 250px;
+  }
+  
+  .hero-title {
+    font-size: 2rem;
+  }
+  
+  .content-wrapper {
+    padding: 1.5rem 1rem;
+  }
+  
+  .results-grid {
+    grid-template-columns: 1fr;
+  }
+}
+/* --- src/styles/LogoSearch.css 내용 끝 --- */
 </style>

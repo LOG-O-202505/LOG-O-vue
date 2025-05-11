@@ -72,8 +72,8 @@
         <div class="popular-destinations-section">
           <h3 class="section-title">인기 여행지 TOP 100 <span>(전국 기준 평점 순위)</span></h3>
           <div class="destinations-grid">
-            <div v-for="(destination, index) in currentPopularDestinations.slice(0, 30)" :key="destination.id" class="destination-card">
-              <div class="destination-rank">{{ index + 1 }}</div>
+            <div v-for="destination in currentPopularDestinations.slice(0, 30)" :key="destination.id" class="destination-card">
+              <div class="destination-rank">{{ destination.displayRank }}</div>
               <div class="destination-image" :style="{ backgroundImage: `url(${destination.image})` }"></div>
               <div class="destination-content">
                 <h4>{{ destination.name }}</h4>
@@ -104,8 +104,8 @@
           <div v-if="showAllDestinations" class="more-destinations">
             <h4 class="more-destinations-title">TOP 31-100 여행지</h4>
             <div class="more-destinations-grid">
-              <div v-for="(destination, index) in currentPopularDestinations.slice(30)" :key="destination.id" class="more-destination-item">
-                <span class="more-destination-rank">{{ index + 31 }}</span>
+              <div v-for="destination in currentPopularDestinations.slice(30)" :key="destination.id" class="more-destination-item">
+                <span class="more-destination-rank">{{ destination.displayRank }}</span>
                 <span class="more-destination-name">{{ destination.name }}</span>
                 <span class="more-destination-location">{{ destination.location }}</span>
                 <div class="more-destination-rating">
@@ -204,7 +204,6 @@
         if (!activeRegion.value) return null;
         
         const region = regions.value.find(region => region.CTPRVN_CD === activeRegion.value);
-        console.log("찾은 지역 정보:", region);
         return region;
       });
       
@@ -213,7 +212,6 @@
         if (!activeSig.value) return null;
         
         const sigItem = sigPropertiesData.find(item => item.SIG_CD === activeSig.value);
-        console.log("찾은 시군구 정보:", sigItem);
         return sigItem;
       });
       
@@ -341,9 +339,12 @@
           // 바로 상세 지도를 표시
           showDetailMap.value = true; 
           
+          // 선택된 지역의 시군구별 인기도 점수 계산 및 로깅
+          const sigScores = calculateSigPopularityScore(regionCode);
+          console.log(`${regionCode} 지역 시군구별 인기도 점수:`, sigScores.sigScores);
+          
           // nextTick을 사용하여 DOM이 업데이트된 후 상세 지도 렌더링
           nextTick(() => {
-            console.log("상세 지도 컨테이너 확인:", detailMapContainer.value);
             if (detailMapContainer.value) {
               renderDetailMap(regionCode);
             } else {
@@ -360,6 +361,12 @@
           activeSig.value = null;
         } else {
           activeSig.value = sigCode;
+          
+          // 시군구 인기도 점수 로깅 (해당 시군구의 점수만)
+          if (sigPopularityScores.value && sigPopularityScores.value.sigScores[sigCode]) {
+            console.log(`${sigCode} 시군구 인기도 점수:`, sigPopularityScores.value.sigScores[sigCode]);
+          }
+          
           updateDetailMapSelection();
         }
       };
@@ -380,20 +387,29 @@
           showDefaultInfo.value = true;
           // 광역시도 지도 선택 상태 업데이트
           updateMapSelection();
+          // 인기 여행지 목록 초기화를 위해 showAllDestinations 초기화
+          showAllDestinations.value = false;
         } else {
           // 광역시도 지도에서 선택 초기화하는 경우
           activeRegion.value = null;
           // 기본 정보 표시
           showDefaultInfo.value = true;
           updateMapSelection();
+          // 인기 여행지 목록 초기화를 위해 showAllDestinations 초기화
+          showAllDestinations.value = false;
         }
       };
   
       // 인기도 점수에 따른 색상 생성 함수
       const getColorByScore = (regionCode) => {
+        // 제주도는 인기 여행지 TOP 100에 포함되어 있으므로 직접 높은 인기도 색상 적용
+        if (regionCode === "50") {
+          return '#ffab91'; // 매우 높음 색상 (코랄 주황빛 파스텔)
+        }
+        
         // 점수 정보가 없으면 기본 색상 반환
         if (!regionPopularityScores.value || !regionPopularityScores.value.regionScores[regionCode]) {
-          return '#e0e0e0'; // 기본 연한 회색
+          return '#e2f0fa'; // 매우 낮음 색상으로 변경 (연한 하늘색)
         }
 
         // 정규화된 점수 (0~1 범위)
@@ -404,21 +420,28 @@
         const colorScale = d3.scaleSequential()
           .domain([0, 1])
           .interpolator(d3.interpolateRgbBasis([
-            '#e2f0fa', // 연한 하늘색
-            '#fff9c4', // 파스텔 노랑
-            '#ffcc80', // 파스텔 주황
-            '#ffab91', // 코랄(주황빛 파스텔)
-            '#ffcdd2'  // 파스텔 빨강
+            '#e2f0fa', // 연한 하늘색 (매우 낮음)
+            '#fff9c4', // 파스텔 노랑 (낮음)
+            '#ffcc80', // 파스텔 주황 (중간)
+            '#ffcdd2', // 파스텔 빨강 (높음) - 변경됨
+            '#ffab91'  // 코랄(주황빛 파스텔) (매우 높음) - 변경됨
           ]));
         
-        return colorScale(score);
+        const color = colorScale(score);
+        
+        return color;
       };
       
       // 시군구 인기도 점수에 따른 색상 생성 함수
       const getSigColorByScore = (sigCode) => {
+        // 제주도 시군구인 경우 직접 높은 인기도 색상 적용
+        if (sigCode && sigCode.startsWith("50")) {
+          return '#ffab91'; // 매우 높음 색상 (코랄 주황빛 파스텔)
+        }
+        
         // 점수 정보가 없으면 기본 색상 반환
         if (!sigPopularityScores.value || !sigPopularityScores.value.sigScores[sigCode]) {
-          return '#e0e0e0'; // 기본 연한 회색
+          return '#e2f0fa'; // 매우 낮음 색상으로 변경 (연한 하늘색)
         }
         
         // 정규화된 점수 (0~1 범위)
@@ -429,11 +452,11 @@
         const colorScale = d3.scaleSequential()
           .domain([0, 1])
           .interpolator(d3.interpolateRgbBasis([
-            '#e2f0fa', // 연한 하늘색
-            '#fff9c4', // 파스텔 노랑
-            '#ffcc80', // 파스텔 주황
-            '#ffab91', // 코랄(주황빛 파스텔)
-            '#ffcdd2'  // 파스텔 빨강
+            '#e2f0fa', // 연한 하늘색 (매우 낮음)
+            '#fff9c4', // 파스텔 노랑 (낮음)
+            '#ffcc80', // 파스텔 주황 (중간)
+            '#ffcdd2', // 파스텔 빨강 (높음) - 변경됨
+            '#ffab91'  // 코랄(주황빛 파스텔) (매우 높음) - 변경됨
           ]));
         
         return colorScale(score);
@@ -562,8 +585,6 @@
             }
           });
           
-          console.log("좌표 범위:", { minX, minY, maxX, maxY });
-          
           // 지도 투영법 설정
           const projection = d3.geoIdentity()
             .reflectY(true)
@@ -589,8 +610,8 @@
               }
               return '#75D7B8'; // 기본 색상
             })
-            .attr('stroke', '#ffffff')
-            .attr('stroke-width', 0.5)
+            .attr('stroke', '#2D3748') // 검정에 가까운 어두운 회색으로 되돌림
+            .attr('stroke-width', 0.7) // 적당한 두께로 조정
             .style('cursor', 'pointer');
   
           // 지역 호버 이벤트
@@ -620,7 +641,7 @@
               d3.select(this)
                 .transition()
                 .duration(200)
-                .attr('stroke-width', 0.5);
+                .attr('stroke-width', 0.7);
             }
           });
   
@@ -686,17 +707,12 @@
 
         // 시군구별 인기도 점수 계산
         sigPopularityScores.value = calculateSigPopularityScore(regionCode);
-        console.log("시군구별 인기도 점수:", sigPopularityScores.value);
-
-        console.log("상세 지도 렌더링 시작:", regionCode);
 
         // 기존 SVG 제거 (재렌더링 시)
         d3.select(container).selectAll("svg").remove();
 
         const width = container.clientWidth;
         const height = container.clientHeight;
-
-        console.log("상세 지도 컨테이너 크기:", width, height);
 
         // SVG 생성
         const svg = d3.select(container)
@@ -746,35 +762,22 @@
         detailMap = g; // 전역 참조 저장
   
         try {
-          console.log("sigGeoJson 데이터 확인:", sigGeoJson.type, sigGeoJson.features.length);
-          console.log("선택된 광역시도 코드:", regionCode, "타입:", typeof regionCode);
-          
           // 지역 코드의 앞 2자리를 사용하여 해당 지역의 시군구만 필터링
           const filteredFeatures = sigGeoJson.features.filter(feature => {
             // 더 안전한 속성 접근 방식
             if (!feature.properties || !feature.properties.SIG_CD) {
-              console.log("SIG_CD가 없는 feature:", feature);
               return false;
             }
             
             const sigCode = feature.properties.SIG_CD;
-            console.log("비교중:", sigCode, "타입:", typeof sigCode);
             
             // 앞 2자리 추출 (문자열로 처리)
             const sigCodePrefix = sigCode.toString().substring(0, 2);
             const regionCodeStr = regionCode.toString();
             
             // 정확한 비교를 위해 문자열로 변환해서 비교
-            const match = sigCodePrefix === regionCodeStr;
-            
-            if (match) {
-              console.log("매칭된 시군구:", sigCode, feature.properties.SIG_KOR_NM);
-            }
-            
-            return match;
+            return sigCodePrefix === regionCodeStr;
           });
-
-          console.log(`필터링된 시군구 개수: ${filteredFeatures.length}`);
 
           if (filteredFeatures.length === 0) {
             console.log("선택한 지역에 대한 시군구 데이터가 없습니다. 지역 코드:", regionCode);
@@ -818,8 +821,8 @@
               }
               return '#87CEEB'; // 기본 하늘색
             })
-            .attr('stroke', '#ffffff')
-            .attr('stroke-width', 0.5)
+            .attr('stroke', '#2D3748') // 검정에 가까운 어두운 회색으로 되돌림
+            .attr('stroke-width', 0.7) // 적당한 두께로 조정
             .style('cursor', 'pointer');
             
           detailMap = g; // 전역 참조 저장
@@ -856,7 +859,7 @@
               d3.select(this)
                 .transition()
                 .duration(200)
-                .attr('fill', '#4a89dc')
+                .attr('fill', '#a8e6cf') // 파스텔톤 연두색으로 변경
                 .attr('stroke-width', 1.5);
             } else {
               const sigCode = d3.select(this).datum().properties.SIG_CD;
@@ -864,7 +867,7 @@
                 .transition()
                 .duration(200)
                 .attr('fill', getSigColorByScore(sigCode))
-                .attr('stroke-width', 0.5);
+                .attr('stroke-width', 0.7);
             }
 
             // 툴팁 숨기기
@@ -942,7 +945,7 @@
           detailMap.selectAll('.region')
             .filter(d => d.properties.SIG_CD === activeSig.value)
             .classed('selected', true)
-            .attr('fill', '#4a89dc'); // 선택된 지역은 파란색으로 강조
+            .attr('fill', '#a8e6cf'); // 선택된 지역은 파스텔톤 연두색으로 강조
         }
       };
   
@@ -963,12 +966,10 @@
       });
   
       // activeRegion 변경 감지
-      watch(activeRegion, (newValue, oldValue) => {
-        console.log("Active region changed to:", newValue, "from:", oldValue);
+      watch(activeRegion, (newValue) => {
         if (newValue !== null) {
           showDetailMap.value = true;
           nextTick(() => {
-            console.log("watch에서 상세 지도 컨테이너 확인:", detailMapContainer.value);
             if (detailMapContainer.value) {
               renderDetailMap(newValue);
               // 시군구 지도 렌더링 후 범례 추가
@@ -1014,8 +1015,8 @@
         
         // 파스텔 색상 5단계 범례
         const gradientItems = [
-          { label: '매우 높음', color: '#ffcdd2' }, // 파스텔 빨강
-          { label: '높음', color: '#ffab91' },      // 코랄(주황빛 파스텔)
+          { label: '매우 높음', color: '#ffab91' }, // 코랄(주황빛 파스텔) - 변경됨
+          { label: '높음', color: '#ffcdd2' },      // 파스텔 빨강 - 변경됨
           { label: '중간', color: '#ffcc80' },      // 파스텔 주황
           { label: '낮음', color: '#fff9c4' },      // 파스텔 노랑
           { label: '매우 낮음', color: '#e2f0fa' }   // 연한 하늘색
@@ -1067,8 +1068,8 @@
         
         // 파스텔 색상 5단계 범례
         const gradientItems = [
-          { label: '매우 높음', color: '#ffcdd2' }, // 파스텔 빨강
-          { label: '높음', color: '#ffab91' },      // 코랄(주황빛 파스텔)
+          { label: '매우 높음', color: '#ffab91' }, // 코랄(주황빛 파스텔) - 변경됨
+          { label: '높음', color: '#ffcdd2' },      // 파스텔 빨강 - 변경됨
           { label: '중간', color: '#ffcc80' },      // 파스텔 주황
           { label: '낮음', color: '#fff9c4' },      // 파스텔 노랑
           { label: '매우 낮음', color: '#e2f0fa' }   // 연한 하늘색
@@ -1097,14 +1098,11 @@
         // 마우스 이벤트 리스너 등록
         window.addEventListener('mousemove', updateMousePosition);
   
-        // 데이터 확인을 위한 디버깅 로그
-        console.log("ctprvnGeoJson 데이터 구조:", ctprvnGeoJson.type);
-        console.log("첫 번째 feature 구조:", ctprvnGeoJson.features[0]);
-        console.log("propertiesData 개수:", propertiesData.length);
-  
         // 지역별 인기도 점수 계산
         regionPopularityScores.value = calculateRegionPopularityScore();
-        console.log("지역별 인기도 점수:", regionPopularityScores.value);
+        
+        // 각 지역별 인기도 점수 로깅
+        console.log("지역별 인기도 점수:", regionPopularityScores.value.regionScores);
   
         // 지도 렌더링
         renderMap();
@@ -1168,11 +1166,12 @@
   /* 히어로 섹션 */
   .hero-section {
     position: relative;
-    height: 200px;
-    background-image: url('https://images.unsplash.com/photo-1584872581419-51c239dc9537?q=80&w=1470');
+    height: 320px; /* KeywordSearch.vue와 동일하게 320px로 수정 */
+    background-image: url('https://images.unsplash.com/photo-1470770841072-f978cf4d019e?q=80&w=1470'); /* 새로운 배경 이미지 URL */
     background-size: cover;
     background-position: center;
     margin-bottom: 0;
+    padding-top: 7rem; /* 헤더 높이만큼 패딩 유지 */
   }
   
   .hero-overlay {
@@ -1181,7 +1180,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(118, 179, 157, 0.9));
+    background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)); /* KeywordSearch.vue와 동일한 오버레이 */
   }
   
   .hero-content {
