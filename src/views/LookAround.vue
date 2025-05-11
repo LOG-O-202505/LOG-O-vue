@@ -70,9 +70,9 @@
         
         <!-- 인기 여행지 섹션 추가 -->
         <div class="popular-destinations-section">
-          <h3 class="section-title">인기 여행지 TOP 10</h3>
+          <h3 class="section-title">인기 여행지 TOP 100 <span>(전국 기준 평점 순위)</span></h3>
           <div class="destinations-grid">
-            <div v-for="(destination, index) in currentPopularDestinations" :key="destination.id" class="destination-card">
+            <div v-for="(destination, index) in currentPopularDestinations.slice(0, 30)" :key="destination.id" class="destination-card">
               <div class="destination-rank">{{ index + 1 }}</div>
               <div class="destination-image" :style="{ backgroundImage: `url(${destination.image})` }"></div>
               <div class="destination-content">
@@ -91,6 +91,31 @@
                 </div>
               </div>
             </div>
+          </div>
+          
+          <!-- 더 많은 여행지 버튼 추가 -->
+          <div class="view-more-container" v-if="!showAllDestinations">
+            <button class="view-more-button" @click="showAllDestinations = true">
+              모든 TOP 100 여행지 보기
+            </button>
+          </div>
+          
+          <!-- 더 많은 여행지 표시 영역 -->
+          <div v-if="showAllDestinations" class="more-destinations">
+            <h4 class="more-destinations-title">TOP 31-100 여행지</h4>
+            <div class="more-destinations-grid">
+              <div v-for="(destination, index) in currentPopularDestinations.slice(30)" :key="destination.id" class="more-destination-item">
+                <span class="more-destination-rank">{{ index + 31 }}</span>
+                <span class="more-destination-name">{{ destination.name }}</span>
+                <span class="more-destination-location">{{ destination.location }}</span>
+                <div class="more-destination-rating">
+                  <span class="more-rating-value">{{ destination.rating }}</span>
+                </div>
+              </div>
+            </div>
+            <button class="view-less-button" @click="showAllDestinations = false">
+              접기
+            </button>
           </div>
         </div>
       </div>
@@ -111,7 +136,7 @@
   import sigGeoJson from '@/assets/sig.json';
   import sigPropertiesData from '@/assets/extracted_properties.json';
   // 데이터 파일 가져오기
-  import { regionSpecialtyData, sigSpecialtyData, getTravelDestinations } from '@/data/tmpData.js';
+  import { regionSpecialtyData, sigSpecialtyData, getTravelDestinations, calculateRegionPopularityScore, calculateSigPopularityScore } from '@/data/tmpData.js';
   
   export default {
     name: 'LookAroundAll',
@@ -133,6 +158,9 @@
       const regions = ref(propertiesData); // 지역 데이터 반응형으로 관리
       const showDetailMap = ref(false); // 상세 지도 표시 여부
       const showDefaultInfo = ref(true); // 초기 정보 패널 표시 여부
+      const regionPopularityScores = ref(null); // 지역별 인기도 점수
+      const sigPopularityScores = ref(null); // 시군구별 인기도 점수
+      const showAllDestinations = ref(false); // 모든 여행지 표시 여부
       
       // 시군구 관련 상태 변수
       const activeSig = ref(null); // 활성화된 시군구 코드
@@ -209,13 +237,13 @@
       const currentPopularDestinations = computed(() => {
         if (currentMapLevel.value === 'sig' && activeSig.value) {
           // 시군구별 데이터 (가장 작은 단위)
-          return getTravelDestinations(null, activeSig.value, 10);
+          return getTravelDestinations(null, activeSig.value, 100);
         } else if (activeRegion.value) {
           // 광역시도별 데이터
-          return getTravelDestinations(activeRegion.value, null, 10);
+          return getTravelDestinations(activeRegion.value, null, 100);
         } else {
           // 전국 데이터 (기본값)
-          return getTravelDestinations(null, null, 10);
+          return getTravelDestinations(null, null, 100);
         }
       });
       
@@ -361,23 +389,80 @@
         }
       };
   
+      // 인기도 점수에 따른 색상 생성 함수
+      const getColorByScore = (regionCode) => {
+        // 점수 정보가 없으면 기본 색상 반환
+        if (!regionPopularityScores.value || !regionPopularityScores.value.regionScores[regionCode]) {
+          return '#e0e0e0'; // 기본 연한 회색
+        }
+
+        // 정규화된 점수 (0~1 범위)
+        const score = regionPopularityScores.value.regionScores[regionCode];
+        
+        // 파스텔 색상 팔레트
+        // 파스텔 빨강 -> 코랄(주황) -> 파스텔 주황 -> 파스텔 노랑 -> 연한 하늘색
+        const colorScale = d3.scaleSequential()
+          .domain([0, 1])
+          .interpolator(d3.interpolateRgbBasis([
+            '#e2f0fa', // 연한 하늘색
+            '#fff9c4', // 파스텔 노랑
+            '#ffcc80', // 파스텔 주황
+            '#ffab91', // 코랄(주황빛 파스텔)
+            '#ffcdd2'  // 파스텔 빨강
+          ]));
+        
+        return colorScale(score);
+      };
+      
+      // 시군구 인기도 점수에 따른 색상 생성 함수
+      const getSigColorByScore = (sigCode) => {
+        // 점수 정보가 없으면 기본 색상 반환
+        if (!sigPopularityScores.value || !sigPopularityScores.value.sigScores[sigCode]) {
+          return '#e0e0e0'; // 기본 연한 회색
+        }
+        
+        // 정규화된 점수 (0~1 범위)
+        const score = sigPopularityScores.value.sigScores[sigCode];
+        
+        // 파스텔 색상 팔레트
+        // 파스텔 빨강 -> 코랄(주황) -> 파스텔 주황 -> 파스텔 노랑 -> 연한 하늘색
+        const colorScale = d3.scaleSequential()
+          .domain([0, 1])
+          .interpolator(d3.interpolateRgbBasis([
+            '#e2f0fa', // 연한 하늘색
+            '#fff9c4', // 파스텔 노랑
+            '#ffcc80', // 파스텔 주황
+            '#ffab91', // 코랄(주황빛 파스텔)
+            '#ffcdd2'  // 파스텔 빨강
+          ]));
+        
+        return colorScale(score);
+      };
+  
       // 지도 선택 상태 업데이트
       const updateMapSelection = () => {
         if (!map) return;
   
-        // 모든 지역 선택 상태 초기화 (기본 민트색으로)
+        // 모든 지역 데이터 가져오기
         map.selectAll('.region')
           .classed('selected', false)
-          .attr('fill', '#75D7B8');
+          .attr('fill', function(d) {
+            // 데이터가 없으면 기본 색상 반환
+            if (!d || !d.properties || !d.properties.CTPRVN_CD) {
+              return '#75D7B8';
+            }
+            
+            return getColorByScore(d.properties.CTPRVN_CD);
+          });
   
-        // 선택된 지역 강조 (핑크색으로)
+        // 선택된 지역 강조 (파란색으로)
         if (activeRegion.value) {
           map.selectAll('.region')
             .filter(d => {
               return d.properties.CTPRVN_CD === activeRegion.value;
             })
             .classed('selected', true)
-            .attr('fill', '#ff9d9d'); // 핑크색
+            .attr('fill', '#4a89dc'); // 강조 색상
         }
       };
   
@@ -497,7 +582,13 @@
             .append('path')
             .attr('class', 'region')
             .attr('d', path)
-            .attr('fill', '#75D7B8')
+            .attr('fill', function(d) {
+              // 인기도 점수에 따른 색상 적용
+              if (d && d.properties && d.properties.CTPRVN_CD) {
+                return getColorByScore(d.properties.CTPRVN_CD);
+              }
+              return '#75D7B8'; // 기본 색상
+            })
             .attr('stroke', '#ffffff')
             .attr('stroke-width', 0.5)
             .style('cursor', 'pointer');
@@ -592,6 +683,10 @@
 
         // 시군구 선택 초기화
         activeSig.value = null;
+
+        // 시군구별 인기도 점수 계산
+        sigPopularityScores.value = calculateSigPopularityScore(regionCode);
+        console.log("시군구별 인기도 점수:", sigPopularityScores.value);
 
         console.log("상세 지도 렌더링 시작:", regionCode);
 
@@ -716,7 +811,13 @@
             .append('path')
             .attr('class', 'region')
             .attr('d', path)
-            .attr('fill', '#87CEEB') // 상세 지도는 다른 색상(하늘색)으로 표시
+            .attr('fill', function(d) {
+              // 인기도 점수에 따른 색상 적용
+              if (d && d.properties && d.properties.SIG_CD) {
+                return getSigColorByScore(d.properties.SIG_CD);
+              }
+              return '#87CEEB'; // 기본 하늘색
+            })
             .attr('stroke', '#ffffff')
             .attr('stroke-width', 0.5)
             .style('cursor', 'pointer');
@@ -728,7 +829,6 @@
             d3.select(this)
               .transition()
               .duration(200)
-              .attr('fill', '#ff9d9d')
               .attr('stroke-width', 1.5);
 
             // 시군구 정보 설정 및 툴팁 표시
@@ -756,13 +856,14 @@
               d3.select(this)
                 .transition()
                 .duration(200)
-                .attr('fill', '#ff9d9d')
+                .attr('fill', '#4a89dc')
                 .attr('stroke-width', 1.5);
             } else {
+              const sigCode = d3.select(this).datum().properties.SIG_CD;
               d3.select(this)
                 .transition()
                 .duration(200)
-                .attr('fill', '#87CEEB')
+                .attr('fill', getSigColorByScore(sigCode))
                 .attr('stroke-width', 0.5);
             }
 
@@ -824,17 +925,24 @@
       const updateDetailMapSelection = () => {
         if (!detailMap) return;
         
-        // 모든 시군구 선택 상태 초기화
+        // 모든 시군구 선택 상태 초기화하고 인기도에 따른 색상 적용
         detailMap.selectAll('.region')
           .classed('selected', false)
-          .attr('fill', '#87CEEB');
+          .attr('fill', function(d) {
+            // 데이터가 없으면 기본 색상 반환
+            if (!d || !d.properties || !d.properties.SIG_CD) {
+              return '#87CEEB';
+            }
+            
+            return getSigColorByScore(d.properties.SIG_CD);
+          });
           
         // 선택된 시군구 강조
         if (activeSig.value) {
           detailMap.selectAll('.region')
             .filter(d => d.properties.SIG_CD === activeSig.value)
             .classed('selected', true)
-            .attr('fill', '#ff9d9d');
+            .attr('fill', '#4a89dc'); // 선택된 지역은 파란색으로 강조
         }
       };
   
@@ -863,6 +971,10 @@
             console.log("watch에서 상세 지도 컨테이너 확인:", detailMapContainer.value);
             if (detailMapContainer.value) {
               renderDetailMap(newValue);
+              // 시군구 지도 렌더링 후 범례 추가
+              nextTick(() => {
+                addSigLegend();
+              });
             }
           });
         } else {
@@ -874,6 +986,112 @@
         }
       });
   
+      // 인기 지역 범례 추가
+      const addLegend = () => {
+        if (!mapContainer.value) return;
+        
+        const container = d3.select(mapContainer.value);
+        
+        // 기존 범례 삭제
+        container.select('.map-legend').remove();
+        
+        const legend = container.append('div')
+          .attr('class', 'map-legend')
+          .style('position', 'absolute')
+          .style('bottom', '20px')
+          .style('right', '20px')
+          .style('background-color', 'rgba(255, 255, 255, 0.9)')
+          .style('padding', '10px')
+          .style('border-radius', '5px')
+          .style('box-shadow', '0 1px 4px rgba(0,0,0,0.2)')
+          .style('font-size', '12px')
+          .style('z-index', '10');
+        
+        legend.append('div')
+          .style('font-weight', 'bold')
+          .style('margin-bottom', '8px')
+          .text('여행지 인기도');
+        
+        // 파스텔 색상 5단계 범례
+        const gradientItems = [
+          { label: '매우 높음', color: '#ffcdd2' }, // 파스텔 빨강
+          { label: '높음', color: '#ffab91' },      // 코랄(주황빛 파스텔)
+          { label: '중간', color: '#ffcc80' },      // 파스텔 주황
+          { label: '낮음', color: '#fff9c4' },      // 파스텔 노랑
+          { label: '매우 낮음', color: '#e2f0fa' }   // 연한 하늘색
+        ];
+        
+        gradientItems.forEach(item => {
+          const itemDiv = legend.append('div')
+            .style('display', 'flex')
+            .style('align-items', 'center')
+            .style('margin-bottom', '3px');
+          
+          itemDiv.append('div')
+            .style('width', '15px')
+            .style('height', '15px')
+            .style('background-color', item.color)
+            .style('margin-right', '5px')
+            .style('border', '1px solid #ddd');
+          
+          itemDiv.append('span')
+            .text(item.label);
+        });
+      };
+      
+      // 시군구 범례 추가
+      const addSigLegend = () => {
+        if (!detailMapContainer.value) return;
+        
+        const container = d3.select(detailMapContainer.value);
+        
+        // 기존 범례 삭제
+        container.select('.sig-map-legend').remove();
+        
+        const legend = container.append('div')
+          .attr('class', 'sig-map-legend')
+          .style('position', 'absolute')
+          .style('bottom', '20px')
+          .style('right', '20px')
+          .style('background-color', 'rgba(255, 255, 255, 0.9)')
+          .style('padding', '10px')
+          .style('border-radius', '5px')
+          .style('box-shadow', '0 1px 4px rgba(0,0,0,0.2)')
+          .style('font-size', '12px')
+          .style('z-index', '10');
+        
+        legend.append('div')
+          .style('font-weight', 'bold')
+          .style('margin-bottom', '8px')
+          .text('지역구별 여행지 인기도');
+        
+        // 파스텔 색상 5단계 범례
+        const gradientItems = [
+          { label: '매우 높음', color: '#ffcdd2' }, // 파스텔 빨강
+          { label: '높음', color: '#ffab91' },      // 코랄(주황빛 파스텔)
+          { label: '중간', color: '#ffcc80' },      // 파스텔 주황
+          { label: '낮음', color: '#fff9c4' },      // 파스텔 노랑
+          { label: '매우 낮음', color: '#e2f0fa' }   // 연한 하늘색
+        ];
+        
+        gradientItems.forEach(item => {
+          const itemDiv = legend.append('div')
+            .style('display', 'flex')
+            .style('align-items', 'center')
+            .style('margin-bottom', '3px');
+          
+          itemDiv.append('div')
+            .style('width', '15px')
+            .style('height', '15px')
+            .style('background-color', item.color)
+            .style('margin-right', '5px')
+            .style('border', '1px solid #ddd');
+          
+          itemDiv.append('span')
+            .text(item.label);
+        });
+      };
+  
       // 컴포넌트 마운트 시 처리
       onMounted(() => {
         // 마우스 이벤트 리스너 등록
@@ -884,8 +1102,15 @@
         console.log("첫 번째 feature 구조:", ctprvnGeoJson.features[0]);
         console.log("propertiesData 개수:", propertiesData.length);
   
+        // 지역별 인기도 점수 계산
+        regionPopularityScores.value = calculateRegionPopularityScore();
+        console.log("지역별 인기도 점수:", regionPopularityScores.value);
+  
         // 지도 렌더링
         renderMap();
+        
+        // 범례 추가
+        addLegend();
       });
   
       // 컴포넌트 언마운트 시 처리
@@ -921,7 +1146,8 @@
         showSigTooltip,
         // 데이터 관련 추가 변수
         currentRegionData,
-        currentPopularDestinations
+        currentPopularDestinations,
+        showAllDestinations
       };
     }
   };
@@ -1314,9 +1540,16 @@
     margin-bottom: 3rem; /* 추가된 하단 여백 */
   }
   
+  .section-title span {
+    font-size: 0.9rem;
+    font-weight: 400;
+    margin-left: 0.5rem;
+    color: #777;
+  }
+  
   .destinations-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 1rem;
     margin-top: 1.5rem;
   }
@@ -1330,7 +1563,7 @@
     transition: all 0.3s ease;
     display: flex;
     flex-direction: column;
-    height: 280px;
+    height: 230px; /* 조금 더 작은 카드 */
   }
   
   .destination-card:hover {
@@ -1342,8 +1575,8 @@
     position: absolute;
     top: 10px;
     left: 10px;
-    width: 26px;
-    height: 26px;
+    width: 24px;
+    height: 24px;
     background-color: rgba(0, 0, 0, 0.7);
     color: white;
     font-weight: bold;
@@ -1351,13 +1584,13 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     z-index: 2;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   }
   
   .destination-image {
-    height: 150px;
+    height: 120px;
     background-size: cover;
     background-position: center;
     transition: transform 0.5s ease;
@@ -1368,17 +1601,20 @@
   }
   
   .destination-content {
-    padding: 1rem;
+    padding: 0.8rem;
     flex-grow: 1;
     display: flex;
     flex-direction: column;
   }
   
   .destination-content h4 {
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: 600;
-    margin: 0 0 0.5rem 0;
+    margin: 0 0 0.4rem 0;
     color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   
   .destination-location {
@@ -1386,8 +1622,11 @@
     align-items: center;
     gap: 0.3rem;
     color: #777;
-    font-size: 0.8rem;
-    margin-bottom: 0.5rem;
+    font-size: 0.75rem;
+    margin-bottom: 0.4rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   
   .destination-rating {
@@ -1398,7 +1637,7 @@
   
   .star {
     color: #d0d0d0;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     margin-right: 2px;
   }
   
@@ -1408,12 +1647,44 @@
   
   .rating-value {
     color: #555;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     margin-left: 0.5rem;
     font-weight: 500;
   }
   
+  /* 더 많은 여행지 보기 버튼 */
+  .view-more-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 2rem;
+  }
+  
+  .view-more-button, .view-less-button {
+    background-color: #f5f5f5;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #333;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    transition: all 0.2s ease;
+  }
+  
+  .view-more-button:hover, .view-less-button:hover {
+    background-color: #e0e0e0;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+  
   /* 반응형 디자인 */
+  @media (max-width: 1400px) {
+    .destinations-grid {
+      grid-template-columns: repeat(5, 1fr);
+    }
+  }
+  
   @media (max-width: 1200px) {
     .destinations-grid {
       grid-template-columns: repeat(4, 1fr);
@@ -1462,6 +1733,106 @@
     
     .map-section {
       height: 450px; /* 모바일에서 적절한 크기로 조정 */
+    }
+  }
+  
+  /* 더 많은 여행지 표시 영역 */
+  .more-destinations {
+    margin-top: 2rem;
+    background-color: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  }
+  
+  .more-destinations-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: #333;
+  }
+  
+  .more-destinations-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .more-destination-item {
+    display: flex;
+    align-items: center;
+    padding: 0.8rem;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+    font-size: 0.9rem;
+  }
+  
+  .more-destination-rank {
+    width: 25px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #eaeaea;
+    border-radius: 50%;
+    font-weight: 600;
+    margin-right: 10px;
+    font-size: 0.8rem;
+  }
+  
+  .more-destination-name {
+    font-weight: 600;
+    margin-right: 10px;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .more-destination-location {
+    color: #777;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    margin-right: 10px;
+    max-width: 30%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .more-destination-rating {
+    background-color: #ffcc00;
+    border-radius: 3px;
+    padding: 2px 5px;
+    color: white;
+    font-weight: 600;
+    font-size: 0.8rem;
+  }
+  
+  .view-less-button {
+    display: block;
+    margin: 0 auto;
+  }
+  
+  /* 지도 범례 스타일 */
+  .map-legend {
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+
+  /* 더 많은 여행지 영역 반응형 */
+  @media (max-width: 992px) {
+    .more-destinations-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  
+  @media (max-width: 576px) {
+    .more-destinations-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .more-destination-location {
+      display: none;
     }
   }
   </style> 

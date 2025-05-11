@@ -479,7 +479,7 @@ export const allDestinations = [
 ];
 
 // 데이터 가져오기 함수들 - 백엔드 API 대신 사용
-export const getTravelDestinations = (regionCode = null, sigCode = null, limit = 10) => {
+export const getTravelDestinations = (regionCode = null, sigCode = null, limit = 100) => {
   let filteredDestinations = [];
   
   if (sigCode) {
@@ -522,4 +522,110 @@ export const getTravelDestinations = (regionCode = null, sigCode = null, limit =
   
   // 요청한 개수만큼 반환
   return uniqueDestinations.slice(0, limit);
+};
+
+// 지역별 인기도 점수 계산 함수
+export const calculateRegionPopularityScore = () => {
+  // TOP 100 여행지 가져오기
+  const top100Destinations = getTravelDestinations(null, null, 100);
+  
+  // 광역시도별 점수 합계를 저장할 객체
+  const regionScores = {};
+  
+  // 각 여행지에 순위에 따른 점수 부여 (1등: 100점, 100등: 1점)
+  top100Destinations.forEach((dest, index) => {
+    const score = 100 - index; // 100점부터 시작해서 1점까지
+    const regionCode = dest.region;
+    
+    // 지역 코드별로 점수 합산
+    if (!regionScores[regionCode]) {
+      regionScores[regionCode] = 0;
+    }
+    regionScores[regionCode] += score;
+  });
+  
+  // 점수를 배열 형태로 변환하고 점수 기준 내림차순 정렬
+  const regionScoreArray = Object.entries(regionScores).map(([regionCode, score]) => ({
+    regionCode,
+    score
+  })).sort((a, b) => b.score - a.score);
+  
+  // 최대 점수와 최소 점수 찾기
+  const maxScore = regionScoreArray.length > 0 ? regionScoreArray[0].score : 0;
+  const minScore = regionScoreArray.length > 0 ? regionScoreArray[regionScoreArray.length - 1].score : 0;
+  
+  // 점수 범위
+  const scoreRange = maxScore - minScore;
+  
+  // 정규화된 점수 계산 (0~1 범위로)
+  const normalizedScores = {};
+  regionScoreArray.forEach(item => {
+    // 점수가 모두 같으면 1로 설정, 아니면 정규화
+    normalizedScores[item.regionCode] = scoreRange === 0 
+      ? 1 
+      : (item.score - minScore) / scoreRange;
+  });
+  
+  return {
+    regionScores: normalizedScores, // 0~1 사이로 정규화된 점수
+    rawScores: regionScoreArray     // 원본 점수 및 순위 정보
+  };
+};
+
+// 시군구별 인기도 점수 계산 함수
+export const calculateSigPopularityScore = (regionCode) => {
+  if (!regionCode) return null;
+  
+  // 특정 광역시도 내의 여행지 추출
+  const regionDestinations = getTravelDestinations(regionCode, null, 100);
+  
+  // 시군구별 점수 합계를 저장할 객체
+  const sigScores = {};
+  
+  // 각 여행지에 랭킹 및 평점에 따라 점수 부여
+  regionDestinations.forEach((dest, index) => {
+    // 평점 반영 (5점 만점 기준으로 20을 곱하여 최대 100점)
+    const ratingScore = dest.rating * 20;
+    
+    // 지역 내 인덱스에 따른 순위 점수 (최대 100점)
+    const rankScore = Math.max(0, 100 - (index * 2));
+    
+    // 두 점수의 평균을 최종 점수로 계산
+    const finalScore = (ratingScore + rankScore) / 2;
+    
+    const sigCode = dest.sig;
+    
+    // 시군구 코드별로 점수 합산
+    if (!sigScores[sigCode]) {
+      sigScores[sigCode] = 0;
+    }
+    sigScores[sigCode] += finalScore;
+  });
+  
+  // 점수를 배열 형태로 변환하고 점수 기준 내림차순 정렬
+  const sigScoreArray = Object.entries(sigScores).map(([sigCode, score]) => ({
+    sigCode,
+    score
+  })).sort((a, b) => b.score - a.score);
+  
+  // 최대 점수와 최소 점수 찾기
+  const maxScore = sigScoreArray.length > 0 ? sigScoreArray[0].score : 0;
+  const minScore = sigScoreArray.length > 0 ? sigScoreArray[sigScoreArray.length - 1].score : 0;
+  
+  // 점수 범위
+  const scoreRange = maxScore - minScore;
+  
+  // 정규화된 점수 계산 (0~1 범위로)
+  const normalizedScores = {};
+  sigScoreArray.forEach(item => {
+    // 점수가 모두 같으면 1로 설정, 아니면 정규화
+    normalizedScores[item.sigCode] = scoreRange === 0 
+      ? 1 
+      : (item.score - minScore) / scoreRange;
+  });
+  
+  return {
+    sigScores: normalizedScores, // 0~1 사이로 정규화된 점수
+    rawScores: sigScoreArray     // 원본 점수 및 순위 정보
+  };
 }; 
