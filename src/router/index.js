@@ -3,6 +3,7 @@ import LogoSearch from '../views/LogoSearch.vue'
 import OnboardingPage from '../views/OnboardingPage.vue'
 import LookAround from '../views/LookAround.vue'
 import KeywordSearch from '../views/KeywordSearch.vue'
+import MyTravel from '../views/MyTravel.vue'
 
 const routes = [
   {
@@ -24,6 +25,11 @@ const routes = [
     path: '/keyword',
     name: 'KeywordSearch',
     component: KeywordSearch
+  },
+  {
+    path: '/mytravel',
+    name: 'MyTravel',
+    component: MyTravel
   }
 ]
 
