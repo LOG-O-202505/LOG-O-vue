@@ -675,4 +675,77 @@ export default {
 };
 </script>
 
-<style src="../styles/LogoSearch.css" scoped></style>
+<style scoped>
+/* 분석 결과 표 */
+.analysis-table-container {
+  overflow: auto;
+  border-radius: 8px;
+  height: 100%;
+  min-height: 250px;
+}
+
+.analysis-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.analysis-table th {
+  background-color: #2d3748;
+  color: white;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.analysis-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #2d3748;
+  vertical-align: middle;
+}
+
+.analysis-table tr:last-child td {
+  border-bottom: none;
+}
+
+.dimension-name {
+  color: #e2e8f0;
+  font-weight: 500;
+  width: 20%;
+}
+
+.dimension-score {
+  color: #4299e1;
+  font-weight: 600;
+  text-align: center;
+  width: 10%;
+}
+
+.dimension-bar {
+  padding-right: 1rem;
+  width: 70%;
+  background-color: transparent;
+}
+
+.bar-container {
+  height: 16px;
+  background-color: rgba(5, 14, 30, 0.2);
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.bar {
+  height: 100%;
+  background: linear-gradient(90deg, #3182ce, #63b3ed);
+  border-radius: 8px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  transition: width 0.5s ease;
+}
+
+/* 나머지 글로벌 스타일은 LogoSearch.css에서 임포트 */
+@import '../styles/LogoSearch.css';
+</style>

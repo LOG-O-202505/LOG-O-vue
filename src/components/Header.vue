@@ -12,8 +12,8 @@
       </div>
       
       <div class="nav-group">
-        <a href="#" class="nav-item">LOGIN</a>
-        <a href="#" class="nav-item">SIGN UP</a>
+        <router-link to="/blind" class="nav-item">COMMUNITY</router-link>
+        <router-link to="/mytravel" class="nav-item">MY JOURNEY</router-link>
       </div>
     </div>
   </nav>

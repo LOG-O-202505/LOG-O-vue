@@ -646,7 +646,7 @@ export default {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7));
+  background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.8));
   z-index: 1;
 }
 
@@ -782,6 +782,13 @@ export default {
 .hero-section {
   max-width: 800px;
   margin: 0 auto;
+  background: none !important;
+  background-image: none !important;
+}
+
+.main-title {
+  background: none !important;
+  background-image: none !important;
 }
 
 .travel-title {
@@ -795,7 +802,9 @@ export default {
   transform: translateY(20px);
   transition: all 0.8s ease-out;
   color: white;
-  text-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.8), 0 6px 20px rgba(0, 0, 0, 0.6);
+  background: none !important;
+  background-image: none !important;
 }
 
 .travel-title.visible {
@@ -813,8 +822,10 @@ export default {
   opacity: 0;
   transform: translateY(20px);
   transition: all 0.8s ease-out 0.2s;
-  color: rgba(255, 255, 255, 0.9);
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7), 0 4px 10px rgba(0, 0, 0, 0.5);
+  background: none !important;
+  background-image: none !important;
 }
 
 .korean-subtitle.visible {
