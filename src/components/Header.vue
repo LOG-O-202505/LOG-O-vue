@@ -1,42 +1,146 @@
 <template>
-  <nav class="navbar">
-    <div class="navbar-container">
-      <div class="nav-group">
-        <router-link to="/lookAround" class="nav-item">HOT PLACE</router-link>
-        <router-link to="/llamasearch" class="nav-item">SEARCH</router-link>
-        <router-link to="/keyword" class="nav-item">KEYWORD</router-link>
+  <div class="header-component-wrapper" 
+       :style="showHero && heroImageSrc ? { height: heroHeight } : {}"
+       :class="{ 'has-hero': showHero && heroImageSrc }">
+
+    <template v-if="showHero && heroImageSrc">
+      <div class="hero-background-internal" :style="{ backgroundImage: `url(${heroImageSrc})` }"></div>
+      <div class="hero-overlay-internal"></div>
+      <div class="hero-content-internal">
+        <h1 v-if="heroTitle" class="hero-title-internal">{{ heroTitle }}</h1>
+        <p v-if="heroSubtitle" class="hero-subtitle-internal">{{ heroSubtitle }}</p>
       </div>
-      
-      <div class="nav-center">
-        <router-link to="/" class="logo-text">LOG:O</router-link>
+    </template>
+
+    <nav class="navbar" :class="{ 'navbar-on-hero': showHero && heroImageSrc }">
+      <div class="navbar-container">
+        <div class="nav-group">
+          <router-link to="/lookAround" class="nav-item">HOT PLACE</router-link>
+          <router-link to="/llamasearch" class="nav-item">SEARCH</router-link>
+          <router-link to="/keyword" class="nav-item">KEYWORD</router-link>
+        </div>
+        
+        <div class="nav-center">
+          <router-link to="/" class="logo-text">LOG:O</router-link>
+        </div>
+        
+        <div class="nav-group">
+          <router-link to="/" class="nav-item">COMMUNITY</router-link>
+          <router-link to="/mytravel" class="nav-item">MY JOURNEY</router-link>
+        </div>
       </div>
-      
-      <div class="nav-group">
-        <router-link to="/" class="nav-item">COMMUNITY</router-link>
-        <router-link to="/mytravel" class="nav-item">MY JOURNEY</router-link>
-      </div>
-    </div>
-  </nav>
+    </nav>
+  </div>
 </template>
 
 <script>
 export default {
-  name: 'AppHeader'
+  name: 'AppHeader',
+  props: {
+    showHero: {
+      type: Boolean,
+      default: false
+    },
+    heroImageSrc: {
+      type: String,
+      default: ''
+    },
+    heroTitle: {
+      type: String,
+      default: 'Welcome'
+    },
+    heroSubtitle: {
+      type: String,
+      default: 'Discover our amazing features.'
+    },
+    heroHeight: {
+      type: String,
+      default: '320px' // Default height for the hero section
+    }
+  }
 }
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
 
-.navbar {
-  /* background-color: #1C1C1C; */ /* 기존 배경색 제거 */
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), transparent); /* 반투명 그라데이션 배경 적용 */
+.header-component-wrapper {
+  position: relative;
   width: 100%;
-  padding: 3.5rem 0; /* 온보딩 페이지와 동일한 패딩으로 수정 */
-  position: fixed; /* fixed로 변경하여 상단에 고정 */
+}
+
+/* Styles for the new hero elements within Header.vue */
+.hero-background-internal {
+  position: absolute;
   top: 0;
   left: 0;
-  z-index: 1000; /* 다른 요소들 위에 표시되도록 z-index 설정 */
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  z-index: 1;
+}
+
+.hero-overlay-internal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7));
+  z-index: 2;
+}
+
+.hero-content-internal {
+  position: relative;
+  z-index: 3;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 9.5rem 2rem 0rem 2rem;
+  color: white;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.hero-title-internal {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 2.5rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+  color: white;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+.hero-subtitle-internal {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 300;
+  margin: 0;
+  opacity: 0.9;
+  color: white;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+/* Modified navbar styles */
+.navbar {
+  position: relative; /* Default for no hero */
+  z-index: 10; 
+  width: 100%;
+  padding: 3.5rem 0; 
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), transparent); /* Default, can be overridden or made conditional if needed when no hero */
+  /* transition for background if needed, but might be complex with absolute/relative switch */
+}
+
+.navbar.navbar-on-hero {
+  position: absolute; /* Floats over hero */
+  top: 0;
+  left: 0;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), transparent); /* Ensures transparency over hero */
 }
 
 .navbar-container {

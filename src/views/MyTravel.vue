@@ -2,16 +2,13 @@
 <template>
   <div class="my-travel">
     <!-- 헤더 -->
-    <Header />
-
-    <!-- 히어로 섹션 -->
-    <div class="hero-section">
-      <div class="hero-overlay"></div>
-      <div class="hero-content">
-        <h1 class="hero-title">내 여행 발자취</h1>
-        <p class="hero-subtitle">당신의 특별했던 순간들을 한눈에 확인하세요</p>
-      </div>
-    </div>
+    <Header 
+      :showHero="true"
+      heroImageSrc="https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?q=80&w=1470"
+      heroTitle="내 여행 발자취"
+      heroSubtitle="당신의 특별했던 순간들을 한눈에 확인하세요"
+      heroHeight="320px"
+    />
 
     <!-- 메인 콘텐츠 -->
     <div class="content-wrapper">
@@ -471,9 +468,49 @@ export default {
           },
           {
             id: 5,
-            date: '2024-05-22',
+            date: '2024-06-22',
             location: '서울 북촌',
             season: 'spring',
+            image_data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+            image_name: '서울 북촌 한옥마을',
+            image_location: '서울 종로구',
+            image_tags: ['한옥', '역사', '문화'],
+            created_at: '2024-05-22',
+            region_info: {
+              region_code: '11',
+              sig_code: '11110'
+            },
+            dimensions: {
+              "Urban Character": 0.82,
+              "Historical/Cultural Value": 0.78,
+              "Shopping Potential": 0.65
+            }
+          },
+          {
+            id: 6,
+            date: '2024-04-11',
+            location: '경기도 이천시',
+            season: 'spring',
+            image_data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+            image_name: '서울 북촌 한옥마을',
+            image_location: '서울 종로구',
+            image_tags: ['한옥', '역사', '문화'],
+            created_at: '2024-05-22',
+            region_info: {
+              region_code: '11',
+              sig_code: '11110'
+            },
+            dimensions: {
+              "Urban Character": 0.82,
+              "Historical/Cultural Value": 0.78,
+              "Shopping Potential": 0.65
+            }
+          },
+          {
+            id: 7,
+            date: '2024-02-01',
+            location: '서울 북촌',
+            season: 'winter',
             image_data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
             image_name: '서울 북촌 한옥마을',
             image_location: '서울 종로구',
@@ -495,7 +532,7 @@ export default {
         year: 2023,
         trips: [
           {
-            id: 6,
+            id: 8,
             date: '2023-12-24',
             location: '강원도 속초',
             season: 'winter',
@@ -515,7 +552,7 @@ export default {
             }
           },
           {
-            id: 7,
+            id: 9,
             date: '2023-07-10',
             location: '경상북도 경주',
             season: 'summer',
@@ -1609,208 +1646,30 @@ export default {
 </script>
 
 <style scoped>
-/* dimension-bar 관련 스타일을 직접 정의 (충돌 방지) */
-.dimension-bar-container {
-  flex-grow: 1;
-  height: 8px;
-  background-color: #edf2f7;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.dimension-bar {
-  height: 100%;
-  background: linear-gradient(90deg, #4299e1, #76b39d);
-  border-radius: 4px;
-}
-
-.dimension-score {
-  width: 40px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #4299e1;
-  text-align: right;
-}
-
-/* 여행 타임라인 */
-.travel-timeline {
-  margin-bottom: 60px;
-}
-
-.timeline-container {
-  background-color: #f7fafc;
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-}
-
-.timeline-year {
-  margin-bottom: 30px;
-}
-
-.timeline-year:last-child {
-  margin-bottom: 0;
-}
-
-.year-label {
-  font-size: 1.2rem;
-  font-weight: 700;
-  margin-bottom: 15px;
-  color: #2D3748;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #E2E8F0;
-}
-
-.trips-wrapper {
-  display: flex;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  gap: 20px;
-  padding: 10px 0;
-  scroll-behavior: smooth;
-}
-
-.trip-item {
-  flex: 0 0 280px;
-  border-radius: 12px;
-  background-color: white;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-  cursor: pointer;
-}
-
-.trip-item:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.12);
-}
-
-.trip-date {
-  padding: 10px 15px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #4a5568;
-  background-color: #f3f4f6;
-}
-
-.trip-image-preview {
-  height: 160px;
-  overflow: hidden;
-}
-
-.trip-image-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.3s ease;
-}
-
-.trip-item:hover .trip-image-preview img {
-  transform: scale(1.05);
-}
-
-.trip-details {
-  padding: 15px;
-}
-
-.trip-location {
-  font-weight: 600;
-  margin-bottom: 5px;
-}
-
-.trip-season {
-  font-size: 0.85rem;
-  color: #718096;
-}
-
-/* 계절별 색상 테마 */
-.season-spring {
-  border-top: 4px solid #FC8181;
-}
-
-.season-summer {
-  border-top: 4px solid #4FD1C5;
-}
-
-.season-fall {
-  border-top: 4px solid #F6AD55;
-}
-
-.season-winter {
-  border-top: 4px solid #63B3ED;
-}
-
-.no-trips {
-  padding: 30px;
-  text-align: center;
-  color: #718096;
-  font-size: 1.1rem;
-}
-
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
-
+/* 기본 스타일 */
 .my-travel {
   font-family: 'Noto Sans KR', sans-serif;
-  min-height: 100vh;
-  background-color: #f6f9fc;
+  background-color: #f8f9fa;
   color: #333;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
-/* 히어로 섹션 */
-.hero-section {
-  position: relative;
-  height: 320px;
-  background-image: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=1470');
-  background-size: cover;
-  background-position: center;
-  margin-bottom: 0;
-  padding-top: 7rem;
-}
-
-.hero-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7));
-}
-
-.hero-content {
-  position: relative;
-  z-index: 1;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 0 2rem;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.hero-title {
-  font-size: 2.5rem;
-  font-weight: 600;
-  margin: 0 0 1rem 0;
-  color: white;
-}
-
-.hero-subtitle {
-  font-size: 1.2rem;
-  font-weight: 300;
-  margin: 0;
-  opacity: 0.9;
-  color: white;
-}
-
-/* 콘텐츠 영역 */
+/* 콘텐츠 래퍼 */
 .content-wrapper {
   padding: 2rem;
-  max-width: 1400px;
-  margin: 0 auto;
+  max-width: 1600px; /* 기존 1400px에서 확장 */
+  margin: 0 auto; /* 중앙 정렬 유지 */
   width: 100%;
+  flex-grow: 1;
+}
+
+/* 섹션 타이틀 */
+.section-title {
+  font-size: 1.5rem;
+  margin: 0 0 1.5rem 0;
+  color: #2d3748;
 }
 
 /* 통계 카드 */
@@ -2196,12 +2055,6 @@ export default {
   padding: 1.5rem;
 }
 
-.section-title {
-  font-size: 1.5rem;
-  margin: 0 0 1.5rem 0;
-  color: #2d3748;
-}
-
 .profile-content {
   display: grid;
   grid-template-columns: 1fr 2fr;
@@ -2333,6 +2186,26 @@ export default {
   background-color: #e2e8f0;
 }
 
+/* Add this new class for the trips-wrapper */
+.trips-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-left: 2.5rem;
+  position: relative;
+}
+
+/* Add vertical line to the left of trips, similar to year-trips */
+.trips-wrapper::before {
+  content: "";
+  position: absolute;
+  left: -20px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: #e2e8f0;
+}
+
 .trip-item {
   background-color: white;
   border-radius: 12px;
@@ -2340,14 +2213,24 @@ export default {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
   width: calc(33.333% - 1rem);
   min-width: 250px;
+  max-width: 350px;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   border-top: 4px solid #4299e1;
   cursor: pointer;
+  margin-bottom: 1.5rem;
 }
 
 .trip-item:hover {
   transform: translateY(-5px);
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* No-trip message styling */
+.no-trips {
+  margin-left: 2.5rem;
+  color: #718096;
+  font-style: italic;
+  padding: 1rem 0;
 }
 
 /* 계절별 색상 */
@@ -2495,6 +2378,12 @@ export default {
 
   .trip-item {
     width: 100%;
+    min-width: unset;
+  }
+  
+  .trips-wrapper {
+    flex-direction: column;
+    gap: 1rem;
   }
 }
 
@@ -2505,6 +2394,29 @@ export default {
 
   .content-wrapper {
     padding: 1rem;
+  }
+  
+  .trips-wrapper {
+    margin-left: 1.5rem;
+    gap: 1rem;
+  }
+  
+  .trips-wrapper::before {
+    left: -15px;
+  }
+  
+  .year-label {
+    font-size: 1.1rem;
+    padding-left: 1.5rem;
+  }
+  
+  .year-label::before {
+    width: 10px;
+    height: 10px;
+  }
+  
+  .no-trips {
+    margin-left: 1.5rem;
   }
 }
 </style>

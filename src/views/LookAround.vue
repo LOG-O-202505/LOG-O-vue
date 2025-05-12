@@ -1,16 +1,13 @@
 <template>
     <div class="look-around-page">
       <!-- 헤더 -->
-      <Header />
-  
-      <!-- 히어로 섹션 -->
-      <div class="hero-section">
-        <div class="hero-overlay"></div>
-        <div class="hero-content">
-          <h1 class="hero-title">어디 갈만한데 없나?</h1>
-          <p class="hero-subtitle">현재 가장 핫한 여행지를 클릭 몃번으로 한눈에</p>
-        </div>
-      </div>
+      <Header 
+        :showHero="true"
+        heroImageSrc="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?q=80&w=1470"
+        heroTitle="어디 갈만한데 없나?"
+        heroSubtitle="현재 가장 핫한 여행지를 클릭 몃번으로 한눈에"
+        heroHeight="320px"
+      />
   
       <!-- 메인 콘텐츠 -->
       <div class="content-wrapper">
@@ -1161,53 +1158,6 @@
     color: #333;
     display: flex;
     flex-direction: column;
-  }
-  
-  /* 히어로 섹션 */
-  .hero-section {
-    position: relative;
-    height: 320px; /* KeywordSearch.vue와 동일하게 320px로 수정 */
-    background-image: url('https://images.unsplash.com/photo-1470770841072-f978cf4d019e?q=80&w=1470'); /* 새로운 배경 이미지 URL */
-    background-size: cover;
-    background-position: center;
-    margin-bottom: 0;
-    padding-top: 7rem; /* 헤더 높이만큼 패딩 유지 */
-  }
-  
-  .hero-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)); /* KeywordSearch.vue와 동일한 오버레이 */
-  }
-  
-  .hero-content {
-    position: relative;
-    z-index: 1;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 0 2rem;
-    max-width: 1400px;
-    margin: 0 auto;
-  }
-  
-  .hero-title {
-    font-size: 2.5rem;
-    font-weight: 600;
-    margin: 0 0 1rem 0;
-    color: white;
-  }
-  
-  .hero-subtitle {
-    font-size: 1.2rem;
-    font-weight: 300;
-    margin: 0;
-    opacity: 0.9;
-    color: white;
   }
   
   /* 콘텐츠 영역 */

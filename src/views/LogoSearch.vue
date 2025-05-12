@@ -1,16 +1,13 @@
 <template>
   <div class="logo-search">
     <!-- 헤더 - 페이지와 함께 스크롤됨 -->
-    <Header />
-    
-    <!-- 히어로 섹션 -->
-    <div class="hero-section">
-      <div class="hero-overlay"></div>
-      <div class="hero-content">
-        <h1 class="hero-title">여행 이미지 분석</h1>
-        <p class="hero-subtitle">찾고 있는 분위기의 여행지를 발견하세요</p>
-      </div>
-    </div>
+    <Header 
+      :showHero="true"
+      heroImageSrc="https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1470"
+      heroTitle="여행 이미지 분석"
+      heroSubtitle="찾고 있는 분위기의 여행지를 발견하세요"
+      heroHeight="320px"
+    />
     
     <!-- 컨텐츠 영역 - 히어로 섹션과 겹치지 않게 여백 추가 -->
     <div class="content-wrapper">
@@ -38,6 +35,18 @@
             
             <!-- 버튼 영역 -->
             <div class="button-group">
+              <button 
+                v-if="isLoading"
+                @click="cancelAnalysis" 
+                class="btn btn-danger btn-cancel-analysis"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+                분석 취소하기
+              </button>
+              
               <button 
                 v-if="!analysisResult && !isLoading" 
                 @click="triggerFileInput" 
@@ -91,13 +100,6 @@
                 :analysis-duration="analysisDuration" 
                 :search-duration="searchDuration" 
               />
-              <button @click="cancelAnalysis" class="btn btn-danger btn-cancel-analysis">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-                분석 취소하기
-              </button>
             </div>
             
             <!-- 분석 결과가 없을 때 -->
@@ -1005,53 +1007,6 @@ export default {
   flex-direction: column;
 }
 
-/* 히어로 섹션 */
-.hero-section {
-  position: relative;
-  height: 320px;
-  background-image: url('https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1470'); /* 새 배경 이미지 */
-  background-size: cover;
-  background-position: center;
-  margin-bottom: 0; /* 추가 */
-  padding-top: 7rem; /* 추가 */
-}
-
-.hero-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7));
-}
-
-.hero-content {
-  position: relative;
-  z-index: 1;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 0 2rem;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.hero-title {
-  font-size: 2.5rem; /* 수정 */
-  font-weight: 600;
-  margin: 0 0 1rem 0;
-  color: white; /* 추가 */
-}
-
-.hero-subtitle {
-  font-size: 1.2rem; /* 수정 */
-  font-weight: 300;
-  margin: 0;
-  opacity: 0.9;
-  color: white; /* 추가 */
-}
-
 /* 컨텐츠 영역 */
 .content-wrapper {
   position: relative;
@@ -1591,14 +1546,6 @@ export default {
     gap: 1.5rem;
   }
   
-  .hero-title {
-    font-size: 2.5rem;
-  }
-  
-  .hero-subtitle {
-    font-size: 1.1rem;
-  }
-  
   .form-grid {
     grid-template-columns: 1fr;
   }
@@ -1613,14 +1560,6 @@ export default {
 }
 
 @media (max-width: 600px) {
-  .hero-section {
-    height: 250px;
-  }
-  
-  .hero-title {
-    font-size: 2rem;
-  }
-  
   .content-wrapper {
     padding: 1.5rem 1rem;
   }
