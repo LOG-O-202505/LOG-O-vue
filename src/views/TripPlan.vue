@@ -15,7 +15,7 @@
       <div class="plan-container">
         <!-- 여행 기본 정보 폼 -->
         <div class="plan-section">
-          <h2 class="section-title">여행 기본 정보</h2>
+          <h1 class="section-title">여행 기본 정보</h1>
           <div class="trip-summary">
             <div class="trip-summary-item">
               <span class="summary-label">여행 기간</span>
@@ -53,7 +53,7 @@
 
         <!-- 일정 계획 -->
         <div class="plan-section">
-          <h2 class="section-title">일정 계획</h2>
+          <h1 class="section-title">일정 계획</h1>
           
           <!-- 날짜별 탭 메뉴 -->
           <div class="day-tabs">
@@ -90,23 +90,33 @@
                       <span class="place">{{ item.activity }}</span>
                     </div>
                     <div class="item-actions">
-                      <button v-if="editingItem === itemIndex" class="save-edit-btn" @click="saveItemEdit(itemIndex)">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
-                      </button>
-                      <button v-else class="edit-btn" @click="startEditItem(itemIndex)">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                        </svg>
-                      </button>
-                      <button class="delete-btn" @click="removeScheduleItem(activeDay, itemIndex)">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <line x1="18" y1="6" x2="6" y2="18"></line>
-                          <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                      </button>
+                      <template v-if="editingItem === itemIndex">
+                        <button class="save-edit-btn" @click="saveItemEdit(itemIndex)">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                          </svg>
+                        </button>
+                        <button class="cancel-edit-btn" @click="cancelItemEdit()">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                          </svg>
+                        </button>
+                      </template>
+                      <template v-else>
+                        <button class="edit-btn" @click="startEditItem(itemIndex)">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                          </svg>
+                        </button>
+                        <button class="delete-btn" @click="removeScheduleItem(activeDay, itemIndex)">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                          </svg>
+                        </button>
+                      </template>
                     </div>
                   </div>
                   <div class="schedule-item-memo">
@@ -114,7 +124,6 @@
                       v-if="editingItem === itemIndex" 
                       v-model="editItemMemo" 
                       placeholder="메모를 입력하세요"
-                      @blur="saveItemEdit(itemIndex)"
                     ></textarea>
                     <textarea v-else v-model="item.location" placeholder="수하물 찾는 시간 고려하기" @blur="updateLocation(activeDay, itemIndex, item.location)"></textarea>
                   </div>
@@ -153,7 +162,7 @@
 
         <!-- 예산 계획 -->
         <div class="plan-section">
-          <h2 class="section-title">예산 계획</h2>
+          <h1 class="section-title">예산 계획</h1>
           <div class="budget-container">
             <div class="budget-summary">
               <div class="budget-card">
@@ -257,7 +266,7 @@
                 <button class="search-btn" @click="searchPlaces">검색</button>
               </div>
               
-              <h3 class="section-title">장소 검색 결과</h3>
+              <h3 class="modal-section-title">장소 검색 결과</h3>
               
               <div class="search-results">
                 <div v-if="isSearching" class="searching-indicator">
@@ -292,7 +301,7 @@
             
             <!-- 위시리스트 섹션 -->
             <div class="wishlist-section">
-              <h3 class="section-title">나의 찜 목록</h3>
+              <h3 class="modal-section-title">나의 찜 목록</h3>
               <div class="wishlist-items">
                 <div v-if="wishlistPlaces.length === 0" class="no-wishlist">
                   <p>저장한 장소가 없습니다.</p>
@@ -352,7 +361,6 @@
             <div class="form-group">
               <label for="visitTime">방문 시간</label>
               <div class="time-input-wrapper">
-                <span class="time-prefix">오후</span>
                 <input type="time" id="visitTime" v-model="visitTime">
               </div>
             </div>
@@ -521,6 +529,8 @@ export default {
     const editingItem = ref(null);
     const editItemTime = ref('');
     const editItemMemo = ref('');
+    const originalItemTime = ref('');
+    const originalItemMemo = ref('');
 
     // 정렬된 일정 항목 가져오기
     const sortedScheduleItems = computed(() => {
@@ -545,6 +555,10 @@ export default {
       editingItem.value = index;
       editItemTime.value = item.time;
       editItemMemo.value = item.location;
+      
+      // 원본 값 저장 (수정 취소 시 복원용)
+      originalItemTime.value = item.time;
+      originalItemMemo.value = item.location;
     };
     
     // 아이템 수정 저장
@@ -560,10 +574,25 @@ export default {
         // 수정 모드 종료
         editingItem.value = null;
         
-        // 지도 마커 업데이트 (시간 순서대로 정렬된 마커로)
-        nextTick(() => {
-          updateMapMarkers();
-        });
+        // 강제 화면 갱신
+        forceRefresh();
+      }
+    };
+
+    // 아이템 수정 취소
+    const cancelItemEdit = () => {
+      if (editingItem.value !== null) {
+        // 원본 값으로 되돌리기
+        const index = editingItem.value;
+        const item = tripDays.value[activeDay.value].items[index];
+        
+        // 변경된 내용이 있으면 원래 값으로 복원
+        item.time = originalItemTime.value;
+        item.location = originalItemMemo.value;
+        
+        // 수정 모드 종료
+        editingItem.value = null;
+        console.log("수정 취소됨");
       }
     };
 
@@ -850,12 +879,9 @@ export default {
         // 좌표 업데이트
         tripDays.value[dayIndex].items[itemIndex].coords = coords;
         
-        // 지도 마커 업데이트 (현재 선택된 날짜인 경우)
-        if (dayIndex === activeDay.value && mapLoaded.value) {
-          console.log("Updating map markers after location change");
-          nextTick(() => {
-            updateMapMarkers();
-          });
+        // 현재 선택된 날짜인 경우에만 화면 갱신
+        if (dayIndex === activeDay.value) {
+          forceRefresh();
         }
       });
     };
@@ -873,7 +899,9 @@ export default {
     // 일정 항목 삭제
     const removeScheduleItem = (dayIndex, itemIndex) => {
       tripDays.value[dayIndex].items.splice(itemIndex, 1);
-      updateMapMarkers();
+      
+      // 강제 화면 갱신
+      forceRefresh();
     };
 
     // 지출 항목 추가
@@ -1070,12 +1098,8 @@ export default {
         activeDay.value = selectedDay.value;
       }
       
-      // 추가한 날짜가 현재 활성화된 날짜와 같다면 지도 업데이트
-      if (mapLoaded.value) {
-        nextTick(() => {
-          updateMapMarkers();
-        });
-      }
+      // 강제 화면 갱신 - 일정 추가 후 즉시 실행
+      forceRefresh();
     };
     
     // 장소 검색 실행
@@ -1182,6 +1206,26 @@ export default {
       }
     });
 
+    // 강제 화면 갱신 함수 추가
+    const forceRefresh = () => {
+      console.log("강제 화면 갱신 실행...");
+      const currentDay = activeDay.value;
+      
+      // 존재하지 않는 인덱스로 잠시 변경
+      activeDay.value = -1;
+      
+      // 10ms 후에 원래 인덱스로 복귀
+      setTimeout(() => {
+        activeDay.value = currentDay;
+        console.log(`원래 날짜(${currentDay})로 복귀 완료`);
+        
+        // 복귀 후 지도 업데이트
+        if (mapLoaded.value) {
+          updateMapMarkers();
+        }
+      }, 10);
+    };
+
     return {
       tripData,
       tripDays,
@@ -1228,7 +1272,9 @@ export default {
       editItemTime,
       editItemMemo,
       startEditItem,
-      saveItemEdit
+      saveItemEdit,
+      cancelItemEdit,
+      forceRefresh
     };
   }
 };
@@ -1264,8 +1310,8 @@ export default {
 }
 
 .section-title {
-  margin: 1rem 1.5rem;
-  font-size: 1.25rem;
+  margin: 1rem 0.25rem 2rem 0.25rem;
+  font-size: 2rem;
   font-weight: 600;
   color: #2d3748;
 }
@@ -1492,7 +1538,7 @@ textarea {
   gap: 0.25rem;
 }
 
-.edit-btn, .save-edit-btn {
+.edit-btn, .save-edit-btn, .cancel-edit-btn {
   background: none;
   border: none;
   cursor: pointer;
@@ -1519,12 +1565,21 @@ textarea {
   background-color: rgba(72, 187, 120, 0.1);
 }
 
+.cancel-edit-btn {
+  color: #f56565;
+}
+
+.cancel-edit-btn:hover {
+  color: #e53e3e;
+  background-color: rgba(229, 62, 62, 0.1);
+}
+
 .edit-time-input {
   border: 1px solid #e2e8f0;
   border-radius: 4px;
   padding: 0.25rem;
   font-size: 0.9rem;
-  width: 110px;
+  width: 120px;
   margin-right: 0.5rem;
 }
 
@@ -1835,7 +1890,7 @@ textarea {
   overflow: hidden;
 }
 
-.wishlist-section .section-title {
+.wishlist-section .modal-section-title {
   margin: 0 0 1rem 0;
 }
 
@@ -2167,11 +2222,6 @@ textarea {
   padding: 0 1rem;
 }
 
-.time-prefix {
-  color: #4a5568;
-  margin-right: 0.5rem;
-}
-
 .time-input-wrapper input[type="time"] {
   border: none;
   padding: 1rem 0;
@@ -2194,7 +2244,18 @@ textarea {
 #detail-map {
   width: 100%;
   height: 100%;
-}</style>
+}
+
+/* 모달 내부 섹션 제목 스타일 */
+.modal-section-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #333;
+  margin: 1.25rem 0.75rem;
+  padding: 0 0.75rem;
+  text-align: left;
+}
+</style>
 
 
 
