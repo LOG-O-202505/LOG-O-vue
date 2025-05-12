@@ -5,6 +5,7 @@ import LookAround from '../views/LookAround.vue'
 import KeywordSearch from '../views/KeywordSearch.vue'
 import MyTravel from '../views/MyTravel.vue'
 import TripPlan from '../views/TripPlan.vue'
+import ReceiptOCR from '../views/ReceiptOCR.vue'
 
 const routes = [
   {
@@ -36,6 +37,11 @@ const routes = [
     path: '/plan',
     name: 'TripPlan',
     component: TripPlan
+  },
+  {
+    path: '/receipt',
+    name: 'ReceiptOCR',
+    component: ReceiptOCR
   }
 ]
 
