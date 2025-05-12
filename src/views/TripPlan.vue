@@ -1,14 +1,8 @@
-/* eslint-disable */
 <template>
   <div class="trip-plan">
     <!-- 헤더 -->
-    <Header 
-      :showHero="true"
-      heroImageSrc="https://images.unsplash.com/photo-1503221043305-f7498f8b7888?q=80&w=1470"
-      heroTitle="나만의 여행 설계하기"
-      heroSubtitle="나만의 특별한 여행 경험을 디자인해보세요"
-      heroHeight="320px"
-    />
+    <Header :showHero="true" heroImageSrc="https://images.unsplash.com/photo-1503221043305-f7498f8b7888?q=80&w=1470"
+      heroTitle="나만의 여행 설계하기" heroSubtitle="나만의 특별한 여행 경험을 디자인해보세요" heroHeight="320px" />
 
     <!-- 메인 콘텐츠 -->
     <div class="plan-content-wrapper">
@@ -16,7 +10,7 @@
         <!-- 여행 기본 정보 폼 -->
         <div class="plan-section">
           <h1 class="section-title">여행 기본 정보</h1>
-          
+
           <!-- 보기 모드 -->
           <div v-if="!isEditingInfo" class="trip-info-view-mode">
             <div class="info-row">
@@ -33,7 +27,7 @@
                 <span class="info-value">₩{{ formatNumber(totalBudget) }}</span>
               </div>
             </div>
-            
+
             <div class="info-row">
               <div class="info-item">
                 <span class="info-label">출발일</span>
@@ -48,23 +42,24 @@
                 <span class="info-value">{{ tripNights }}박 {{ tripDays.length }}일</span>
               </div>
             </div>
-            
+
             <div class="info-row">
               <div class="info-item info-memo">
                 <span class="info-label">여행 메모</span>
                 <span class="info-value memo-text">{{ tripData.notes || '없음' }}</span>
               </div>
             </div>
-            
+
             <button class="edit-info-btn" @click="startEditInfo">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
               </svg>
               정보 수정
             </button>
           </div>
-          
+
           <!-- 수정 모드 -->
           <div v-else>
             <div class="plan-form">
@@ -101,16 +96,18 @@
                 <label for="tripNotes">여행 메모</label>
                 <textarea id="tripNotes" v-model="tripData.notes" placeholder="여행 준비 사항, 기대 등을 자유롭게 작성하세요"></textarea>
               </div>
-              
+
               <div class="form-actions">
                 <button class="save-info-btn" @click="saveEditInfo">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
                   저장
                 </button>
                 <button class="cancel-info-btn" @click="cancelEditInfo">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18"></line>
                     <line x1="6" y1="6" x2="18" y2="18"></line>
                   </svg>
@@ -124,31 +121,22 @@
         <!-- 일정 계획 -->
         <div class="plan-section">
           <h1 class="section-title">일정 계획</h1>
-          
+
           <!-- 날짜별 탭 메뉴 -->
           <div class="day-tabs">
-            <button 
-              v-for="(day, index) in tripDays" 
-              :key="index" 
-              class="day-tab" 
-              :class="{ 'active': activeDay === index }"
-              @click="activeDay = index"
-            >
+            <button v-for="(day, index) in tripDays" :key="index" class="day-tab"
+              :class="{ 'active': activeDay === index }" @click="activeDay = index">
               DAY {{ index + 1 }}
               <span class="tab-date">{{ formatDate(addDays(new Date(tripData.startDate), index)) }}</span>
             </button>
           </div>
-          
+
           <!-- 일정과 지도를 포함하는 레이아웃 -->
           <div class="schedule-and-maps">
             <!-- 일정 부분 -->
             <div class="day-schedule" v-if="tripDays[activeDay]">
               <div class="schedule-items">
-                <div 
-                  v-for="(item, itemIndex) in sortedScheduleItems" 
-                  :key="itemIndex" 
-                  class="schedule-item"
-                >
+                <div v-for="(item, itemIndex) in sortedScheduleItems" :key="itemIndex" class="schedule-item">
                   <!-- 일정 아이템 헤더 내 아이템 액션 버튼 수정 -->
                   <div class="schedule-item-header">
                     <div class="time-place">
@@ -163,12 +151,14 @@
                     <div class="item-actions">
                       <template v-if="editingItem === itemIndex">
                         <button class="save-edit-btn" @click="saveItemEdit(itemIndex)">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="20 6 9 17 4 12"></polyline>
                           </svg>
                         </button>
                         <button class="cancel-edit-btn" @click="cancelItemEdit()">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                           </svg>
@@ -176,13 +166,15 @@
                       </template>
                       <template v-else>
                         <button class="edit-btn" @click="startEditItem(itemIndex)">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                           </svg>
                         </button>
                         <button class="delete-btn" @click="removeScheduleItem(activeDay, itemIndex)">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                           </svg>
@@ -191,50 +183,41 @@
                     </div>
                   </div>
                   <div class="schedule-item-memo">
-                    <textarea 
-                      v-if="editingItem === itemIndex" 
-                      v-model="editItemMemo" 
-                      placeholder="메모를 입력하세요"
-                    ></textarea>
-                    <textarea v-else v-model="item.location" placeholder="수하물 찾는 시간 고려하기" @blur="updateLocation(activeDay, itemIndex, item.location)"></textarea>
+                    <textarea v-if="editingItem === itemIndex" v-model="editItemMemo"
+                      placeholder="메모를 입력하세요"></textarea>
+                    <textarea v-else v-model="item.location" placeholder="수하물 찾는 시간 고려하기"
+                      @blur="updateLocation(activeDay, itemIndex, item.location)"></textarea>
                   </div>
-                  <!-- 방문 인증 버튼 추가 -->
+                  <!-- 방문 인증 버튼 부분 수정 -->
                   <div class="verification-button-container">
-                    <button 
-                      class="visit-verification-btn" 
-                      @click="verifyVisit(activeDay, itemIndex)"
-                      :class="{ 'verified': item.verified }"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <button v-if="!item.verified" class="visit-verification-btn"
+                      @click="verifyVisit(activeDay, itemIndex)">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                         <circle cx="12" cy="10" r="3"></circle>
                       </svg>
-                      {{ item.verified ? '방문 인증 완료' : '방문 인증하기' }}
+                      방문 인증하기
                     </button>
-                    
-                    <!-- 방문 인증 정보 표시 -->
-                    <div v-if="item.verified" class="verification-info">
-                      <div class="verified-badge">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                          <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                        </svg>
-                        <span>{{ formatDate(item.verifiedAt) }}에 방문 완료</span>
-                        <div class="rating-display" v-if="item.rating">
-                          <span class="stars">
-                            {{ '★'.repeat(item.rating) }}{{ '☆'.repeat(5 - item.rating) }}
-                          </span>
-                        </div>
-                      </div>
-                      <div v-if="item.review" class="review-display">
-                        <p>{{ item.review }}</p>
-                      </div>
+
+                    <!-- 인증 완료된 경우의 표시 (수정됨) -->
+                    <div v-if="item.verified" class="verification-completed">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                      </svg>
+                      {{ formatDate(item.verifiedAt) }}에 방문 완료
+                      <span class="stars" v-if="item.rating">
+                        {{ '★'.repeat(item.rating) }}{{ '☆'.repeat(5 - item.rating) }}
+                      </span>
                     </div>
                   </div>
                 </div>
-                
+
                 <button class="add-schedule-btn" @click="openPlaceSearch">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                   </svg>
@@ -291,7 +274,7 @@
                 <div class="expense-date-header">
                   <h3>{{ formatExpenseDate(date) }}</h3>
                 </div>
-                
+
                 <div v-for="(expense, index) in group" :key="index" class="expense-item">
                   <div v-if="editingExpense === expense" class="expense-edit-mode">
                     <div class="expense-time-edit">
@@ -308,12 +291,14 @@
                     </div>
                     <div class="expense-actions">
                       <button class="save-edit-btn" @click="saveExpenseEdit(expense)">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                           <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
                       </button>
                       <button class="cancel-edit-btn" @click="cancelExpenseEdit()">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                           <line x1="18" y1="6" x2="6" y2="18"></line>
                           <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
@@ -326,13 +311,15 @@
                     <div class="expense-amount">₩{{ formatNumber(expense.amount) }}</div>
                     <div class="expense-actions">
                       <button class="edit-btn" @click="startExpenseEdit(expense)">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                         </svg>
                       </button>
                       <button class="delete-btn" @click="removeExpense(getExpenseIndex(expense))">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                           <line x1="18" y1="6" x2="6" y2="18"></line>
                           <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
@@ -341,7 +328,7 @@
                   </div>
                 </div>
               </div>
-              
+
               <!-- 지출 추가 버튼 -->
               <div class="add-expense-buttons">
                 <button class="add-expense-btn" @click="addExpense">
@@ -363,28 +350,22 @@
         <div class="receipt-upload-header">
           <h3>영수증/결제내역 분석</h3>
           <button class="close-receipt-btn" @click="closeReceiptUpload">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
           </button>
         </div>
-        
-        <div class="upload-container" 
-             @dragover.prevent="onDragOver" 
-             @dragleave.prevent="onDragLeave" 
-             @drop.prevent="onDrop" 
-             :class="{ 'active-dropzone': isDragging }">
-          <input 
-            type="file" 
-            ref="receiptFileInput" 
-            @change="handleReceiptFileInput" 
-            accept="image/*" 
-            style="display: none"
-          >
+
+        <div class="upload-container" @dragover.prevent="onDragOver" @dragleave.prevent="onDragLeave"
+          @drop.prevent="onDrop" :class="{ 'active-dropzone': isDragging }">
+          <input type="file" ref="receiptFileInput" @change="handleReceiptFileInput" accept="image/*"
+            style="display: none">
           <div v-if="!receiptPreview" class="upload-prompt">
             <div class="upload-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="17 8 12 3 7 8"></polyline>
                 <line x1="12" y1="3" x2="12" y2="15"></line>
@@ -405,7 +386,7 @@
             </div>
           </div>
         </div>
-        
+
         <div v-if="isLoading" class="loading-indicator">
           <div class="spinner"></div>
           <p>{{ loadingMessage }}</p>
@@ -421,28 +402,24 @@
           <div class="modal-header">
             <h3>장소 검색</h3>
             <button class="close-btn" @click="closePlaceSearch">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
               </svg>
             </button>
           </div>
-          
+
           <div class="modal-content">
             <!-- 검색 섹션 -->
             <div class="search-section">
               <div class="search-box">
-                <input 
-                  type="text" 
-                  v-model="placeSearchKeyword" 
-                  placeholder="검색할 장소를 입력하세요"
-                  @keyup.enter="searchPlaces"
-                >
+                <input type="text" v-model="placeSearchKeyword" placeholder="검색할 장소를 입력하세요" @keyup.enter="searchPlaces">
                 <button class="search-btn" @click="searchPlaces">검색</button>
               </div>
-              
+
               <h3 class="modal-section-title">장소 검색 결과</h3>
-              
+
               <div class="search-results">
                 <div v-if="isSearching" class="searching-indicator">
                   <div class="spinner"></div>
@@ -452,20 +429,20 @@
                   <p>검색 결과가 없습니다.</p>
                 </div>
                 <div v-else class="place-list">
-                  <div 
-                    v-for="(place, index) in searchResults" 
-                    :key="index" 
-                    class="place-item"
-                  >
+                  <div v-for="(place, index) in searchResults" :key="index" class="place-item">
                     <div class="place-info" @click="openPlaceDetails(place)">
                       <h4>{{ place.place_name }}</h4>
                       <p class="place-address">{{ place.road_address_name || place.address_name }}</p>
                       <p class="place-category">{{ place.category_name }}</p>
                     </div>
                     <div class="place-actions">
-                      <button class="wishlist-btn" @click="addToWishlist(place)" :class="{ 'active': isInWishlist(place) }">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                      <button class="wishlist-btn" @click="addToWishlist(place)"
+                        :class="{ 'active': isInWishlist(place) }">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path
+                            d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
+                          </path>
                         </svg>
                       </button>
                     </div>
@@ -473,7 +450,7 @@
                 </div>
               </div>
             </div>
-            
+
             <!-- 위시리스트 섹션 -->
             <div class="wishlist-section">
               <h3 class="modal-section-title">나의 찜 목록</h3>
@@ -482,18 +459,15 @@
                   <p>저장한 장소가 없습니다.</p>
                 </div>
                 <div v-else class="place-list">
-                  <div 
-                    v-for="(place, index) in wishlistPlaces" 
-                    :key="index" 
-                    class="place-item"
-                  >
+                  <div v-for="(place, index) in wishlistPlaces" :key="index" class="place-item">
                     <div class="place-info" @click="openPlaceDetails(place)">
                       <h4>{{ place.place_name }}</h4>
                       <p class="place-address">{{ place.road_address_name || place.address_name }}</p>
                     </div>
                     <div class="place-actions">
                       <button class="remove-btn" @click="removeFromWishlist(index)">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                           <line x1="18" y1="6" x2="6" y2="18"></line>
                           <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
@@ -504,47 +478,48 @@
               </div>
             </div>
           </div>
-          
+
           <div class="modal-footer">
             <p class="powered-by">Powered by Kakao Maps API</p>
           </div>
         </div>
-        
+
         <!-- 장소 상세 정보 모달 (선택 시에만 표시) -->
         <div v-if="selectedPlace" class="place-detail-modal" @click.stop>
           <div class="modal-header">
             <h3>장소 추가</h3>
             <button class="close-btn" @click="cancelPlaceDetails">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
               </svg>
             </button>
           </div>
-          
+
           <div class="detail-content">
             <div class="selected-place-info">
               <h4>{{ selectedPlace.place_name }}</h4>
               <p>{{ selectedPlace.road_address_name || selectedPlace.address_name }}</p>
             </div>
-            
+
             <!-- 미니 지도 표시 -->
             <div class="mini-map-container">
               <div id="detail-map" ref="detailMapContainer"></div>
             </div>
-            
+
             <div class="form-group">
               <label for="visitTime">방문 시간</label>
               <div class="time-input-wrapper">
                 <input type="time" id="visitTime" v-model="visitTime">
               </div>
             </div>
-            
+
             <div class="form-group">
               <label for="placeMemo">메모</label>
               <textarea id="placeMemo" v-model="placeMemo" placeholder="장소에 대한 메모를 입력하세요"></textarea>
             </div>
-            
+
             <div class="form-actions">
               <button class="cancel-btn" @click="cancelPlaceDetails">취소</button>
               <button class="add-btn" @click="addSelectedPlace">일정에 추가</button>
@@ -553,11 +528,12 @@
         </div>
       </div>
     </div>
-    
+
     <!-- 성공 알림 배너 -->
     <div v-if="showSuccessBanner" class="success-banner">
       <div class="success-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
           <polyline points="22 4 12 14.01 9 11.01"></polyline>
         </svg>
@@ -565,127 +541,132 @@
       영수증 정보가 성공적으로 추가되었습니다!
     </div>
 
-    <!-- 방문 인증 모달 추가 -->
+    <!-- 방문 인증 모달 (개선된 버전) -->
     <div class="modal-overlay" v-if="showVerificationModal" @click="closeVerificationModal">
-      <div class="verification-modal" @click.stop>
-        <div class="modal-header">
-          <h3>방문 인증하기</h3>
-          <button class="close-btn" @click="closeVerificationModal">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-        
-        <div class="modal-content">
-          <div class="verification-item-info">
-            <h4>{{ verifyingItemInfo.activity }}</h4>
-            <p>{{ verifyingItemInfo.location }}</p>
+      <div class="modals-container verification-container">
+        <!-- 메인 인증 모달 (왼쪽) -->
+        <div class="verification-photo-modal" @click.stop>
+          <div class="modal-header">
+            <h3>방문 인증하기</h3>
+            <button class="close-btn" @click="closeVerificationModal">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
           </div>
-          
-          <div class="upload-container" 
-               @dragover.prevent="onPhotoUploadDragOver" 
-               @dragleave.prevent="onPhotoUploadDragLeave" 
-               @drop.prevent="onPhotoUploadDrop" 
-               :class="{ 'active-dropzone': isPhotoDragging }">
-            <input 
-              type="file" 
-              ref="photoFileInput" 
-              @change="handlePhotoFileInput" 
-              accept="image/*" 
-              style="display: none"
-            >
-            <div v-if="!verificationPhotoPreview" class="upload-prompt">
-              <div class="upload-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                  <polyline points="21 15 16 10 5 21"></polyline>
+
+          <div class="verification-content">
+            <div class="verification-item-info">
+              <h4>{{ verifyingItemInfo.activity }}</h4>
+              <p>{{ verifyingItemInfo.location }}</p>
+            </div>
+
+            <div class="upload-container" @dragover.prevent="onPhotoUploadDragOver"
+              @dragleave.prevent="onPhotoUploadDragLeave" @drop.prevent="onPhotoUploadDrop"
+              :class="{ 'active-dropzone': isPhotoDragging }">
+              <input type="file" ref="photoFileInput" @change="handlePhotoFileInput" accept="image/*"
+                style="display: none">
+              <div v-if="!verificationPhotoPreview" class="upload-prompt">
+                <div class="upload-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                  </svg>
+                </div>
+                <p>방문 인증을 위한 사진을 업로드해주세요</p>
+                <p class="upload-tip">* 해당 장소에서 촬영한 사진만 인증 가능합니다</p>
+                <button @click="triggerPhotoFileInput" class="btn secondary-btn">사진 선택</button>
+              </div>
+              <div v-else class="preview-container">
+                <div class="enhanced-image-container">
+                  <img :src="verificationPhotoPreview" alt="방문 인증 사진 미리보기" class="photo-preview">
+                </div>
+                <div class="photo-metadata" v-if="photoMetadata">
+                  <div class="metadata-item">
+                    <strong>촬영 시간:</strong> {{ formatPhotoDate(photoMetadata.dateTime) }}
+                  </div>
+                  <div class="metadata-item" v-if="photoMetadata.latitude && photoMetadata.longitude">
+                    <strong>촬영 위치:</strong> [{{ photoMetadata.latitude.toFixed(6) }}, {{
+                      photoMetadata.longitude.toFixed(6)
+                    }}]
+                  </div>
+                  <div class="metadata-item" v-if="distanceFromTarget !== null">
+                    <strong>장소와의 거리:</strong> {{ formatDistance(distanceFromTarget) }}
+                  </div>
+                  <div class="verification-result" v-if="verificationResult !== null">
+                    <div v-if="verificationResult.success" class="success-result">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                      </svg>
+                      방문 인증이 확인되었습니다!
+                    </div>
+                    <div v-else class="error-result">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                      </svg>
+                      {{ verificationResult.message }}
+                    </div>
+                  </div>
+                </div>
+                <div class="preview-actions">
+                  <button @click="verifyPhoto" class="btn primary-btn" :disabled="isVerifying || !photoMetadata">
+                    {{ isVerifying ? '인증 중...' : '인증하기' }}
+                  </button>
+                  <button @click="clearVerificationPhoto" class="btn cancel-btn">취소</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 리뷰 모달 (오른쪽) - 인증 성공 시에만 표시 -->
+        <div v-if="verificationResult && verificationResult.success" class="verification-review-modal" @click.stop>
+          <div class="modal-header">
+            <h3>방문 후기 작성</h3>
+          </div>
+
+          <div class="review-content">
+            <div class="verified-place-info">
+              <div class="verified-badge">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
                 </svg>
-              </div>
-              <p>방문 인증을 위한 사진을 업로드해주세요</p>
-              <p class="upload-tip">* 해당 장소에서 촬영한 사진만 인증 가능합니다</p>
-              <button @click="triggerPhotoFileInput" class="btn secondary-btn">사진 선택</button>
-            </div>
-            <div v-else class="preview-container">
-              <div class="image-container">
-                <img :src="verificationPhotoPreview" alt="방문 인증 사진 미리보기" class="photo-preview">
-              </div>
-              <div class="photo-metadata" v-if="photoMetadata">
-                <div class="metadata-item">
-                  <strong>촬영 시간:</strong> {{ formatPhotoDate(photoMetadata.dateTime) }}
-                </div>
-                <div class="metadata-item" v-if="photoMetadata.latitude && photoMetadata.longitude">
-                  <strong>촬영 위치:</strong> [{{ photoMetadata.latitude.toFixed(6) }}, {{ photoMetadata.longitude.toFixed(6) }}]
-                </div>
-                <div class="metadata-item" v-if="distanceFromTarget !== null">
-                  <strong>장소와의 거리:</strong> {{ formatDistance(distanceFromTarget) }}
-                </div>
-                <div class="verification-result" v-if="verificationResult !== null">
-                  <div v-if="verificationResult.success" class="success-result">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                      <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                    </svg>
-                    방문 인증이 확인되었습니다!
-                  </div>
-                  <div v-else class="error-result">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <line x1="12" y1="8" x2="12" y2="12"></line>
-                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                    {{ verificationResult.message }}
-                  </div>
-                </div>
-              </div>
-              <div class="preview-actions">
-                <button @click="verifyPhoto" class="btn primary-btn" :disabled="isVerifying || !photoMetadata">
-                  {{ isVerifying ? '인증 중...' : '인증하기' }}
-                </button>
-                <button @click="clearVerificationPhoto" class="btn cancel-btn">취소</button>
+                <span>{{ formatPhotoDate(photoMetadata.dateTime) }}에 방문 확인됨</span>
               </div>
             </div>
-          </div>
-        </div>
-        
-        <div class="modal-footer" v-if="verificationResult && verificationResult.success">
-          <div class="review-section">
-            <h4>방문 후기 작성</h4>
-            
+
             <div class="rating-container">
-              <label>별점:</label>
+              <label>별점 평가:</label>
               <div class="star-rating">
-                <span 
-                  v-for="star in 5" 
-                  :key="star" 
-                  class="star" 
-                  :class="{ 'active': star <= reviewRating }"
-                  @click="reviewRating = star"
-                >
+                <span v-for="star in 5" :key="star" class="star" :class="{ 'active': star <= reviewRating }"
+                  @click="reviewRating = star">
                   ★
                 </span>
               </div>
             </div>
-            
+
             <div class="review-text-container">
-              <label for="review-text">후기:</label>
-              <textarea 
-                id="review-text" 
-                v-model="reviewText" 
-                placeholder="방문 후기를 작성해주세요..."
-                rows="3"
-              ></textarea>
+              <label for="review-text">방문 후기:</label>
+              <textarea id="review-text" v-model="reviewText" placeholder="이 장소에 대한 후기를 작성해주세요..." rows="6"></textarea>
+            </div>
+
+            <div class="form-actions">
+              <button @click="completeVerification" class="btn-verify">
+                인증 완료하기
+              </button>
             </div>
           </div>
-          <button 
-            v-if="verificationResult && verificationResult.success"
-            @click="completeVerification" 
-            class="btn btn-verify"
-          >
-            인증 완료하기
-          </button>
         </div>
       </div>
     </div>
@@ -711,7 +692,7 @@ export default {
     const kakaoPolyline = ref(null);
     const mapLoaded = ref(false);
     const geocoder = ref(null);
-    
+
     // 장소 검색 관련 상태
     const isPlaceSearchModalOpen = ref(false);
     const placeSearchKeyword = ref('');
@@ -719,13 +700,13 @@ export default {
     const isSearching = ref(false);
     const hasSearched = ref(false);
     const selectedDay = ref(0); // 장소 검색 시 선택된 날짜
-    
+
     // 위시리스트 및 선택한 장소 관련 상태
     const wishlistPlaces = ref([]);
     const selectedPlace = ref(null);
     const visitTime = ref('');
     const placeMemo = ref('');
-    
+
     // 여행 데이터 - 이미 데이터가 차있는 상태로 초기화
     const tripData = ref({
       title: '제주도 봄 여행',
@@ -765,7 +746,7 @@ export default {
     // 여행 일수 계산
     const tripDays = computed(() => {
       if (!tripData.value.startDate || !tripData.value.endDate) {
-        return [{ 
+        return [{
           items: [{ time: '09:00', activity: '조식', location: '호텔 레스토랑', coords: { lat: 33.4890113, lng: 126.4983023 } }],
         }]; // 기본값: 1일
       }
@@ -774,45 +755,45 @@ export default {
       const end = new Date(tripData.value.endDate);
       const diffTime = Math.abs(end - start);
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-      
+
       // 이미 존재하는 일정 유지하면서 필요한 일수만큼 배열 생성
       const days = [];
       for (let i = 0; i < diffDays; i++) {
         // 기본 일정 데이터 추가 (날짜별 샘플 데이터)
         if (i === 0) {
-          days.push({ 
+          days.push({
             items: [
               { time: '09:00', activity: '제주공항 도착', location: '제주국제공항', coords: { lat: 33.5066778, lng: 126.4931069 } },
               { time: '10:30', activity: '렌터카 픽업', location: '공항 렌터카 센터', coords: { lat: 33.5066778, lng: 126.4931069 } },
               { time: '12:00', activity: '점심 식사', location: '제주 흑돼지 맛집', coords: { lat: 33.4890113, lng: 126.4983023 } }
-            ] 
+            ]
           });
         } else if (i === 1) {
-          days.push({ 
+          days.push({
             items: [
               { time: '08:00', activity: '아침 식사', location: '숙소 근처 카페', coords: { lat: 33.4648938, lng: 126.3312657 } },
               { time: '10:00', activity: '성산일출봉 관광', location: '성산일출봉', coords: { lat: 33.458031, lng: 126.942652 } }
-            ] 
+            ]
           });
         } else if (i === 2) {
-          days.push({ 
+          days.push({
             items: [
               { time: '09:00', activity: '아침 산책', location: '한라산 둘레길', coords: { lat: 33.3616758, lng: 126.5292231 } },
               { time: '13:00', activity: '점심 식사', location: '제주 해물 전문점', coords: { lat: 33.2541205, lng: 126.5630755 } }
-            ] 
+            ]
           });
         } else if (i === 3) {
-          days.push({ 
+          days.push({
             items: [
               { time: '10:00', activity: '마지막 관광', location: '카멜리아 힐', coords: { lat: 33.2895471, lng: 126.3721352 } },
               { time: '14:00', activity: '공항 이동', location: '제주국제공항', coords: { lat: 33.5066778, lng: 126.4931069 } }
-            ] 
+            ]
           });
         } else {
           days.push({ items: [] });
         }
       }
-      
+
       return days;
     });
 
@@ -821,24 +802,24 @@ export default {
       if (!tripData.value.startDate || !tripData.value.endDate) {
         return 0;
       }
-      
+
       const start = new Date(tripData.value.startDate);
       const end = new Date(tripData.value.endDate);
       const diffTime = Math.abs(end - start);
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
+
       return diffDays;
     });
 
     // 예산 계산
     const totalBudget = computed(() => Number(tripData.value.budget) || 0);
-    
+
     const calculatedExpenses = computed(() => {
       return tripData.value.expenses.reduce((total, expense) => {
         return total + Number(expense.amount || 0);
       }, 0);
     });
-    
+
     const remainingBudget = computed(() => {
       return totalBudget.value - calculatedExpenses.value;
     });
@@ -855,43 +836,43 @@ export default {
       if (!tripDays.value[activeDay.value]?.items || tripDays.value[activeDay.value].items.length === 0) {
         return [];
       }
-      
+
       // 시간 기준으로 정렬된 배열 반환
       return [...tripDays.value[activeDay.value].items].sort((a, b) => {
         // 빈 시간은 가장 뒤로
         if (!a.time) return 1;
         if (!b.time) return -1;
-        
+
         // 시간 비교 (HH:MM 형식)
         return a.time.localeCompare(b.time);
       });
     });
-    
+
     // 아이템 수정 시작
     const startEditItem = (index) => {
       const item = tripDays.value[activeDay.value].items[index];
       editingItem.value = index;
       editItemTime.value = item.time;
       editItemMemo.value = item.location;
-      
+
       // 원본 값 저장 (수정 취소 시 복원용)
       originalItemTime.value = item.time;
       originalItemMemo.value = item.location;
     };
-    
+
     // 아이템 수정 저장
     const saveItemEdit = (index) => {
       if (editingItem.value !== null) {
         const item = tripDays.value[activeDay.value].items[index];
         item.time = editItemTime.value;
         item.location = editItemMemo.value;
-        
+
         // 위치 정보 업데이트
         updateLocation(activeDay.value, index, editItemMemo.value);
-        
+
         // 수정 모드 종료
         editingItem.value = null;
-        
+
         // 강제 화면 갱신
         forceRefresh();
       }
@@ -903,11 +884,11 @@ export default {
         // 원본 값으로 되돌리기
         const index = editingItem.value;
         const item = tripDays.value[activeDay.value].items[index];
-        
+
         // 변경된 내용이 있으면 원래 값으로 복원
         item.time = originalItemTime.value;
         item.location = originalItemMemo.value;
-        
+
         // 수정 모드 종료
         editingItem.value = null;
         console.log("수정 취소됨");
@@ -917,17 +898,17 @@ export default {
     // 카카오 맵 초기화
     const initializeMap = () => {
       console.log("Initializing Kakao Map...");
-      
+
       // 카카오 지도 API 로드
       const kakaoMapsApiKey = config.KAKAO_MAPS_API_KEY;
       console.log("Kakao Maps API Key:", kakaoMapsApiKey);
-      
+
       // 스크립트가 이미 있는지 확인
       const existingScript = document.getElementById('kakao-maps-sdk');
       if (existingScript) {
         existingScript.remove();
       }
-      
+
       // 스크립트 생성
       const script = document.createElement('script');
       script.id = 'kakao-maps-sdk';
@@ -951,35 +932,35 @@ export default {
         console.error("Kakao Maps SDK not loaded");
         return;
       }
-      
+
       if (!kakaoMapContainer.value) {
         console.error("Kakao Map container not found");
         return;
       }
-      
+
       try {
         // 제주도 중심 좌표
         const jejuCenter = new kakao.maps.LatLng(33.3846, 126.5535);
-        
+
         // 맵 생성
         const options = {
           center: jejuCenter,
           level: 9 // 확대 레벨 (숫자가 작을수록 확대)
         };
-        
+
         kakaoMap.value = new kakao.maps.Map(kakaoMapContainer.value, options);
         console.log("Kakao Map created:", kakaoMap.value);
-        
+
         // 확대 축소 컨트롤러 추가
         const zoomControl = new kakao.maps.ZoomControl();
         kakaoMap.value.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
-        
+
         // Geocoder 초기화
         geocoder.value = new kakao.maps.services.Geocoder();
-        
+
         // 마커와 경로 표시
         updateMapMarkers();
-        
+
         mapLoaded.value = true;
       } catch (error) {
         console.error("Error initializing Kakao Map:", error);
@@ -989,51 +970,51 @@ export default {
     // 카카오 지도 마커와 경로 업데이트
     const updateMapMarkers = () => {
       console.log("Updating Kakao Map markers...");
-      
+
       // 카카오 맵이 로드되지 않았다면 무시
       if (!kakaoMap.value || !window.kakao) {
         console.error("Kakao Map not loaded yet");
         return;
       }
-      
+
       try {
         console.log("Current active day:", activeDay.value);
-        
+
         // 기존 마커 제거
         kakaoMarkers.value.forEach(marker => marker.setMap(null));
         kakaoMarkers.value = [];
-        
+
         // 기존 경로 제거
         if (kakaoPolyline.value) {
           kakaoPolyline.value.setMap(null);
         }
-        
+
         // 현재 선택된 날짜의 일정 가져오기 (시간순 정렬)
         const dayItems = sortedScheduleItems.value;
         console.log(`Found ${dayItems.length} items for day ${activeDay.value}:`, dayItems);
-        
+
         if (dayItems.length === 0) {
           console.log("No items for this day");
           return;
         }
-        
+
         // 지도 재배치 (가끔 맵이 제대로 표시되지 않는 문제 해결)
         kakaoMap.value.relayout();
-        
+
         const linePath = [];
         const bounds = new kakao.maps.LatLngBounds();
-        
+
         // 마커 추가
         dayItems.forEach((item, index) => {
           if (!item.coords) {
             console.log("No coordinates for item:", item);
             return;
           }
-          
+
           const position = new kakao.maps.LatLng(item.coords.lat, item.coords.lng);
           linePath.push(position);
           bounds.extend(position);
-          
+
           // 마커 색상 설정
           let markerColor;
           if (index === 0) {
@@ -1043,7 +1024,7 @@ export default {
           } else {
             markerColor = '#3498DB';  // 중간 위치 (파란색)
           }
-          
+
           // 커스텀 오버레이 생성 (원형 마커 + 숫자)
           const content = `
             <div class="custom-marker" style="
@@ -1062,7 +1043,7 @@ export default {
               ${index + 1}
             </div>
           `;
-          
+
           // 커스텀 오버레이 생성
           const customOverlay = new kakao.maps.CustomOverlay({
             position: position,
@@ -1070,11 +1051,11 @@ export default {
             yAnchor: 1,
             zIndex: 3
           });
-          
+
           // 지도에 커스텀 오버레이 표시
           customOverlay.setMap(kakaoMap.value);
           kakaoMarkers.value.push(customOverlay);
-          
+
           // 인포윈도우 생성
           const infoContent = `
             <div style="
@@ -1090,27 +1071,27 @@ export default {
               <div style="color: #666;">${item.location}</div>
             </div>
           `;
-          
+
           const infoWindow = new kakao.maps.CustomOverlay({
             position: position,
             content: infoContent,
             yAnchor: 2.2,
             zIndex: 2
           });
-          
+
           // 마커 클릭 이벤트 - 인포윈도우 표시 (2초 후 자동으로 닫힘)
-          kakao.maps.event.addListener(customOverlay, 'click', function() {
+          kakao.maps.event.addListener(customOverlay, 'click', function () {
             infoWindow.setMap(kakaoMap.value);
-            
+
             // 2초 후 인포윈도우 닫기
             setTimeout(() => {
               infoWindow.setMap(null);
             }, 2000);
           });
-          
+
           kakaoMarkers.value.push(infoWindow);
         });
-        
+
         // 경로 표시 (2개 이상의 위치가 있을 경우)
         if (linePath.length >= 2) {
           kakaoPolyline.value = new kakao.maps.Polyline({
@@ -1120,10 +1101,10 @@ export default {
             strokeOpacity: 0.7,
             strokeStyle: 'solid'
           });
-          
+
           kakaoPolyline.value.setMap(kakaoMap.value);
         }
-        
+
         // 지도 범위 조정
         if (kakaoMarkers.value.length > 0) {
           kakaoMap.value.setBounds(bounds);
@@ -1139,7 +1120,7 @@ export default {
         console.error("Kakao Maps Services not loaded");
         return;
       }
-      
+
       // geocoder가 없으면 새로 생성
       if (!geocoder.value) {
         try {
@@ -1150,12 +1131,12 @@ export default {
           return;
         }
       }
-      
+
       try {
         console.log(`Geocoding address: ${address}`);
         // 제주도 지역 검색을 위해 주소에 제주도를 포함
         const searchAddress = `${address}, 제주도`;
-        
+
         geocoder.value.addressSearch(searchAddress, (result, status) => {
           if (status === kakao.maps.services.Status.OK && result.length > 0) {
             const coords = {
@@ -1189,14 +1170,14 @@ export default {
     // 위치 업데이트 함수
     const updateLocation = (dayIndex, itemIndex, location) => {
       if (!location || location.trim() === '') return;
-      
+
       console.log(`Updating location for day ${dayIndex}, item ${itemIndex}: ${location}`);
-      
+
       // 카카오 지도에서 좌표 변환
       geocodeAddress(location, (coords) => {
         // 좌표 업데이트
         tripDays.value[dayIndex].items[itemIndex].coords = coords;
-        
+
         // 현재 선택된 날짜인 경우에만 화면 갱신
         if (dayIndex === activeDay.value) {
           forceRefresh();
@@ -1217,7 +1198,7 @@ export default {
     // 일정 항목 삭제
     const removeScheduleItem = (dayIndex, itemIndex) => {
       tripDays.value[dayIndex].items.splice(itemIndex, 1);
-      
+
       // 강제 화면 갱신
       forceRefresh();
     };
@@ -1225,19 +1206,19 @@ export default {
     // 지출 항목을 날짜별로 그룹화
     const groupedExpenses = computed(() => {
       const grouped = {};
-      
+
       // 날짜별로 그룹화
       tripData.value.expenses.forEach(expense => {
         // 기존 데이터에 날짜가 없는 경우 오늘 날짜 사용
         const date = expense.date || new Date().toISOString().split('T')[0];
-        
+
         if (!grouped[date]) {
           grouped[date] = [];
         }
-        
+
         grouped[date].push(expense);
       });
-      
+
       // 각 그룹 내에서 시간별 정렬
       Object.keys(grouped).forEach(date => {
         grouped[date].sort((a, b) => {
@@ -1246,25 +1227,25 @@ export default {
           return timeA.localeCompare(timeB);
         });
       });
-      
+
       // 날짜별 정렬된 객체 반환 (키는 날짜, 값은 해당 날짜의 지출 배열)
       const sortedDates = Object.keys(grouped).sort();
       const result = {};
-      
+
       sortedDates.forEach(date => {
         result[date] = grouped[date];
       });
-      
+
       return result;
     });
-    
+
     // 지출 항목 추가 (날짜와 시간 정보 포함)
     const addExpense = () => {
       // 현재 날짜와 시간 기본값으로 설정
       const now = new Date();
       const today = now.toISOString().split('T')[0];
       const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-      
+
       tripData.value.expenses.push({
         category: 'other',
         description: '',
@@ -1273,34 +1254,42 @@ export default {
         time: currentTime
       });
     };
-    
+
     // 지출 인덱스 찾기
     const getExpenseIndex = (expense) => {
       return tripData.value.expenses.findIndex(e => e === expense);
     };
-    
+
     // 지출 항목 삭제
     const removeExpense = (index) => {
       tripData.value.expenses.splice(index, 1);
     };
-    
+
     // 지출 날짜 포맷팅
     const formatExpenseDate = (dateString) => {
       const date = new Date(dateString);
-      return date.toLocaleDateString('ko-KR', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric', 
-        weekday: 'long' 
+      return date.toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'long'
       });
     };
 
-    // 날짜 포맷팅
+    // 날짜 포맷팅 함수 수정
     const formatDate = (date) => {
       if (!date) return '';
-      
+
+      // 문자열이 들어온 경우 Date 객체로 변환
+      const dateObj = date instanceof Date ? date : new Date(date);
+
+      // 유효한 날짜인지 확인
+      if (isNaN(dateObj.getTime())) {
+        return '날짜 형식 오류';
+      }
+
       const options = { month: 'short', day: 'numeric', weekday: 'short' };
-      return date.toLocaleDateString('ko-KR', options);
+      return dateObj.toLocaleDateString('ko-KR', options);
     };
 
     // 날짜 더하기
@@ -1330,14 +1319,14 @@ export default {
       searchResults.value = [];
       hasSearched.value = false;
       selectedPlace.value = null;
-      
+
       // 로컬 스토리지에서 위시리스트 불러오기
       const savedWishlist = localStorage.getItem('wishlistPlaces');
       if (savedWishlist) {
         wishlistPlaces.value = JSON.parse(savedWishlist);
       }
     };
-    
+
     // 장소 검색 모달 닫기
     const closePlaceSearch = () => {
       isPlaceSearchModalOpen.value = false;
@@ -1346,60 +1335,60 @@ export default {
       searchResults.value = [];
       hasSearched.value = false;
     };
-    
+
     // 장소 상세 정보 열기
     const openPlaceDetails = (place) => {
       selectedPlace.value = place;
-      
+
       // 현재 시간을 기본값으로 설정
       const now = new Date();
       const hours = now.getHours().toString().padStart(2, '0');
       const minutes = now.getMinutes().toString().padStart(2, '0');
       visitTime.value = `${hours}:${minutes}`;
       placeMemo.value = '';
-      
+
       // 다음 렌더링 주기에서 상세 지도 초기화
       nextTick(() => {
         initDetailMap();
       });
     };
-    
+
     // 상세 지도 초기화
     const initDetailMap = () => {
       if (!selectedPlace.value) return;
-      
+
       // 지도 컨테이너 요소가 있는지 확인
       const detailMapContainer = document.getElementById('detail-map');
       if (!detailMapContainer) return;
-      
+
       // 카카오맵 API가 로드되었는지 확인
       if (!window.kakao || !window.kakao.maps) {
         console.error("Kakao Maps SDK not loaded");
         return;
       }
-      
+
       try {
         // 선택한 장소의 좌표
         const placePosition = new kakao.maps.LatLng(
           selectedPlace.value.y,
           selectedPlace.value.x
         );
-        
+
         // 지도 옵션
         const mapOptions = {
           center: placePosition,
           level: 3 // 확대 레벨
         };
-        
+
         // 지도 생성
         const detailMap = new kakao.maps.Map(detailMapContainer, mapOptions);
-        
+
         // 마커 생성
         new kakao.maps.Marker({
           position: placePosition,
           map: detailMap
         });
-        
+
         // 1초 후 지도 리사이즈 (모달 애니메이션 완료 후)
         setTimeout(() => {
           detailMap.relayout();
@@ -1408,17 +1397,17 @@ export default {
         console.error("Error initializing detail map:", error);
       }
     };
-    
+
     // 장소 상세 취소
     const cancelPlaceDetails = () => {
       selectedPlace.value = null;
     };
-    
+
     // 위시리스트에 장소 추가
     const addToWishlist = (place) => {
       // 이미 위시리스트에 있는지 확인
       const existingIndex = wishlistPlaces.value.findIndex(p => p.id === place.id);
-      
+
       if (existingIndex >= 0) {
         // 이미 있으면 제거 (토글)
         wishlistPlaces.value.splice(existingIndex, 1);
@@ -1426,32 +1415,32 @@ export default {
         // 없으면 추가
         wishlistPlaces.value.push(place);
       }
-      
+
       // 로컬 스토리지에 저장
       localStorage.setItem('wishlistPlaces', JSON.stringify(wishlistPlaces.value));
     };
-    
+
     // 위시리스트에서 장소 제거
     const removeFromWishlist = (index) => {
       wishlistPlaces.value.splice(index, 1);
       localStorage.setItem('wishlistPlaces', JSON.stringify(wishlistPlaces.value));
     };
-    
+
     // 위시리스트에 있는지 확인
     const isInWishlist = (place) => {
       return wishlistPlaces.value.some(p => p.id === place.id);
     };
-    
+
     // 선택한 장소 일정에 추가
     const addSelectedPlace = () => {
       if (!selectedPlace.value) return;
-      
+
       // 좌표 추출
       const coords = {
         lat: parseFloat(selectedPlace.value.y),
         lng: parseFloat(selectedPlace.value.x)
       };
-      
+
       // 새 일정 아이템 생성
       const newItem = {
         time: visitTime.value,
@@ -1459,61 +1448,61 @@ export default {
         location: placeMemo.value || selectedPlace.value.road_address_name || selectedPlace.value.address_name,
         coords: coords
       };
-      
+
       // 선택한 날짜의 일정에 추가
       if (!tripDays.value[selectedDay.value].items) {
         tripDays.value[selectedDay.value].items = [];
       }
-      
+
       tripDays.value[selectedDay.value].items.push(newItem);
-      
+
       // 모달 닫기
       closePlaceSearch();
-      
+
       // 활성 날짜를 선택한 날짜로 변경 (다른 날짜에 일정을 추가한 경우)
       if (selectedDay.value !== activeDay.value) {
         activeDay.value = selectedDay.value;
       }
-      
+
       // 강제 화면 갱신 - 일정 추가 후 즉시 실행
       forceRefresh();
     };
-    
+
     // 장소 검색 실행
     const searchPlaces = () => {
       if (!placeSearchKeyword.value.trim()) {
         alert('검색어를 입력해주세요');
         return;
       }
-      
+
       if (!window.kakao || !window.kakao.maps || !window.kakao.maps.services) {
         alert('카카오맵 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
         return;
       }
-      
+
       isSearching.value = true;
       hasSearched.value = true;
       searchResults.value = [];
-      
+
       // 카카오 장소 검색 API 사용
       const places = new kakao.maps.services.Places();
-      
+
       // 현재 지도의 중심 좌표 (제주도)
       const center = new kakao.maps.LatLng(33.3846, 126.5535);
-      
+
       // 검색 옵션
       const searchOptions = {
         location: center,
         radius: 20000, // 20km 반경 내 검색
         size: 15 // 최대 15개 결과
       };
-      
+
       // 키워드 + 제주도로 검색 범위 좁히기
       const keyword = `${placeSearchKeyword.value} 제주도`;
-      
+
       places.keywordSearch(keyword, (result, status) => {
         isSearching.value = false;
-        
+
         if (status === kakao.maps.services.Status.OK) {
           console.log('검색 결과:', result);
           searchResults.value = result;
@@ -1525,12 +1514,12 @@ export default {
         }
       }, searchOptions);
     };
-    
+
     // 장소 선택 및 일정 추가
     const selectPlace = (place) => {
       openPlaceDetails(place);
     };
-    
+
 
     // 컴포넌트 마운트 시 지도 초기화
     onMounted(() => {
@@ -1549,7 +1538,7 @@ export default {
       console.log(`Active day changed from ${oldDay} to ${newDay}`);
       if (mapLoaded.value && kakaoMap.value) {
         console.log(`Updating map for day ${newDay} with ${tripDays.value[newDay]?.items?.length || 0} items`);
-        
+
         // 지도 업데이트를 약간 지연시켜 UI 업데이트 후 실행
         setTimeout(() => {
           updateMapMarkers();
@@ -1579,15 +1568,15 @@ export default {
     const forceRefresh = () => {
       console.log("강제 화면 갱신 실행...");
       const currentDay = activeDay.value;
-      
+
       // 존재하지 않는 인덱스로 잠시 변경
       activeDay.value = -1;
-      
+
       // 10ms 후에 원래 인덱스로 복귀
       setTimeout(() => {
         activeDay.value = currentDay;
         console.log(`원래 날짜(${currentDay})로 복귀 완료`);
-        
+
         // 복귀 후 지도 업데이트
         if (mapLoaded.value) {
           updateMapMarkers();
@@ -1607,24 +1596,24 @@ export default {
       Time: '',
       Price: null
     });
-    
+
     // 영수증 업로드 모달 열기
     const openReceiptUpload = () => {
       showReceiptUpload.value = true;
       clearReceiptImage();
     };
-    
+
     // 영수증 업로드 모달 닫기
     const closeReceiptUpload = () => {
       showReceiptUpload.value = false;
       clearReceiptImage();
     };
-    
+
     // 영수증 파일 입력 트리거
     const triggerReceiptFileInput = () => {
       document.querySelector('input[type="file"]').click();
     };
-    
+
     // 영수증 파일 입력 처리
     const handleReceiptFileInput = (event) => {
       const file = event.target.files[0];
@@ -1632,16 +1621,16 @@ export default {
         processReceiptFile(file);
       }
     };
-    
+
     // 드래그 이벤트
     const onDragOver = () => {
       isDragging.value = true;
     };
-    
+
     const onDragLeave = () => {
       isDragging.value = false;
     };
-    
+
     const onDrop = (event) => {
       isDragging.value = false;
       const file = event.dataTransfer.files[0];
@@ -1649,14 +1638,14 @@ export default {
         processReceiptFile(file);
       }
     };
-    
+
     // 영수증 파일 처리
     const processReceiptFile = (file) => {
       if (!file.type.startsWith('image/')) {
         alert('이미지 파일만 업로드 가능합니다.');
         return;
       }
-      
+
       const reader = new FileReader();
       reader.onload = (e) => {
         const img = new Image();
@@ -1664,14 +1653,14 @@ export default {
           // 이미지 리사이즈
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
-          
+
           // 최대 크기 제한
           const MAX_WIDTH = 800;
           const MAX_HEIGHT = 1200;
-          
+
           let width = img.width;
           let height = img.height;
-          
+
           // 비율 유지하면서 리사이즈
           if (width > height) {
             if (width > MAX_WIDTH) {
@@ -1684,15 +1673,15 @@ export default {
               height = MAX_HEIGHT;
             }
           }
-          
+
           canvas.width = width;
           canvas.height = height;
-          
+
           ctx.drawImage(img, 0, 0, width, height);
-          
+
           // 리사이즈된 이미지를 미리보기로 설정
           receiptPreview.value = canvas.toDataURL(file.type);
-          
+
           // 리사이즈된 이미지를 Blob으로 변환하여 보관
           canvas.toBlob((blob) => {
             receiptFile.value = new File([blob], file.name, { type: file.type });
@@ -1702,7 +1691,7 @@ export default {
       };
       reader.readAsDataURL(file);
     };
-    
+
     // 영수증 이미지 초기화
     const clearReceiptImage = () => {
       receiptFile.value = null;
@@ -1711,16 +1700,16 @@ export default {
         document.querySelector('input[type="file"]').value = '';
       }
     };
-    
+
     // 영수증 분석
     const analyzeReceipt = async () => {
       if (!receiptFile.value) {
         return;
       }
-      
+
       isLoading.value = true;
       loadingMessage.value = 'OCR로 텍스트 추출 중...';
-      
+
       try {
         const formData = new FormData();
         formData.append('apikey', 'K83821813888957');
@@ -1729,14 +1718,14 @@ export default {
         formData.append('OCREngine', '2');
         formData.append('scale', 'true');
         formData.append('file', receiptFile.value);
-        
+
         const response = await fetch('https://api.ocr.space/parse/image', {
           method: 'POST',
           body: formData
         });
-        
+
         const data = await response.json();
-        
+
         if (data.OCRExitCode === 1) {
           loadingMessage.value = 'AI 처리중...';
           await analyzeWithAI(data.ParsedResults[0].ParsedText);
@@ -1750,7 +1739,7 @@ export default {
         isLoading.value = false;
       }
     };
-    
+
     // AI 모델로 분석
     const analyzeWithAI = async (text) => {
       try {
@@ -1765,29 +1754,29 @@ export default {
             stream: false
           })
         });
-        
+
         if (!response.ok) {
           throw new Error(`API 응답 오류: ${response.status} ${response.statusText}`);
         }
-        
+
         const data = await response.json();
-        
+
         if (data && data.response) {
           try {
             const parsedResponse = JSON.parse(data.response);
-            
-            if (parsedResponse.Place !== undefined && 
-                parsedResponse.Time !== undefined && 
-                parsedResponse.Price !== undefined) {
+
+            if (parsedResponse.Place !== undefined &&
+              parsedResponse.Time !== undefined &&
+              parsedResponse.Price !== undefined) {
               parsedReceiptData.value = parsedResponse;
-              
+
               // 지출 항목으로 추가
               addFromReceipt(
                 parsedReceiptData.value.Place,
                 parsedReceiptData.value.Time,
                 parsedReceiptData.value.Price
               );
-              
+
               // 모달 닫기
               closeReceiptUpload();
               return;
@@ -1796,79 +1785,79 @@ export default {
             console.error('AI 응답을 JSON으로 파싱할 수 없습니다:', e);
           }
         }
-        
+
         // AI 분석 실패시 기본 패턴 매칭 사용
         extractReceiptData(text);
-        
+
         // 지출 항목으로 추가
         addFromReceipt(
           parsedReceiptData.value.Place,
           parsedReceiptData.value.Time,
           parsedReceiptData.value.Price
         );
-        
+
         // 모달 닫기
         closeReceiptUpload();
       } catch (error) {
         console.error('AI 분석 오류:', error);
         extractReceiptData(text);
-        
+
         // 지출 항목으로 추가
         addFromReceipt(
           parsedReceiptData.value.Place,
           parsedReceiptData.value.Time,
           parsedReceiptData.value.Price
         );
-        
+
         // 모달 닫기
         closeReceiptUpload();
       }
     };
-    
+
     // 기본 패턴 매칭
     const extractReceiptData = (text) => {
       if (!text) return;
-      
+
       const lines = text.split('\n').filter(line => line.trim());
-      
+
       // 결제 장소 추출
       const potentialPlaces = lines.slice(0, Math.min(3, lines.length));
       parsedReceiptData.value.Place = potentialPlaces.reduce(
-        (longest, current) => current.length > longest.length ? current : longest, 
+        (longest, current) => current.length > longest.length ? current : longest,
         ''
       ).trim();
-      
+
       // 날짜 및 시간 패턴 찾기
       const datePattern = /\d{2,4}[-./]\d{1,2}[-./]\d{1,2}|\d{1,2}[-./]\d{1,2}[-./]\d{2,4}/;
       const timePattern = /\d{1,2}:\d{2}(:\d{2})?/;
-      
+
       // 결제 시간 추출
       for (const line of lines) {
         const timeLabels = ['날짜', '시간', '결제시간', '거래일시', '거래일자', '일자', '일시'];
         const hasTimeLabel = timeLabels.some(label => line.includes(label));
-        
+
         const dateMatch = line.match(datePattern);
         if (dateMatch) {
           let dateStr = dateMatch[0];
-          
+
           const timeMatch = line.match(timePattern);
           if (timeMatch) {
             dateStr += ' ' + timeMatch[0];
           }
-          
+
           if (hasTimeLabel || !parsedReceiptData.value.Time) {
             parsedReceiptData.value.Time = dateStr.trim();
           }
         }
       }
-      
+
       // 결제 금액 추출
       const totalPatterns = [
         /(합\s*계|총\s*액|결제\s*금액|결제액|Total|합계금액).{0,10}([\d,]+)/i,
         /([\d,]+)\s*원\s*(합\s*계|총\s*액|결제\s*금액)/i,
         /([\d,]+)/
       ];
-      
+
       for (const line of lines) {
         for (const pattern of totalPatterns) {
           const match = line.match(pattern);
@@ -1882,12 +1871,12 @@ export default {
         }
       }
     };
-    
+
     // 영수증 데이터로 지출 항목 추가
     const addFromReceipt = (place, timeStr, price) => {
       let dateObj = new Date();
       let timeOnly = '';
-      
+
       // 날짜/시간 문자열 파싱 시도
       if (timeStr) {
         // 다양한 날짜 형식 처리
@@ -1896,10 +1885,10 @@ export default {
           /(\d{1,2})[-./](\d{1,2})[-./](\d{4})/,  // DD-MM-YYYY
           /(\d{1,2})[-./](\d{1,2})[-./](\d{2})/   // DD-MM-YY
         ];
-        
+
         let dateMatch = null;
         let formatIndex = -1;
-        
+
         for (let i = 0; i < dateFormats.length; i++) {
           const match = timeStr.match(dateFormats[i]);
           if (match) {
@@ -1908,7 +1897,7 @@ export default {
             break;
           }
         }
-        
+
         if (dateMatch) {
           try {
             if (formatIndex === 0) {
@@ -1939,7 +1928,7 @@ export default {
             dateObj = new Date();
           }
         }
-        
+
         // 시간 추출
         const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
         if (timeMatch) {
@@ -1949,22 +1938,22 @@ export default {
             if (timeMatch[3]) {
               dateObj.setSeconds(parseInt(timeMatch[3]));
             }
-            
+
             timeOnly = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2].padStart(2, '0')}`;
           } catch (e) {
             console.error('시간 파싱 오류:', e);
           }
         }
       }
-      
+
       // 날짜 포맷팅
       const date = dateObj.toISOString().split('T')[0];
-      
+
       // 시간이 없는 경우 현재 시간 사용
       if (!timeOnly) {
         timeOnly = `${dateObj.getHours().toString().padStart(2, '0')}:${dateObj.getMinutes().toString().padStart(2, '0')}`;
       }
-      
+
       // 새 지출 항목 객체
       const newExpense = {
         category: 'other',
@@ -1973,17 +1962,17 @@ export default {
         date: date,
         time: timeOnly
       };
-      
+
       // 지출 목록에 추가
       tripData.value.expenses.push(newExpense);
-      
+
       // 성공 메시지 (alert 대신 배너 표시)
       showSuccessBanner.value = true;
       setTimeout(() => {
         showSuccessBanner.value = false;
       }, 3000);
     };
-    
+
     // 지출 항목 수정 관련 상태
     const editingExpense = ref(null);
     const editExpenseTime = ref('');
@@ -1992,30 +1981,30 @@ export default {
     const originalExpenseTime = ref('');
     const originalExpenseDesc = ref('');
     const originalExpenseAmount = ref(0);
-    
+
     // 지출 항목 수정 시작
     const startExpenseEdit = (expense) => {
       editingExpense.value = expense;
       editExpenseTime.value = expense.time || '';
       editExpenseDesc.value = expense.description || '';
       editExpenseAmount.value = expense.amount || 0;
-      
+
       // 원본 값 저장 (수정 취소 시 복원용)
       originalExpenseTime.value = expense.time || '';
       originalExpenseDesc.value = expense.description || '';
       originalExpenseAmount.value = expense.amount || 0;
     };
-    
+
     // 지출 항목 수정 저장
     const saveExpenseEdit = (expense) => {
       expense.time = editExpenseTime.value;
       expense.description = editExpenseDesc.value;
       expense.amount = Number(editExpenseAmount.value);
-      
+
       // 수정 모드 종료
       editingExpense.value = null;
     };
-    
+
     // 지출 항목 수정 취소
     const cancelExpenseEdit = () => {
       // 원본 값으로 복원
@@ -2024,52 +2013,52 @@ export default {
         editingExpense.value.description = originalExpenseDesc.value;
         editingExpense.value.amount = originalExpenseAmount.value;
       }
-      
+
       // 수정 모드 종료
       editingExpense.value = null;
     };
-    
+
     // 성공 배너 상태
     const showSuccessBanner = ref(false);
-    
+
     // 여행 기본 정보 수정 관련 상태
     const isEditingInfo = ref(false);
     const tempTripData = ref({});
-    
+
     // 여행 기본 정보 수정 시작
     const startEditInfo = () => {
       tempTripData.value = JSON.parse(JSON.stringify(tripData.value));
       isEditingInfo.value = true;
     };
-    
+
     // 여행 기본 정보 수정 저장
     const saveEditInfo = () => {
       isEditingInfo.value = false;
     };
-    
+
     // 여행 기본 정보 수정 취소
     const cancelEditInfo = () => {
       tripData.value = JSON.parse(JSON.stringify(tempTripData.value));
       isEditingInfo.value = false;
     };
-    
+
     // 날짜 전체 형식 포맷팅 (YYYY년 MM월 DD일 요일)
     const formatDateFull = (dateString) => {
       if (!dateString) return '';
-      
+
       const date = new Date(dateString);
-      return date.toLocaleDateString('ko-KR', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric', 
-        weekday: 'long' 
+      return date.toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'long'
       });
     };
-    
+
     // 방문 인증 함수
     const verifyVisit = (dayIndex, itemIndex) => {
       const item = tripDays.value[dayIndex].items[itemIndex];
-      
+
       // 이미 인증된 항목이면 인증 취소
       if (item.verified) {
         item.verified = false;
@@ -2079,7 +2068,7 @@ export default {
         console.log(`${item.activity} 방문 인증 취소됨`);
         return;
       }
-      
+
       // 인증 대상 정보 저장
       verifyingDay.value = dayIndex;
       verifyingItem.value = itemIndex;
@@ -2088,7 +2077,7 @@ export default {
         location: item.location,
         coords: item.coords
       };
-      
+
       // 인증하려는 장소의 데이터를 콘솔에 출력
       console.log('===== 인증하려는 장소 정보 =====');
       console.log('장소명:', item.activity);
@@ -2096,17 +2085,17 @@ export default {
       console.log('좌표:', item.coords);
       console.log('여행 날짜:', addDays(new Date(tripData.value.startDate), dayIndex).toLocaleDateString('ko-KR'));
       console.log('===============================');
-      
+
       // 상태 초기화
       verificationPhotoPreview.value = null;
       photoMetadata.value = null;
       verificationResult.value = null;
       distanceFromTarget.value = null;
-      
+
       // 모달 열기
       showVerificationModal.value = true;
     };
-    
+
     // 방문 인증 관련 상태
     const showVerificationModal = ref(false);
     const verificationPhotoPreview = ref(null);
@@ -2123,27 +2112,27 @@ export default {
       location: '',
       coords: null
     });
-    
+
     // 방문 인증 모달 닫기
     const closeVerificationModal = () => {
       showVerificationModal.value = false;
       clearVerificationPhoto();
     };
-    
+
     // 사진 파일 입력 트리거
     const triggerPhotoFileInput = () => {
       photoFileInput.value.click();
     };
-    
+
     // 드래그 이벤트 핸들러
     const onPhotoUploadDragOver = () => {
       isPhotoDragging.value = true;
     };
-    
+
     const onPhotoUploadDragLeave = () => {
       isPhotoDragging.value = false;
     };
-    
+
     const onPhotoUploadDrop = (event) => {
       isPhotoDragging.value = false;
       const file = event.dataTransfer.files[0];
@@ -2151,7 +2140,7 @@ export default {
         processPhotoFile(file);
       }
     };
-    
+
     // 사진 파일 입력 처리
     const handlePhotoFileInput = (event) => {
       const file = event.target.files[0];
@@ -2159,66 +2148,66 @@ export default {
         processPhotoFile(file);
       }
     };
-    
+
     // 사진 파일 처리 및 메타데이터 추출
     const processPhotoFile = (file) => {
       if (!file.type.startsWith('image/')) {
         alert('이미지 파일만 업로드 가능합니다.');
         return;
       }
-      
+
       // 파일 미리보기 생성
       const reader = new FileReader();
       reader.onload = (e) => {
         verificationPhotoPreview.value = e.target.result;
-        
+
         // 메타데이터 추출
         extractImageMetadata(file);
       };
       reader.readAsDataURL(file);
     };
-    
+
     // 사진에서 메타데이터(EXIF) 추출
     const extractImageMetadata = (file) => {
       const reader = new FileReader();
-      reader.onload = function() {
+      reader.onload = function () {
         try {
           // const arrayBuffer = reader.result;
           console.log('이미지 파일 로드 완료, 메타데이터 추출 시작');
-          
+
           // exif-js 라이브러리를 사용하여 EXIF 데이터 추출
           // 실제 프로젝트에서는 라이브러리 추가 필요: npm install exif-js
           if (typeof EXIF !== 'undefined') {
-            EXIF.getData(file, function() {
+            EXIF.getData(file, function () {
               console.log('EXIF 데이터 추출 성공');
-              
+
               // GPS 정보 추출
               const exifData = EXIF.getAllTags(this);
               console.log('추출된 EXIF 데이터:', exifData);
-              
+
               let latitude = null;
               let longitude = null;
               let dateTime = null;
-              
+
               // GPS 좌표 추출
               if (exifData.GPSLatitude && exifData.GPSLongitude) {
                 const latDegrees = exifData.GPSLatitude[0].numerator / exifData.GPSLatitude[0].denominator;
                 const latMinutes = exifData.GPSLatitude[1].numerator / exifData.GPSLatitude[1].denominator;
                 const latSeconds = exifData.GPSLatitude[2].numerator / exifData.GPSLatitude[2].denominator;
                 const latDirection = exifData.GPSLatitudeRef || "N";
-                
+
                 const lngDegrees = exifData.GPSLongitude[0].numerator / exifData.GPSLongitude[0].denominator;
                 const lngMinutes = exifData.GPSLongitude[1].numerator / exifData.GPSLongitude[1].denominator;
                 const lngSeconds = exifData.GPSLongitude[2].numerator / exifData.GPSLongitude[2].denominator;
                 const lngDirection = exifData.GPSLongitudeRef || "E";
-                
+
                 latitude = convertDMSToDD(latDegrees, latMinutes, latSeconds, latDirection);
                 longitude = convertDMSToDD(lngDegrees, lngMinutes, lngSeconds, lngDirection);
-                
+
                 console.log(`추출된 GPS 좌표: ${latitude}, ${longitude}`);
               } else {
                 console.log('GPS 정보를 찾을 수 없습니다.');
-                
+
                 // 사용자에게 위치 정보 없음 경고 표시
                 verificationResult.value = {
                   success: false,
@@ -2226,7 +2215,7 @@ export default {
                 };
                 isVerifying.value = false;
               }
-              
+
               // 날짜/시간 정보 추출
               if (exifData.DateTimeOriginal) {
                 // EXIF 날짜 형식: YYYY:MM:DD HH:MM:SS
@@ -2234,7 +2223,7 @@ export default {
                 const parts = exifDateTime.split(' ');
                 const dateParts = parts[0].split(':');
                 const timeParts = parts[1].split(':');
-                
+
                 dateTime = new Date(
                   parseInt(dateParts[0]),
                   parseInt(dateParts[1]) - 1,
@@ -2243,26 +2232,26 @@ export default {
                   parseInt(timeParts[1]),
                   parseInt(timeParts[2])
                 ).toISOString();
-                
+
                 console.log(`추출된 촬영 시간: ${dateTime}`);
               } else {
                 console.log('촬영 날짜/시간 정보를 찾을 수 없습니다.');
                 // 촬영 날짜 정보가 없으면 현재 시간 사용
                 dateTime = new Date().toISOString();
               }
-              
+
               // 메타데이터 저장
               photoMetadata.value = {
                 dateTime: dateTime,
                 latitude: latitude,
                 longitude: longitude
               };
-              
+
               // 대상 장소 정보 출력
               console.log('===== 대상 장소 정보 =====');
               console.log('장소 위치:', verifyingItemInfo.value.coords.lat, verifyingItemInfo.value.coords.lng);
               console.log('=======================================');
-              
+
               // 대상 위치와의 거리 계산
               if (verifyingItemInfo.value.coords && latitude && longitude) {
                 distanceFromTarget.value = calculateDistance(
@@ -2271,7 +2260,7 @@ export default {
                   verifyingItemInfo.value.coords.lat,
                   verifyingItemInfo.value.coords.lng
                 );
-                
+
                 // 계산된 거리 콘솔에 출력
                 console.log('===== 거리 계산 결과 =====');
                 console.log('목적지와의 거리:', distanceFromTarget.value.toFixed(3), 'km');
@@ -2282,12 +2271,12 @@ export default {
                 console.log('EXIF 위치 정보가 없어 시뮬레이션 데이터를 사용합니다');
                 const simulatedMetadata = simulateExifMetadata();
                 photoMetadata.value = simulatedMetadata;
-                
+
                 // 추출된 메타데이터 콘솔에 출력
                 console.log('===== 시뮬레이션된 메타데이터 =====');
                 console.log('촬영 시간:', new Date(simulatedMetadata.dateTime).toLocaleString('ko-KR'));
                 console.log('촬영 위치:', simulatedMetadata.latitude, simulatedMetadata.longitude);
-                
+
                 // 대상 위치와의 거리 계산
                 if (verifyingItemInfo.value.coords && simulatedMetadata.latitude && simulatedMetadata.longitude) {
                   distanceFromTarget.value = calculateDistance(
@@ -2296,7 +2285,7 @@ export default {
                     verifyingItemInfo.value.coords.lat,
                     verifyingItemInfo.value.coords.lng
                   );
-                  
+
                   // 계산된 거리 콘솔에 출력
                   console.log('===== 거리 계산 결과 (시뮬레이션) =====');
                   console.log('목적지와의 거리:', distanceFromTarget.value.toFixed(3), 'km');
@@ -2310,12 +2299,12 @@ export default {
             console.log('EXIF 라이브러리를 찾을 수 없어 시뮬레이션 데이터를 사용합니다');
             const simulatedMetadata = simulateExifMetadata();
             photoMetadata.value = simulatedMetadata;
-            
+
             // 추출된 메타데이터 콘솔에 출력
             console.log('===== 시뮬레이션된 메타데이터 =====');
             console.log('촬영 시간:', new Date(simulatedMetadata.dateTime).toLocaleString('ko-KR'));
             console.log('촬영 위치:', simulatedMetadata.latitude, simulatedMetadata.longitude);
-            
+
             // 대상 위치와의 거리 계산
             if (verifyingItemInfo.value.coords && simulatedMetadata.latitude && simulatedMetadata.longitude) {
               distanceFromTarget.value = calculateDistance(
@@ -2324,7 +2313,7 @@ export default {
                 verifyingItemInfo.value.coords.lat,
                 verifyingItemInfo.value.coords.lng
               );
-              
+
               // 계산된 거리 콘솔에 출력
               console.log('===== 거리 계산 결과 (시뮬레이션) =====');
               console.log('목적지와의 거리:', distanceFromTarget.value.toFixed(3), 'km');
@@ -2340,12 +2329,12 @@ export default {
             longitude: null,
             error: '메타데이터를 추출할 수 없습니다.'
           };
-          
+
           // 오류 발생 시 시뮬레이션 폴백
           console.log('오류로 인해 시뮬레이션 데이터를 사용합니다');
           const simulatedMetadata = simulateExifMetadata();
           photoMetadata.value = simulatedMetadata;
-          
+
           // 대상 위치와의 거리 계산
           if (verifyingItemInfo.value.coords && simulatedMetadata.latitude && simulatedMetadata.longitude) {
             distanceFromTarget.value = calculateDistance(
@@ -2359,18 +2348,18 @@ export default {
       };
       reader.readAsArrayBuffer(file);
     };
-    
+
     // DMS(도, 분, 초) 좌표를 DD(십진수) 좌표로 변환
     const convertDMSToDD = (degrees, minutes, seconds, direction) => {
       let dd = degrees + (minutes / 60) + (seconds / 3600);
-      
+
       if (direction === 'S' || direction === 'W') {
         dd = -dd;
       }
-      
+
       return dd;
     };
-    
+
     // 실제 구현 대신 메타데이터 시뮬레이션
     const simulateExifMetadata = () => {
       // 현재 시간 기준 랜덤 촬영 시간 (최근 30일 이내)
@@ -2378,15 +2367,15 @@ export default {
       const randomDaysAgo = Math.floor(Math.random() * 30);
       const randomHours = Math.floor(Math.random() * 24);
       const randomMinutes = Math.floor(Math.random() * 60);
-      
+
       const simulatedDate = new Date(now);
       simulatedDate.setDate(simulatedDate.getDate() - randomDaysAgo);
       simulatedDate.setHours(randomHours, randomMinutes);
-      
+
       // 일정 위치 근처의 랜덤 좌표 생성
       let latitude = null;
       let longitude = null;
-      
+
       if (verifyingItemInfo.value.coords) {
         // 여행지 주변 위치를 시뮬레이션하기 위한 거리 범위 (단위: km)
         // 1. 근거리(80% 확률): 최대 5km 이내
@@ -2395,7 +2384,7 @@ export default {
 
         let MAX_DISTANCE_KM = 2; // 기본값은 2km 이내 (인증 가능 거리)
         const randomProb = Math.random() * 100;
-        
+
         if (randomProb > 95) {
           // 5% 확률로 원거리 (예: 서울-제주도 수준)
           MAX_DISTANCE_KM = 50 + Math.random() * 250; // 50-300km
@@ -2409,57 +2398,57 @@ export default {
           MAX_DISTANCE_KM = Math.random() * 5; // 0-5km
           console.log('근거리 위치 시뮬레이션:', MAX_DISTANCE_KM.toFixed(1), 'km');
         }
-                
+
         const randomDistance = MAX_DISTANCE_KM;
         const randomAngle = Math.random() * 2 * Math.PI; // 0-360도 랜덤 각도
-        
+
         // 위도 1도 = 약 111km, 경도 1도는 위도에 따라 달라짐
         const latOffset = randomDistance * Math.cos(randomAngle) / 111;
         const lngOffset = randomDistance * Math.sin(randomAngle) / (111 * Math.cos(verifyingItemInfo.value.coords.lat * Math.PI / 180));
-        
+
         latitude = verifyingItemInfo.value.coords.lat + latOffset;
         longitude = verifyingItemInfo.value.coords.lng + lngOffset;
       }
-      
+
       return {
         dateTime: simulatedDate.toISOString(),
         latitude: latitude,
         longitude: longitude
       };
     };
-    
+
     // 두 좌표 사이의 거리 계산 (Haversine 공식)
     const calculateDistance = (lat1, lon1, lat2, lon2) => {
       const R = 6371; // 지구 반경 (km)
       const dLat = (lat2 - lat1) * Math.PI / 180;
       const dLon = (lon2 - lon1) * Math.PI / 180;
-      const a = 
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-        Math.sin(dLon/2) * Math.sin(dLon/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
       const distance = R * c; // 킬로미터 단위
       return distance;
     };
-    
+
     // 사진 인증 검증
     const verifyPhoto = () => {
       if (!photoMetadata.value) return;
-      
+
       isVerifying.value = true;
-      
+
       // 검증 시작 로그
       console.log('===== 인증 검증 시작 =====');
-      
+
       try {
         // 1. 날짜 검증: 여행 날짜 이후에 촬영된 사진인지 확인
         const tripDay = addDays(new Date(tripData.value.startDate), verifyingDay.value);
         const photoDate = new Date(photoMetadata.value.dateTime);
-        
+
         console.log('여행 날짜:', tripDay.toLocaleDateString('ko-KR'));
         console.log('사진 촬영 날짜:', photoDate.toLocaleDateString('ko-KR'));
         console.log('촬영 날짜 검증 결과:', photoDate >= tripDay ? '성공' : '실패');
-        
+
         if (photoDate < tripDay) {
           verificationResult.value = {
             success: false,
@@ -2469,7 +2458,7 @@ export default {
           console.log('인증 실패: 사진이 여행 일정 이전에 촬영됨');
           return;
         }
-        
+
         // 2. 위치 검증: 2km 이내 거리인지 확인
         if (distanceFromTarget.value === null) {
           verificationResult.value = {
@@ -2480,10 +2469,10 @@ export default {
           console.log('인증 실패: 사진에 위치 정보 없음');
           return;
         }
-        
+
         console.log('목적지와의 거리:', distanceFromTarget.value.toFixed(3), 'km');
         console.log('거리 검증 결과:', distanceFromTarget.value <= 2 ? '성공 (2km 이내)' : '실패 (2km 초과)');
-        
+
         if (distanceFromTarget.value > 2) {
           verificationResult.value = {
             success: false,
@@ -2493,14 +2482,14 @@ export default {
           console.log('인증 실패: 거리가 2km 초과');
           return;
         }
-        
+
         // 모든 검증 통과
         verificationResult.value = {
           success: true,
           message: '방문이 확인되었습니다!'
         };
         console.log('인증 성공: 모든 검증 통과');
-        
+
       } catch (error) {
         console.error('인증 오류:', error);
         verificationResult.value = {
@@ -2508,60 +2497,60 @@ export default {
           message: '인증 과정에서 오류가 발생했습니다.'
         };
       }
-      
+
       console.log('===== 인증 검증 완료 =====');
       isVerifying.value = false;
     };
-    
+
     // 인증 완료 및 저장
     const confirmVerification = () => {
       if (verificationResult.value && verificationResult.value.success) {
         const item = tripDays.value[verifyingDay.value].items[verifyingItem.value];
-        
+
         // 인증 정보 저장
         item.verified = true;
         item.verifiedAt = new Date().toISOString();
         item.verificationPhoto = verificationPhotoPreview.value;
         item.photoMetadata = photoMetadata.value;
-        
+
         // 별점과 후기 저장
         item.review = {
           rating: reviewRating.value,
           text: reviewText.value,
           date: new Date().toISOString()
         };
-        
+
         // 성공 메시지 표시
         showSuccessBanner.value = true;
         setTimeout(() => {
           showSuccessBanner.value = false;
         }, 3000);
-        
+
         // 모달 닫기
         closeVerificationModal();
-        
+
         // 별점과 후기 초기화
         reviewRating.value = 0;
         reviewText.value = '';
       }
     };
-    
+
     // 인증 사진 초기화
     const clearVerificationPhoto = () => {
       verificationPhotoPreview.value = null;
       photoMetadata.value = null;
       verificationResult.value = null;
       distanceFromTarget.value = null;
-      
+
       if (photoFileInput.value) {
         photoFileInput.value.value = '';
       }
     };
-    
+
     // 사진 날짜 포맷팅
     const formatPhotoDate = (isoDate) => {
       if (!isoDate) return '알 수 없음';
-      
+
       const date = new Date(isoDate);
       return date.toLocaleString('ko-KR', {
         year: 'numeric',
@@ -2571,48 +2560,55 @@ export default {
         minute: '2-digit'
       });
     };
-    
+
     // 별점과 후기 상태 추가
     const reviewRating = ref(0);
     const reviewText = ref('');
-    
+
     // 거리 표시 형식을 미터로 변경하는 함수
     const formatDistance = (distance) => {
       // km 단위에서 m 단위로 변환하고 쉼표 추가
       const distanceInMeters = Math.round(distance * 1000);
       return `${distanceInMeters.toLocaleString()}m`;
     };
-    
-    // 인증 완료 처리
+
+    // 방문 인증 완료 처리 함수 수정
     const completeVerification = () => {
       if (!verificationResult.value || !verificationResult.value.success) return;
-      
+
       // 현재 날짜/시간 기록
       const verifiedAt = new Date().toISOString();
-      
+
       // 인증 정보 저장
       const item = tripDays.value[verifyingDay.value].items[verifyingItem.value];
       item.verified = true;
       item.verifiedAt = verifiedAt;
       item.verificationPhoto = verificationPhotoPreview.value;
       item.photoMetadata = photoMetadata.value;
-      
+
       // 별점 및 리뷰 저장
       item.rating = reviewRating.value;
       item.review = reviewText.value;
-      
+
       console.log(`${item.activity} 방문이 인증되었습니다.`);
       console.log('인증 시간:', new Date(verifiedAt).toLocaleString('ko-KR'));
       console.log('별점:', reviewRating.value);
       console.log('후기:', reviewText.value);
-      
+
+      // 성공 메시지 표시
+      showSuccessBanner.value = true;
+      setTimeout(() => {
+        showSuccessBanner.value = false;
+      }, 3000);
+
       // 모달 닫기
       closeVerificationModal();
-      
-      // 저장 처리
-      // saveTripData();
+
+      // 별점과 후기 초기화
+      reviewRating.value = 0;
+      reviewText.value = '';
     };
-    
+
     return {
       tripData,
       tripDays,
@@ -2725,7 +2721,6 @@ export default {
   }
 };
 </script>
-
 <style scoped>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
 
@@ -2965,7 +2960,7 @@ textarea {
   transition: all 0.2s ease;
   overflow: hidden;
   border: 1px solid #e2e8f0;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.3rem; /* 줄어든 마진 */
 }
 
 .schedule-item:hover {
@@ -2976,7 +2971,7 @@ textarea {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem; /* 줄어든 패딩 */
 }
 
 .item-actions {
@@ -3041,18 +3036,19 @@ textarea {
 }
 
 .schedule-item-memo {
-  padding: 0 1rem 0.75rem 1rem;
+  padding: 0 0.75rem 0.5rem 0.75rem;
 }
 
 .schedule-item-memo textarea {
   width: 100%;
   border: none;
   background: transparent;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: #718096;
   padding: 0;
-  min-height: 40px;
+  min-height: 24px;
   resize: none;
+  line-height: 1.2;
 }
 
 .schedule-item-memo textarea:focus {
@@ -4269,7 +4265,7 @@ textarea {
 
 /* 방문 인증 버튼 스타일 */
 .verification-button-container {
-  padding: 0 1rem 0.75rem 1rem;
+  padding: 0 0.75rem 0.5rem 0.75rem;
   display: flex;
   justify-content: flex-end;
 }
@@ -4278,12 +4274,12 @@ textarea {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  padding: 0.35rem 0.75rem;
   border-radius: 20px;
   border: none;
   background-color: #f1f5f9;
   color: #64748b;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -4295,25 +4291,43 @@ textarea {
   transform: translateY(-1px);
 }
 
-.visit-verification-btn.verified {
-  background-color: #10b981;
-  color: white;
+/* 인증 완료 표시 - 새로운 스타일 */
+.verification-completed {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+  border: none;
+  background-color: #10b981; /* 초록색 배경 */
+  color: white; /* 흰색 글씨 */
+  font-size: 0.8rem;
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.visit-verification-btn.verified svg {
+.verification-completed svg {
   stroke: white;
 }
 
-.visit-verification-btn.verified:hover {
-  background-color: #059669;
+.stars {
+  color: #eab308;
+  margin-left: 0.5rem;
 }
 
 /* 방문 인증 모달 스타일 */
-.verification-modal {
+.verification-container {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  max-width: 1400px;
+  width: 100%;
+}
+
+.verification-photo-modal {
   background-color: white;
   border-radius: 12px;
-  max-width: 800px; /* 600px에서 800px로 증가 */
-  width: 90%;
+  width: 65%;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
@@ -4321,69 +4335,126 @@ textarea {
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
 }
 
-.verification-item-info {
-  background-color: #f8fafc;
-  padding: 1rem 1.5rem;
-  border-radius: 8px;
-  margin-bottom: 1.5rem;
-}
-
-.verification-item-info h4 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.2rem;
-  color: #1e293b;
-}
-
-.verification-item-info p {
-  margin: 0;
-  color: #64748b;
-  font-size: 0.95rem;
-}
-
-.upload-container {
-  border: 2px dashed #cbd5e0;
-  border-radius: 8px;
-  padding: 2rem;
-  text-align: center;
-  transition: all 0.3s ease;
-}
-
-.upload-container.active-dropzone {
-  border-color: #3b82f6;
-  background-color: #eff6ff;
-}
-
-.upload-prompt {
+.verification-review-modal {
+  background-color: white;
+  border-radius: 12px;
+  width: 35%;
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 1rem;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
 }
 
-.upload-icon {
-  color: #64748b;
+.verification-content, .review-content {
+  padding: 1.5rem 2rem;
+  overflow-y: auto;
+  height: calc(90vh - 110px);
 }
 
-.upload-tip {
-  font-size: 0.85rem;
-  color: #94a3b8;
-  margin: -0.5rem 0 0 0;
-}
-
-.image-container {
-  margin-bottom: 1rem;
+.enhanced-image-container {
+  margin-bottom: 1.5rem;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid #e2e8f0;
-  max-height: 400px; /* 300px에서 400px로 증가 */
+  max-height: 500px; /* 사진 크기 증가 */
   display: flex;
   justify-content: center;
 }
 
 .photo-preview {
   max-width: 100%;
-  max-height: 400px; /* 300px에서 400px로 증가 */
+  max-height: 500px; /* 사진 크기 증가 */
   object-fit: contain;
+}
+
+.verified-place-info {
+  background-color: #f8fafc;
+  padding: 1.25rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.rating-container {
+  margin-bottom: 1.5rem;
+}
+
+.rating-container label {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #2d3748;
+}
+
+.star-rating {
+  display: flex;
+  font-size: 2rem;
+}
+
+.star {
+  cursor: pointer;
+  color: #e2e8f0;
+  transition: color 0.2s ease;
+}
+
+.star:hover, .star.active {
+  color: #eab308;
+}
+
+.review-text-container {
+  margin-bottom: 1.5rem;
+}
+
+.review-text-container label {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #2d3748;
+}
+
+.review-text-container textarea {
+  width: 100%;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1rem;
+  resize: vertical;
+}
+
+.btn-verify {
+  width: 100%;
+  padding: 1rem 1.5rem;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-verify:hover {
+  background-color: #059669;
+  transform: translateY(-2px);
+}
+
+/* 반응형 스타일 */
+@media (max-width: 768px) {
+  .verification-container {
+    flex-direction: column;
+  }
+  
+  .verification-photo-modal,
+  .verification-review-modal {
+    width: 100%;
+  }
+  
+  .verification-review-modal {
+    margin-top: 1rem;
+  }
 }
 
 .photo-metadata {
@@ -4435,246 +4506,9 @@ textarea {
   gap: 0.5rem;
 }
 
-.preview-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  margin-top: 1rem;
-}
-
-.preview-actions button {
-  flex: 1;
-  padding: 0.75rem 1.5rem;
-  font-weight: 500;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.btn.primary-btn {
-  background-color: #3b82f6;
-  color: white;
-}
-
-.btn.primary-btn:hover {
-  background-color: #2563eb;
-}
-
-.btn.primary-btn:disabled {
-  background-color: #cbd5e0;
-  cursor: not-allowed;
-}
-
-.btn.secondary-btn {
-  background-color: #e2e8f0;
-  color: #475569;
-}
-
-.btn.secondary-btn:hover {
-  background-color: #cbd5e0;
-}
-
-.btn.cancel-btn {
-  background-color: #f1f5f9;
-  color: #64748b;
-}
-
-.btn.cancel-btn:hover {
-  background-color: #e2e8f0;
-}
-
-.modal-footer {
-  padding: 1rem 1.5rem;
-  display: flex;
-  justify-content: flex-end;
-  border-top: 1px solid #e2e8f0;
-}
-
-.btn.save-btn {
-  background-color: #10b981;
-  color: white;
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 6px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.btn.save-btn:hover {
-  background-color: #059669;
-}
-
-.review-section {
-  width: 100%;
-  margin-bottom: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.review-section h4 {
-  margin: 0 0 1rem 0;
-  font-size: 1.1rem;
-  color: #1e293b;
-}
-
-.rating-input {
-  display: flex;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.rating-label {
-  margin-right: 1rem;
-  font-weight: 500;
-}
-
-.star-rating {
-  display: flex;
-}
-
-.star-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  margin-right: 0.5rem;
-  color: #cbd5e0;
-  transition: color 0.2s ease;
-}
-
-.star-btn:hover,
-.star-btn.active {
-  color: #eab308;
-}
-
-.star-btn svg {
-  stroke: currentColor;
-  fill: currentColor;
-}
-
-.review-input {
-  width: 100%;
-}
-
-.review-input textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  resize: vertical;
-  font-size: 0.95rem;
-  transition: border-color 0.2s ease;
-}
-
-.review-input textarea:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 1px #3b82f6;
-}
-
-.metadata-item {
-  margin-bottom: 0.5rem;
-  font-size: 0.95rem;
-  color: #475569;
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.metadata-item strong {
-  min-width: 100px;
-  font-weight: 600;
-}
-
-.verified-badge {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  border: none;
-  background-color: #f1f5f9;
-  color: #64748b;
+.upload-tip {
   font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.verified-badge:hover {
-  background-color: #e2e8f0;
-  transform: translateY(-1px);
-}
-
-.verified-badge.verified {
-  background-color: #10b981;
-  color: white;
-}
-
-.verified-badge.verified svg {
-  stroke: white;
-}
-
-.verified-badge.verified:hover {
-  background-color: #059669;
-}
-
-.rating-display {
-  display: flex;
-  align-items: center;
-}
-
-.stars {
-  display: flex;
-}
-
-.star-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  margin-right: 0.5rem;
-  color: #cbd5e0;
-  transition: color 0.2s ease;
-}
-
-.star-btn:hover,
-.star-btn.active {
-  color: #eab308;
-}
-
-.star-btn svg {
-  stroke: currentColor;
-  fill: currentColor;
-}
-
-.verification-info {
-  margin-top: 0.5rem;
-  padding: 0.5rem;
-  background-color: #f8fafc;
-  border-radius: 8px;
-  border-left: 3px solid #10b981;
-}
-
-.review-display {
-  margin-top: 0.5rem;
-  font-style: italic;
-  color: #64748b;
-  font-size: 0.9rem;
-  padding-left: 1.75rem;
-}
-
-.rating-display {
-  margin-left: 0.5rem;
-}
-
-.stars {
-  color: #eab308;
-  letter-spacing: -1px;
+  color: #94a3b8;
+  margin: -0.5rem 0 0 0;
 }
 </style>
-
-
-
