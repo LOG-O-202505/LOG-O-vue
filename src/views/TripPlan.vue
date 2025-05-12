@@ -16,37 +16,107 @@
         <!-- 여행 기본 정보 폼 -->
         <div class="plan-section">
           <h1 class="section-title">여행 기본 정보</h1>
-          <div class="trip-summary">
-            <div class="trip-summary-item">
-              <span class="summary-label">여행 기간</span>
-              <span class="summary-value">{{ tripNights }}박 {{ tripDays.length }}일</span>
+          
+          <!-- 보기 모드 -->
+          <div v-if="!isEditingInfo" class="trip-info-view-mode">
+            <div class="info-row">
+              <div class="info-item">
+                <span class="info-label">여행 제목</span>
+                <span class="info-value">{{ tripData.title }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">주요 목적지</span>
+                <span class="info-value">{{ tripData.destination }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">총 예산</span>
+                <span class="info-value">₩{{ formatNumber(totalBudget) }}</span>
+              </div>
             </div>
+            
+            <div class="info-row">
+              <div class="info-item">
+                <span class="info-label">출발일</span>
+                <span class="info-value">{{ formatDateFull(tripData.startDate) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">도착일</span>
+                <span class="info-value">{{ formatDateFull(tripData.endDate) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">여행 기간</span>
+                <span class="info-value">{{ tripNights }}박 {{ tripDays.length }}일</span>
+              </div>
+            </div>
+            
+            <div class="info-row">
+              <div class="info-item info-memo">
+                <span class="info-label">여행 메모</span>
+                <span class="info-value memo-text">{{ tripData.notes || '없음' }}</span>
+              </div>
+            </div>
+            
+            <button class="edit-info-btn" @click="startEditInfo">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              정보 수정
+            </button>
           </div>
-          <div class="plan-form">
-            <div class="form-group">
-              <label for="tripTitle">여행 제목</label>
-              <input type="text" id="tripTitle" v-model="tripData.title" placeholder="여행 제목을 입력하세요">
-            </div>
-
-            <div class="form-row">
+          
+          <!-- 수정 모드 -->
+          <div v-else>
+            <div class="plan-form">
+              <!-- 총 예산 설정 필드 -->
               <div class="form-group">
-                <label for="startDate">출발일</label>
-                <input type="date" id="startDate" v-model="tripData.startDate" class="date-input">
+                <label for="totalBudget">총 예산 설정</label>
+                <div class="input-with-icon">
+                  <input type="number" id="totalBudget" v-model="tripData.budget" placeholder="0">
+                </div>
               </div>
+
               <div class="form-group">
-                <label for="endDate">도착일</label>
-                <input type="date" id="endDate" v-model="tripData.endDate" class="date-input">
+                <label for="tripTitle">여행 제목</label>
+                <input type="text" id="tripTitle" v-model="tripData.title" placeholder="여행 제목을 입력하세요">
               </div>
-            </div>
 
-            <div class="form-group">
-              <label for="destination">주요 목적지</label>
-              <input type="text" id="destination" v-model="tripData.destination" placeholder="예: 서울, 제주도, 부산">
-            </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="startDate">출발일</label>
+                  <input type="date" id="startDate" v-model="tripData.startDate" class="date-input">
+                </div>
+                <div class="form-group">
+                  <label for="endDate">도착일</label>
+                  <input type="date" id="endDate" v-model="tripData.endDate" class="date-input">
+                </div>
+              </div>
 
-            <div class="form-group">
-              <label for="tripNotes">여행 메모</label>
-              <textarea id="tripNotes" v-model="tripData.notes" placeholder="여행 준비 사항, 기대 등을 자유롭게 작성하세요"></textarea>
+              <div class="form-group">
+                <label for="destination">주요 목적지</label>
+                <input type="text" id="destination" v-model="tripData.destination" placeholder="예: 서울, 제주도, 부산">
+              </div>
+
+              <div class="form-group">
+                <label for="tripNotes">여행 메모</label>
+                <textarea id="tripNotes" v-model="tripData.notes" placeholder="여행 준비 사항, 기대 등을 자유롭게 작성하세요"></textarea>
+              </div>
+              
+              <div class="form-actions">
+                <button class="save-info-btn" @click="saveEditInfo">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  저장
+                </button>
+                <button class="cancel-info-btn" @click="cancelEditInfo">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                  취소
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -162,7 +232,7 @@
 
         <!-- 예산 계획 -->
         <div class="plan-section">
-          <h1 class="section-title">예산 계획</h1>
+          <h1 class="section-title">지출 관리</h1>
           <div class="budget-container">
             <div class="budget-summary">
               <div class="budget-card">
@@ -170,7 +240,7 @@
                 <div class="budget-amount">₩{{ formatNumber(totalBudget) }}</div>
               </div>
               <div class="budget-card">
-                <div class="budget-label">계획된 지출</div>
+                <div class="budget-label">지출</div>
                 <div class="budget-amount">₩{{ formatNumber(calculatedExpenses) }}</div>
               </div>
               <div class="budget-card">
@@ -181,59 +251,130 @@
               </div>
             </div>
 
-            <div class="form-group">
-              <label for="totalBudget">총 예산 설정</label>
-              <div class="input-with-icon">
-                <span class="input-icon">₩</span>
-                <input type="number" id="totalBudget" v-model="tripData.budget" placeholder="0">
-              </div>
-            </div>
-
             <div class="expenses-list">
-              <div v-for="(expense, index) in tripData.expenses" :key="index" class="expense-item">
-                <div class="expense-category">
-                  <select v-model="expense.category">
-                    <option value="accommodation">숙박</option>
-                    <option value="transportation">교통</option>
-                    <option value="food">식비</option>
-                    <option value="activities">액티비티</option>
-                    <option value="shopping">쇼핑</option>
-                    <option value="other">기타</option>
-                  </select>
+              <!-- 날짜별로 그룹화된 지출 목록 -->
+              <div v-for="(group, date) in groupedExpenses" :key="date" class="expense-date-group">
+                <div class="expense-date-header">
+                  <h3>{{ formatExpenseDate(date) }}</h3>
                 </div>
-                <div class="expense-description">
-                  <input type="text" v-model="expense.description" placeholder="항목 설명">
-                </div>
-                <div class="expense-amount">
-                  <div class="input-with-icon">
-                    <span class="input-icon">₩</span>
-                    <input type="number" v-model="expense.amount" placeholder="0">
+                
+                <div v-for="(expense, index) in group" :key="index" class="expense-item">
+                  <div v-if="editingExpense === expense" class="expense-edit-mode">
+                    <div class="expense-time-edit">
+                      <input type="time" v-model="editExpenseTime" class="time-input">
+                    </div>
+                    <div class="expense-place-edit">
+                      <input type="text" v-model="editExpenseDesc" placeholder="지출 항목 설명">
+                    </div>
+                    <div class="expense-amount-edit">
+                      <div class="input-with-icon">
+                        <span class="input-icon">₩</span>
+                        <input type="number" v-model="editExpenseAmount" placeholder="0">
+                      </div>
+                    </div>
+                    <div class="expense-actions">
+                      <button class="save-edit-btn" @click="saveExpenseEdit(expense)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                      </button>
+                      <button class="cancel-edit-btn" @click="cancelExpenseEdit()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <div class="action-column">
-                  <button class="delete-btn" @click="removeExpense(index)">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                      <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                  </button>
+                  <div v-else class="expense-view-mode">
+                    <div class="expense-time">{{ expense.time || '시간 없음' }}</div>
+                    <div class="expense-place">{{ expense.description }}</div>
+                    <div class="expense-amount">₩{{ formatNumber(expense.amount) }}</div>
+                    <div class="expense-actions">
+                      <button class="edit-btn" @click="startExpenseEdit(expense)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                      </button>
+                      <button class="delete-btn" @click="removeExpense(getExpenseIndex(expense))">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
               
-              <button class="add-expense-btn" @click="addExpense">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                지출 항목 추가
-              </button>
+              <!-- 지출 추가 버튼 -->
+              <div class="add-expense-buttons">
+                <button class="add-expense-btn" @click="addExpense">
+                  수동으로 추가
+                </button>
+                <button class="add-expense-btn" @click="openReceiptUpload">
+                  사진으로 자동 추가
+                </button>
+              </div>
             </div>
           </div>
         </div>
+      </div>
+    </div>
 
-        <!-- 저장 버튼 -->
-        <div class="save-section">
-          <button class="save-plan-btn" @click="saveTripPlan">여행 계획 저장하기</button>
+    <!-- 영수증 업로드 모달 -->
+    <div class="receipt-upload-modal" v-if="showReceiptUpload">
+      <div class="receipt-upload-content">
+        <div class="receipt-upload-header">
+          <h3>영수증/결제내역 분석</h3>
+          <button class="close-receipt-btn" @click="closeReceiptUpload">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="upload-container" 
+             @dragover.prevent="onDragOver" 
+             @dragleave.prevent="onDragLeave" 
+             @drop.prevent="onDrop" 
+             :class="{ 'active-dropzone': isDragging }">
+          <input 
+            type="file" 
+            ref="receiptFileInput" 
+            @change="handleReceiptFileInput" 
+            accept="image/*" 
+            style="display: none"
+          >
+          <div v-if="!receiptPreview" class="upload-prompt">
+            <div class="upload-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+            </div>
+            <p>영수증/결제내역 이미지를 끌어서 놓거나 클릭하여 업로드하세요</p>
+            <button @click="triggerReceiptFileInput" class="btn secondary-btn">파일 선택</button>
+          </div>
+          <div v-else class="preview-container">
+            <div class="image-container">
+              <img :src="receiptPreview" alt="영수증/결제내역 미리보기" class="receipt-preview">
+            </div>
+            <div class="preview-actions">
+              <button @click="analyzeReceipt" class="btn primary-btn" :disabled="isLoading">
+                {{ isLoading ? '분석 중...' : '이미지 분석하기' }}
+              </button>
+              <button @click="clearReceiptImage" class="btn cancel-btn">취소</button>
+            </div>
+          </div>
+        </div>
+        
+        <div v-if="isLoading" class="loading-indicator">
+          <div class="spinner"></div>
+          <p>{{ loadingMessage }}</p>
         </div>
       </div>
     </div>
@@ -378,6 +519,17 @@
         </div>
       </div>
     </div>
+    
+    <!-- 성공 알림 배너 -->
+    <div v-if="showSuccessBanner" class="success-banner">
+      <div class="success-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+      </div>
+      영수증 정보가 성공적으로 추가되었습니다!
+    </div>
   </div>
 </template>
 
@@ -426,17 +578,23 @@ export default {
         {
           category: 'accommodation',
           description: '에어비앤비 숙소',
-          amount: 300000
+          amount: 300000,
+          date: '2025-05-15',
+          time: '12:00'
         },
         {
           category: 'transportation',
           description: '항공권',
-          amount: 180000
+          amount: 180000,
+          date: '2025-05-15',
+          time: '09:00'
         },
         {
           category: 'food',
           description: '식비 예산',
-          amount: 120000
+          amount: 120000,
+          date: '2025-05-16',
+          time: '13:30'
         }
       ]
     });
@@ -904,18 +1062,77 @@ export default {
       forceRefresh();
     };
 
-    // 지출 항목 추가
+    // 지출 항목을 날짜별로 그룹화
+    const groupedExpenses = computed(() => {
+      const grouped = {};
+      
+      // 날짜별로 그룹화
+      tripData.value.expenses.forEach(expense => {
+        // 기존 데이터에 날짜가 없는 경우 오늘 날짜 사용
+        const date = expense.date || new Date().toISOString().split('T')[0];
+        
+        if (!grouped[date]) {
+          grouped[date] = [];
+        }
+        
+        grouped[date].push(expense);
+      });
+      
+      // 각 그룹 내에서 시간별 정렬
+      Object.keys(grouped).forEach(date => {
+        grouped[date].sort((a, b) => {
+          const timeA = a.time || '00:00';
+          const timeB = b.time || '00:00';
+          return timeA.localeCompare(timeB);
+        });
+      });
+      
+      // 날짜별 정렬된 객체 반환 (키는 날짜, 값은 해당 날짜의 지출 배열)
+      const sortedDates = Object.keys(grouped).sort();
+      const result = {};
+      
+      sortedDates.forEach(date => {
+        result[date] = grouped[date];
+      });
+      
+      return result;
+    });
+    
+    // 지출 항목 추가 (날짜와 시간 정보 포함)
     const addExpense = () => {
+      // 현재 날짜와 시간 기본값으로 설정
+      const now = new Date();
+      const today = now.toISOString().split('T')[0];
+      const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+      
       tripData.value.expenses.push({
-        category: 'food',
+        category: 'other',
         description: '',
-        amount: 0
+        amount: 0,
+        date: today,
+        time: currentTime
       });
     };
-
+    
+    // 지출 인덱스 찾기
+    const getExpenseIndex = (expense) => {
+      return tripData.value.expenses.findIndex(e => e === expense);
+    };
+    
     // 지출 항목 삭제
     const removeExpense = (index) => {
       tripData.value.expenses.splice(index, 1);
+    };
+    
+    // 지출 날짜 포맷팅
+    const formatExpenseDate = (dateString) => {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('ko-KR', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric', 
+        weekday: 'long' 
+      });
     };
 
     // 날짜 포맷팅
@@ -1226,6 +1443,477 @@ export default {
       }, 10);
     };
 
+    // 영수증 업로드 관련 상태
+    const showReceiptUpload = ref(false);
+    const receiptFile = ref(null);
+    const receiptPreview = ref(null);
+    const isDragging = ref(false);
+    const isLoading = ref(false);
+    const loadingMessage = ref('이미지 분석 중...');
+    const parsedReceiptData = ref({
+      Place: '',
+      Time: '',
+      Price: null
+    });
+    
+    // 영수증 업로드 모달 열기
+    const openReceiptUpload = () => {
+      showReceiptUpload.value = true;
+      clearReceiptImage();
+    };
+    
+    // 영수증 업로드 모달 닫기
+    const closeReceiptUpload = () => {
+      showReceiptUpload.value = false;
+      clearReceiptImage();
+    };
+    
+    // 영수증 파일 입력 트리거
+    const triggerReceiptFileInput = () => {
+      document.querySelector('input[type="file"]').click();
+    };
+    
+    // 영수증 파일 입력 처리
+    const handleReceiptFileInput = (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        processReceiptFile(file);
+      }
+    };
+    
+    // 드래그 이벤트
+    const onDragOver = () => {
+      isDragging.value = true;
+    };
+    
+    const onDragLeave = () => {
+      isDragging.value = false;
+    };
+    
+    const onDrop = (event) => {
+      isDragging.value = false;
+      const file = event.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) {
+        processReceiptFile(file);
+      }
+    };
+    
+    // 영수증 파일 처리
+    const processReceiptFile = (file) => {
+      if (!file.type.startsWith('image/')) {
+        alert('이미지 파일만 업로드 가능합니다.');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          // 이미지 리사이즈
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          // 최대 크기 제한
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 1200;
+          
+          let width = img.width;
+          let height = img.height;
+          
+          // 비율 유지하면서 리사이즈
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height = Math.round((height * MAX_WIDTH) / width);
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width = Math.round((width * MAX_HEIGHT) / height);
+              height = MAX_HEIGHT;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // 리사이즈된 이미지를 미리보기로 설정
+          receiptPreview.value = canvas.toDataURL(file.type);
+          
+          // 리사이즈된 이미지를 Blob으로 변환하여 보관
+          canvas.toBlob((blob) => {
+            receiptFile.value = new File([blob], file.name, { type: file.type });
+          }, file.type);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    };
+    
+    // 영수증 이미지 초기화
+    const clearReceiptImage = () => {
+      receiptFile.value = null;
+      receiptPreview.value = null;
+      if (document.querySelector('input[type="file"]')) {
+        document.querySelector('input[type="file"]').value = '';
+      }
+    };
+    
+    // 영수증 분석
+    const analyzeReceipt = async () => {
+      if (!receiptFile.value) {
+        return;
+      }
+      
+      isLoading.value = true;
+      loadingMessage.value = 'OCR로 텍스트 추출 중...';
+      
+      try {
+        const formData = new FormData();
+        formData.append('apikey', 'K83821813888957');
+        formData.append('language', 'kor');
+        formData.append('isTable', 'true');
+        formData.append('OCREngine', '2');
+        formData.append('scale', 'true');
+        formData.append('file', receiptFile.value);
+        
+        const response = await fetch('https://api.ocr.space/parse/image', {
+          method: 'POST',
+          body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.OCRExitCode === 1) {
+          loadingMessage.value = 'AI 처리중...';
+          await analyzeWithAI(data.ParsedResults[0].ParsedText);
+        } else {
+          throw new Error(data.ErrorMessage || '이미지 분석 중 오류가 발생했습니다.');
+        }
+      } catch (error) {
+        console.error('OCR API 호출 오류:', error);
+        alert('이미지 분석 실패: ' + error.message);
+      } finally {
+        isLoading.value = false;
+      }
+    };
+    
+    // AI 모델로 분석
+    const analyzeWithAI = async (text) => {
+      try {
+        const response = await fetch('http://localhost:11434/api/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'OCR_basic',
+            prompt: text,
+            stream: false
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`API 응답 오류: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data && data.response) {
+          try {
+            const parsedResponse = JSON.parse(data.response);
+            
+            if (parsedResponse.Place !== undefined && 
+                parsedResponse.Time !== undefined && 
+                parsedResponse.Price !== undefined) {
+              parsedReceiptData.value = parsedResponse;
+              
+              // 지출 항목으로 추가
+              addFromReceipt(
+                parsedReceiptData.value.Place,
+                parsedReceiptData.value.Time,
+                parsedReceiptData.value.Price
+              );
+              
+              // 모달 닫기
+              closeReceiptUpload();
+              return;
+            }
+          } catch (e) {
+            console.error('AI 응답을 JSON으로 파싱할 수 없습니다:', e);
+          }
+        }
+        
+        // AI 분석 실패시 기본 패턴 매칭 사용
+        extractReceiptData(text);
+        
+        // 지출 항목으로 추가
+        addFromReceipt(
+          parsedReceiptData.value.Place,
+          parsedReceiptData.value.Time,
+          parsedReceiptData.value.Price
+        );
+        
+        // 모달 닫기
+        closeReceiptUpload();
+      } catch (error) {
+        console.error('AI 분석 오류:', error);
+        extractReceiptData(text);
+        
+        // 지출 항목으로 추가
+        addFromReceipt(
+          parsedReceiptData.value.Place,
+          parsedReceiptData.value.Time,
+          parsedReceiptData.value.Price
+        );
+        
+        // 모달 닫기
+        closeReceiptUpload();
+      }
+    };
+    
+    // 기본 패턴 매칭
+    const extractReceiptData = (text) => {
+      if (!text) return;
+      
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      // 결제 장소 추출
+      const potentialPlaces = lines.slice(0, Math.min(3, lines.length));
+      parsedReceiptData.value.Place = potentialPlaces.reduce(
+        (longest, current) => current.length > longest.length ? current : longest, 
+        ''
+      ).trim();
+      
+      // 날짜 및 시간 패턴 찾기
+      const datePattern = /\d{2,4}[-./]\d{1,2}[-./]\d{1,2}|\d{1,2}[-./]\d{1,2}[-./]\d{2,4}/;
+      const timePattern = /\d{1,2}:\d{2}(:\d{2})?/;
+      
+      // 결제 시간 추출
+      for (const line of lines) {
+        const timeLabels = ['날짜', '시간', '결제시간', '거래일시', '거래일자', '일자', '일시'];
+        const hasTimeLabel = timeLabels.some(label => line.includes(label));
+        
+        const dateMatch = line.match(datePattern);
+        if (dateMatch) {
+          let dateStr = dateMatch[0];
+          
+          const timeMatch = line.match(timePattern);
+          if (timeMatch) {
+            dateStr += ' ' + timeMatch[0];
+          }
+          
+          if (hasTimeLabel || !parsedReceiptData.value.Time) {
+            parsedReceiptData.value.Time = dateStr.trim();
+          }
+        }
+      }
+      
+      // 결제 금액 추출
+      const totalPatterns = [
+        /(합\s*계|총\s*액|결제\s*금액|결제액|Total|합계금액).{0,10}([\d,]+)/i,
+        /([\d,]+)\s*원\s*(합\s*계|총\s*액|결제\s*금액)/i,
+        /([\d,]+)/
+      ];
+      
+      for (const line of lines) {
+        for (const pattern of totalPatterns) {
+          const match = line.match(pattern);
+          if (match) {
+            const priceStr = match[2] || match[1];
+            const numericPrice = priceStr.replace(/[^\d]/g, '');
+            if (numericPrice && (!parsedReceiptData.value.Price || parseInt(numericPrice) > parsedReceiptData.value.Price)) {
+              parsedReceiptData.value.Price = parseInt(numericPrice);
+            }
+          }
+        }
+      }
+    };
+    
+    // 영수증 데이터로 지출 항목 추가
+    const addFromReceipt = (place, timeStr, price) => {
+      let dateObj = new Date();
+      let timeOnly = '';
+      
+      // 날짜/시간 문자열 파싱 시도
+      if (timeStr) {
+        // 다양한 날짜 형식 처리
+        const dateFormats = [
+          /(\d{4})[-./](\d{1,2})[-./](\d{1,2})/,  // YYYY-MM-DD
+          /(\d{1,2})[-./](\d{1,2})[-./](\d{4})/,  // DD-MM-YYYY
+          /(\d{1,2})[-./](\d{1,2})[-./](\d{2})/   // DD-MM-YY
+        ];
+        
+        let dateMatch = null;
+        let formatIndex = -1;
+        
+        for (let i = 0; i < dateFormats.length; i++) {
+          const match = timeStr.match(dateFormats[i]);
+          if (match) {
+            dateMatch = match;
+            formatIndex = i;
+            break;
+          }
+        }
+        
+        if (dateMatch) {
+          try {
+            if (formatIndex === 0) {
+              // YYYY-MM-DD
+              dateObj = new Date(
+                parseInt(dateMatch[1]),
+                parseInt(dateMatch[2]) - 1,
+                parseInt(dateMatch[3])
+              );
+            } else if (formatIndex === 1) {
+              // DD-MM-YYYY
+              dateObj = new Date(
+                parseInt(dateMatch[3]),
+                parseInt(dateMatch[2]) - 1,
+                parseInt(dateMatch[1])
+              );
+            } else if (formatIndex === 2) {
+              // DD-MM-YY
+              const year = parseInt(dateMatch[3]) + (parseInt(dateMatch[3]) < 50 ? 2000 : 1900);
+              dateObj = new Date(
+                year,
+                parseInt(dateMatch[2]) - 1,
+                parseInt(dateMatch[1])
+              );
+            }
+          } catch (e) {
+            console.error('날짜 파싱 오류:', e);
+            dateObj = new Date();
+          }
+        }
+        
+        // 시간 추출
+        const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+        if (timeMatch) {
+          try {
+            dateObj.setHours(parseInt(timeMatch[1]));
+            dateObj.setMinutes(parseInt(timeMatch[2]));
+            if (timeMatch[3]) {
+              dateObj.setSeconds(parseInt(timeMatch[3]));
+            }
+            
+            timeOnly = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2].padStart(2, '0')}`;
+          } catch (e) {
+            console.error('시간 파싱 오류:', e);
+          }
+        }
+      }
+      
+      // 날짜 포맷팅
+      const date = dateObj.toISOString().split('T')[0];
+      
+      // 시간이 없는 경우 현재 시간 사용
+      if (!timeOnly) {
+        timeOnly = `${dateObj.getHours().toString().padStart(2, '0')}:${dateObj.getMinutes().toString().padStart(2, '0')}`;
+      }
+      
+      // 새 지출 항목 객체
+      const newExpense = {
+        category: 'other',
+        description: place || '항목 없음',
+        amount: price || 0,
+        date: date,
+        time: timeOnly
+      };
+      
+      // 지출 목록에 추가
+      tripData.value.expenses.push(newExpense);
+      
+      // 성공 메시지 (alert 대신 배너 표시)
+      showSuccessBanner.value = true;
+      setTimeout(() => {
+        showSuccessBanner.value = false;
+      }, 3000);
+    };
+    
+    // 지출 항목 수정 관련 상태
+    const editingExpense = ref(null);
+    const editExpenseTime = ref('');
+    const editExpenseDesc = ref('');
+    const editExpenseAmount = ref(0);
+    const originalExpenseTime = ref('');
+    const originalExpenseDesc = ref('');
+    const originalExpenseAmount = ref(0);
+    
+    // 지출 항목 수정 시작
+    const startExpenseEdit = (expense) => {
+      editingExpense.value = expense;
+      editExpenseTime.value = expense.time || '';
+      editExpenseDesc.value = expense.description || '';
+      editExpenseAmount.value = expense.amount || 0;
+      
+      // 원본 값 저장 (수정 취소 시 복원용)
+      originalExpenseTime.value = expense.time || '';
+      originalExpenseDesc.value = expense.description || '';
+      originalExpenseAmount.value = expense.amount || 0;
+    };
+    
+    // 지출 항목 수정 저장
+    const saveExpenseEdit = (expense) => {
+      expense.time = editExpenseTime.value;
+      expense.description = editExpenseDesc.value;
+      expense.amount = Number(editExpenseAmount.value);
+      
+      // 수정 모드 종료
+      editingExpense.value = null;
+    };
+    
+    // 지출 항목 수정 취소
+    const cancelExpenseEdit = () => {
+      // 원본 값으로 복원
+      if (editingExpense.value) {
+        editingExpense.value.time = originalExpenseTime.value;
+        editingExpense.value.description = originalExpenseDesc.value;
+        editingExpense.value.amount = originalExpenseAmount.value;
+      }
+      
+      // 수정 모드 종료
+      editingExpense.value = null;
+    };
+    
+    // 성공 배너 상태
+    const showSuccessBanner = ref(false);
+    
+    // 여행 기본 정보 수정 관련 상태
+    const isEditingInfo = ref(false);
+    const tempTripData = ref({});
+    
+    // 여행 기본 정보 수정 시작
+    const startEditInfo = () => {
+      tempTripData.value = JSON.parse(JSON.stringify(tripData.value));
+      isEditingInfo.value = true;
+    };
+    
+    // 여행 기본 정보 수정 저장
+    const saveEditInfo = () => {
+      isEditingInfo.value = false;
+    };
+    
+    // 여행 기본 정보 수정 취소
+    const cancelEditInfo = () => {
+      tripData.value = JSON.parse(JSON.stringify(tempTripData.value));
+      isEditingInfo.value = false;
+    };
+    
+    // 날짜 전체 형식 포맷팅 (YYYY년 MM월 DD일 요일)
+    const formatDateFull = (dateString) => {
+      if (!dateString) return '';
+      
+      const date = new Date(dateString);
+      return date.toLocaleDateString('ko-KR', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric', 
+        weekday: 'long' 
+      });
+    };
+    
     return {
       tripData,
       tripDays,
@@ -1274,7 +1962,43 @@ export default {
       startEditItem,
       saveItemEdit,
       cancelItemEdit,
-      forceRefresh
+      forceRefresh,
+      groupedExpenses,
+      getExpenseIndex,
+      formatExpenseDate,
+      showReceiptUpload,
+      receiptFile,
+      receiptPreview,
+      isDragging,
+      isLoading,
+      loadingMessage,
+      parsedReceiptData,
+      openReceiptUpload,
+      closeReceiptUpload,
+      triggerReceiptFileInput,
+      handleReceiptFileInput,
+      onDragOver,
+      onDragLeave,
+      onDrop,
+      processReceiptFile,
+      clearReceiptImage,
+      analyzeReceipt,
+      analyzeWithAI,
+      extractReceiptData,
+      addFromReceipt,
+      editingExpense,
+      editExpenseTime,
+      editExpenseDesc,
+      editExpenseAmount,
+      startExpenseEdit,
+      saveExpenseEdit,
+      cancelExpenseEdit,
+      showSuccessBanner,
+      isEditingInfo,
+      startEditInfo,
+      saveEditInfo,
+      cancelEditInfo,
+      formatDateFull
     };
   }
 };
@@ -1703,7 +2427,7 @@ textarea {
 }
 
 .input-with-icon input {
-  padding-left: 2rem;
+  padding-left: 10rem;
 }
 
 .expenses-list {
@@ -2254,6 +2978,571 @@ textarea {
   margin: 1.25rem 0.75rem;
   padding: 0 0.75rem;
   text-align: left;
+}
+
+/* 지출 목록 스타일 */
+.expenses-list {
+  margin-top: 1.5rem;
+}
+
+.expense-date-group {
+  margin-bottom: 1.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.expense-date-header {
+  background-color: #f7fafc;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.expense-date-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #4a5568;
+  font-weight: 600;
+}
+
+.expense-item {
+  display: flex;
+  padding: 0.75rem 1rem;
+  align-items: center;
+  border-bottom: 1px solid #f0f4f8;
+}
+
+.expense-item:last-child {
+  border-bottom: none;
+}
+
+.expense-time {
+  width: 80px;
+  font-size: 0.9rem;
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.expense-place {
+  flex: 2;
+  padding: 0 1rem;
+  font-weight: 500;
+}
+
+.expense-amount {
+  width: 150px;
+}
+
+.add-expense-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.add-expense-btn {
+  width: 48%;
+  padding: 0.75rem;
+  background-color: #ebf8ff;
+  border: 1px dashed #4299e1;
+  border-radius: 6px;
+  color: #4299e1;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.add-expense-btn:hover {
+  background-color: #bee3f8;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .add-expense-buttons {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .add-expense-btn {
+    width: 100%;
+  }
+  
+  .expense-item {
+    flex-wrap: wrap;
+  }
+  
+  .expense-time {
+    width: 30%;
+  }
+  
+  .expense-place {
+    width: 70%;
+    padding: 0;
+  }
+  
+  .expense-amount {
+    width: 70%;
+    margin-top: 0.5rem;
+  }
+  
+  .action-column {
+    width: 30%;
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+  }
+}
+
+/* 영수증 업로드 모달 스타일 수정 */
+.receipt-upload-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.receipt-upload-content {
+  background-color: white;
+  border-radius: 12px;
+  padding: 24px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* 이미지 컨테이너 스타일 */
+.image-container {
+  max-width: 100%;
+  max-height: 350px;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.receipt-preview {
+  max-width: 100%;
+  max-height: 350px;
+  object-fit: contain;
+}
+
+/* 지출 항목 스타일 업데이트 */
+.expense-view-mode, .expense-edit-mode {
+  display: flex;
+  width: 100%;
+  align-items: center;
+}
+
+.expense-time, .expense-time-edit {
+  width: 80px;
+  font-size: 0.9rem;
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.expense-place, .expense-place-edit {
+  flex: 2;
+  padding: 0 1rem;
+  font-weight: 500;
+}
+
+.expense-amount, .expense-amount-edit {
+  width: 120px;
+  font-weight: 500;
+}
+
+.expense-actions {
+  display: flex;
+  gap: 0.25rem;
+  margin-left: 0.5rem;
+  position: relative;
+  z-index: 10;
+}
+
+.expense-time-edit input, .expense-place-edit input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+}
+
+.expense-amount-edit {
+  position: relative;
+  z-index: 5;
+}
+
+/* 편집 버튼 스타일 */
+.edit-btn, .save-edit-btn, .cancel-edit-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #a0aec0;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edit-btn:hover {
+  color: #4299e1;
+  background-color: rgba(66, 153, 225, 0.1);
+}
+
+.save-edit-btn {
+  color: #48bb78;
+}
+
+.save-edit-btn:hover {
+  color: #38a169;
+  background-color: rgba(72, 187, 120, 0.1);
+}
+
+.cancel-edit-btn {
+  color: #f56565;
+}
+
+.cancel-edit-btn:hover {
+  color: #e53e3e;
+  background-color: rgba(229, 62, 62, 0.1);
+}
+
+/* 누락된 모달 헤더 스타일 */
+.receipt-upload-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.receipt-upload-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.close-receipt-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #a0aec0;
+  padding: 0.5rem;
+}
+
+.close-receipt-btn:hover {
+  color: #4a5568;
+}
+
+.upload-prompt {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.2s ease;
+}
+
+.loading-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  margin-top: 20px;
+  color: #4a5568;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e2e8f0;
+  border-top-color: #4299e1;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 이미지 미리보기 버튼 스타일 개선 */
+.preview-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 16px;
+  width: 100%;
+}
+
+.preview-actions button {
+  flex: 1;
+  padding: 10px 16px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 추가 버튼 여백 조정 */
+.add-expense-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.add-expense-btn {
+  width: 49%;
+  padding: 0.75rem;
+  background-color: #ebf8ff;
+  border: 1px dashed #4299e1;
+  border-radius: 6px;
+  color: #4299e1;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.add-expense-btn:hover {
+  background-color: #bee3f8;
+}
+
+/* 로딩 인디케이터 스타일 수정 */
+.loading-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  margin-top: 20px;
+  color: #4a5568;
+}
+
+/* 성공 알림 배너 스타일 */
+.success-banner {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #48bb78;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 500;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  animation: fadeInOut 3s forwards;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translate(-50%, 20px); }
+  15% { opacity: 1; transform: translate(-50%, 0); }
+  85% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -20px); }
+}
+
+.success-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 지출 항목 수정 모드 개선 */
+.expense-edit-mode {
+  position: relative;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  z-index: 1;
+}
+
+.expense-actions {
+  display: flex;
+  gap: 0.25rem;
+  margin-left: 0.5rem;
+  position: relative;
+  z-index: 20; /* 더 높은 z-index로 설정 */
+}
+
+.expense-amount-edit {
+  position: relative;
+  z-index: 5;
+  max-width: 150px; /* 최대 너비 제한 */
+}
+
+.expense-amount-edit .input-with-icon input {
+  width: 100%;
+  padding-left: 1.5rem; /* 아이콘과 텍스트 간격 조정 */
+}
+
+.expense-place-edit {
+  flex: 2;
+  padding: 0 1rem;
+  font-weight: 500;
+  max-width: calc(100% - 260px); /* 충분한 공간 확보 */
+}
+
+.expense-time-edit {
+  width: 80px;
+  font-size: 0.9rem;
+  color: #4a5568;
+  font-weight: 500;
+}
+
+.save-edit-btn, .cancel-edit-btn {
+  z-index: 25; /* 가장 높은 z-index */
+  position: relative;
+}
+
+/* 여행 기본 정보 보기 모드 */
+.trip-info-view-mode {
+  background-color: #ebf8ff;
+  border-radius: 12px;
+  padding: 2rem;
+  position: relative;
+}
+
+.info-row {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.info-row:last-child {
+  margin-bottom: 0;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 200px;
+  padding-right: 2rem;
+}
+
+.info-memo {
+  flex: 1 0 100%;
+}
+
+.memo-text {
+  white-space: pre-line;
+  line-height: 1.5;
+}
+
+.info-label {
+  font-size: 0.9rem;
+  color: #4a5568;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.info-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2b6cb0;
+}
+
+.edit-info-btn {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  background-color: #4299e1;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 0.6rem 1.2rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.edit-info-btn:hover {
+  background-color: #3182ce;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .info-row {
+    flex-direction: column;
+  }
+  
+  .info-item {
+    margin-bottom: 1rem;
+  }
+  
+  .info-value {
+    font-size: 1.1rem;
+  }
+}
+
+/* 여행 기본 정보 수정 모드 */
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  justify-content: flex-end;
+}
+
+.save-info-btn, .cancel-info-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.save-info-btn {
+  background-color: #48bb78;
+  color: white;
+}
+
+.save-info-btn:hover {
+  background-color: #38a169;
+}
+
+.cancel-info-btn {
+  background-color: #f56565;
+  color: white;
+}
+
+.cancel-info-btn:hover {
+  background-color: #e53e3e;
 }
 </style>
 

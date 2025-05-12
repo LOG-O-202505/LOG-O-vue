@@ -1,6 +1,6 @@
 <template>
     <div class="receipt-ocr-container">
-      <h2 class="title">영수증 OCR 데이터 추출</h2>
+      <h2 class="title">영수증 및 결제내역 분석</h2>
       
       <!-- API 키 입력 섹션 -->
       <div class="form-group" v-if="!apiKey">
@@ -49,14 +49,14 @@
                 <line x1="12" y1="3" x2="12" y2="15"></line>
               </svg>
             </div>
-            <p>영수증 사진을 끌어서 놓거나 클릭하여 업로드하세요</p>
+            <p>영수증 또는 결제내역 이미지를 끌어서 놓거나 클릭하여 업로드하세요</p>
             <button @click="triggerFileInput" class="btn secondary-btn">파일 선택</button>
           </div>
           <div v-else class="preview-container">
-            <img :src="preview" alt="영수증 미리보기" class="receipt-preview">
+            <img :src="preview" alt="영수증/결제내역 미리보기" class="receipt-preview">
             <div class="preview-actions">
               <button @click="analyzeReceipt" class="btn primary-btn" :disabled="isLoading">
-                {{ isLoading ? '분석 중...' : '영수증 분석하기' }}
+                {{ isLoading ? '분석 중...' : '이미지 분석하기' }}
               </button>
               <button @click="clearImage" class="btn cancel-btn">취소</button>
             </div>
@@ -67,14 +67,13 @@
       <!-- 로딩 인디케이터 -->
       <div class="loading-overlay" v-if="isLoading">
         <div class="spinner"></div>
-        <p>영수증 분석 중...</p>
+        <p>{{ loadingMessage }}</p>
       </div>
   
       <!-- 결과 섹션 -->
       <div class="results-section" v-if="results">
         <h3>분석 결과</h3>
         
-        <!-- 원본 텍스트 -->
         <div class="container">
           <div class="tab-header">
             <button 
@@ -95,58 +94,32 @@
   
           <!-- 추출 데이터 탭 -->
           <div v-if="activeTab === 'extracted'" class="extracted-data">
-            <div class="data-grid">
-              <!-- 결제 정보 -->
-              <div class="data-card">
-                <h4>결제 정보</h4>
-                <table>
-                  <tbody>
-                    <tr>
-                      <td class="label">가맹점명:</td>
-                      <td>{{ extractedData.merchantName || '인식 실패' }}</td>
-                    </tr>
-                    <tr>
-                      <td class="label">결제일시:</td>
-                      <td>{{ extractedData.date || '인식 실패' }}</td>
-                    </tr>
-                    <tr>
-                      <td class="label">결제금액:</td>
-                      <td>{{ extractedData.totalAmount || '인식 실패' }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              
-              <!-- 결제 내역 -->
-              <div class="data-card">
-                <h4>결제 내역</h4>
-                <table class="items-table">
-                  <thead>
-                    <tr>
-                      <th>항목</th>
-                      <th>수량</th>
-                      <th>가격</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-if="extractedData.items && extractedData.items.length">
-                      <td colspan="3" class="items-note">
-                        테이블 인식이 완료되었습니다. 원본 텍스트 탭에서 확인하세요.
-                      </td>
-                    </tr>
-                    <tr v-else>
-                      <td colspan="3" class="no-items">
-                        항목이 인식되지 않았습니다.
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+            <div class="data-card">
+              <h4>결제 정보</h4>
+              <table>
+                <tbody>
+                  <tr>
+                    <td class="label">결제 장소:</td>
+                    <td>{{ parsedData.Place || '인식 실패' }}</td>
+                  </tr>
+                  <tr>
+                    <td class="label">결제 시간:</td>
+                    <td>{{ parsedData.Time || '인식 실패' }}</td>
+                  </tr>
+                  <tr>
+                    <td class="label">결제 금액:</td>
+                    <td>{{ parsedData.Price ? formatPrice(parsedData.Price) : '인식 실패' }}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
             
             <div class="data-correction">
               <p class="correction-note">
                 * OCR 인식 결과는 100% 정확하지 않을 수 있습니다. 필요한 경우 데이터를 수정하세요.
+              </p>
+              <p v-if="analysisMethod" class="analysis-method">
+                분석 방법: {{ analysisMethod }}
               </p>
             </div>
           </div>
@@ -161,7 +134,7 @@
   
         <!-- 액션 버튼 -->
         <div class="action-buttons">
-          <button @click="clearResults" class="btn secondary-btn">새 영수증 분석하기</button>
+          <button @click="clearResults" class="btn secondary-btn">새 이미지 분석하기</button>
           <button @click="copyToClipboard" class="btn primary-btn">결과 복사하기</button>
         </div>
       </div>
@@ -181,15 +154,18 @@
         isDragging: false,
         results: null,
         activeTab: 'extracted',
-        extractedData: {
-          merchantName: '',
-          date: '',
-          totalAmount: '',
-          items: []
+        parsedData: {
+          Place: '',
+          Time: '',
+          Price: null
         },
         maxImageSize: 1024 * 1024, // 1MB in bytes
         compressionQuality: 0.7,
-        imageCompressed: false
+        imageCompressed: false,
+        loadingMessage: '이미지 분석 중...',
+        analysisMethod: '',
+        ollamaApiUrl: 'http://localhost:11434/api/generate',
+        ollamaModel: 'OCR_basic' // 모델 이름을 OCR_basic으로 설정
       }
     },
     mounted() {
@@ -203,6 +179,12 @@
       }
     },
     methods: {
+      // 가격 포맷팅
+      formatPrice(price) {
+        if (!price) return '';
+        return new Intl.NumberFormat('ko-KR').format(price) + '원';
+      },
+      
       // API 키 저장
       saveApiKey() {
         if (this.tempApiKey) {
@@ -357,21 +339,22 @@
       clearResults() {
         this.results = null;
         this.clearImage();
-        this.extractedData = {
-          merchantName: '',
-          date: '',
-          totalAmount: '',
-          items: []
+        this.parsedData = {
+          Place: '',
+          Time: '',
+          Price: null
         };
+        this.analysisMethod = '';
       },
       
-      // 영수증 분석
+      // 영수증/결제내역 분석
       async analyzeReceipt() {
         if (!this.uploadedFile || !this.apiKey) {
           return;
         }
         
         this.isLoading = true;
+        this.loadingMessage = 'OCR로 텍스트 추출 중...';
         
         try {
           // 파일 크기 확인
@@ -385,7 +368,7 @@
           let success = await this.tryOCRRequest('kor');
           
           if (!success) {
-            alert('영수증 분석에 실패했습니다. 다른 이미지로 시도해보세요.');
+            alert('이미지 분석에 실패했습니다. 다른 이미지로 시도해보세요.');
           }
         } catch (error) {
           console.error('OCR API 호출 오류:', error);
@@ -403,7 +386,7 @@
             errorMsg = '이미지 파일이 1MB를 초과합니다. 더 작은 이미지를 사용하거나 품질을 낮추세요.';
           }
           
-          alert('영수증 분석 실패: ' + errorMsg);
+          alert('이미지 분석 실패: ' + errorMsg);
         } finally {
           this.isLoading = false;
         }
@@ -433,10 +416,14 @@
           
           if (data.OCRExitCode === 1) {
             this.results = data.ParsedResults[0];
-            this.extractReceiptData(this.results.ParsedText);
+            
+            // 인공지능 모델로 OCR 결과 분석
+            this.loadingMessage = 'AI로 내용 분석 중...';
+            await this.analyzeWithAI(this.results.ParsedText);
+            
             return true;
           } else {
-            const errorMessage = data.ErrorMessage || '영수증 분석 중 오류가 발생했습니다.';
+            const errorMessage = data.ErrorMessage || '이미지 분석 중 오류가 발생했습니다.';
             console.error('OCR API 오류:', errorMessage, data);
             return false;
           }
@@ -446,27 +433,90 @@
         }
       },
       
-      // 영수증 데이터 추출 (기본 패턴 분석)
+      // AI 모델로 분석
+      async analyzeWithAI(text) {
+        try {
+          console.log('AI 분석 시작...');
+          
+          // Ollama API 호출
+          const response = await fetch(this.ollamaApiUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: this.ollamaModel,
+              prompt: text,
+              stream: false
+            })
+          });
+          
+          if (!response.ok) {
+            throw new Error(`API 응답 오류: ${response.status} ${response.statusText}`);
+          }
+          
+          const data = await response.json();
+          console.log('AI 응답:', data);
+          
+          if (data && data.response) {
+            try {
+              // JSON 파싱
+              const parsedResponse = JSON.parse(data.response);
+              console.log('파싱된 AI 응답:', parsedResponse);
+              
+              if (parsedResponse.Place !== undefined && 
+                  parsedResponse.Time !== undefined && 
+                  parsedResponse.Price !== undefined) {
+                this.parsedData = parsedResponse;
+                this.analysisMethod = 'AI 모델 분석';
+                console.log('AI 분석 성공!');
+                return;
+              } else {
+                console.warn('AI 응답이 올바른 형식이 아닙니다:', parsedResponse);
+              }
+            } catch (e) {
+              console.error('AI 응답을 JSON으로 파싱할 수 없습니다:', e, data.response);
+            }
+          }
+          
+          // AI 분석 실패시 기본 패턴 매칭 사용
+          console.log('기본 패턴 매칭으로 대체');
+          this.extractReceiptData(text);
+          this.analysisMethod = '기본 패턴 매칭';
+        } catch (error) {
+          console.error('AI 분석 오류:', error);
+          // 오류 발생 시 기본 패턴 매칭 사용
+          this.extractReceiptData(text);
+          this.analysisMethod = '기본 패턴 매칭 (AI 오류 발생)';
+        }
+      },
+      
+      // 영수증/결제내역 데이터 추출 (기본 패턴 분석)
       extractReceiptData(text) {
         if (!text) return;
         
         const lines = text.split('\n').filter(line => line.trim());
         
-        // 가맹점명 추출 (첫 1-3줄 중 가장 긴 줄을 가맹점명으로 가정)
-        const potentialMerchantNames = lines.slice(0, Math.min(3, lines.length));
-        this.extractedData.merchantName = potentialMerchantNames.reduce(
+        // 결제 장소 추출 (첫 1-3줄 중 가장 긴 줄을 장소로 가정)
+        const potentialPlaces = lines.slice(0, Math.min(3, lines.length));
+        this.parsedData.Place = potentialPlaces.reduce(
           (longest, current) => current.length > longest.length ? current : longest, 
           ''
-        );
+        ).trim();
         
-        // 날짜 패턴 찾기 (YYYY-MM-DD, YYYY/MM/DD, MM/DD 등 패턴 탐색)
+        // 날짜 및 시간 패턴 찾기
         const datePattern = /\d{2,4}[-./]\d{1,2}[-./]\d{1,2}|\d{1,2}[-./]\d{1,2}[-./]\d{2,4}/;
         const timePattern = /\d{1,2}:\d{2}(:\d{2})?/;
         
+        // 결제 시간 추출
         for (const line of lines) {
+          // 명시적인 결제 시간 라벨 찾기
+          const timeLabels = ['날짜', '시간', '결제시간', '거래일시', '거래일자', '일자', '일시'];
+          const hasTimeLabel = timeLabels.some(label => line.includes(label));
+          
           // 날짜 검색
           const dateMatch = line.match(datePattern);
-          if (dateMatch && !this.extractedData.date) {
+          if (dateMatch) {
             let dateStr = dateMatch[0];
             
             // 시간도 찾아봄
@@ -475,27 +525,38 @@
               dateStr += ' ' + timeMatch[0];
             }
             
-            this.extractedData.date = dateStr;
-          }
-          
-          // 총액 검색 (합계, 총액, 결제금액 등 키워드 뒤에 나오는 숫자)
-          const totalPattern = /(합\s*계|총\s*액|결제\s*금액|Total).{0,10}([\d,]+)/i;
-          const totalMatch = line.match(totalPattern);
-          if (totalMatch && !this.extractedData.totalAmount) {
-            this.extractedData.totalAmount = totalMatch[2];
+            if (hasTimeLabel || !this.parsedData.Time) {
+              this.parsedData.Time = dateStr.trim();
+            }
           }
         }
         
-        // 항목 추출 시도 (더 복잡한 로직이 필요)
-        // 실제 구현에서는 더 정교한 패턴 매칭이 필요함
-        this.extractedData.items = [];
+        // 결제 금액 추출
+        const totalPatterns = [
+          /(합\s*계|총\s*액|결제\s*금액|결제액|Total|합계금액).{0,10}([\d,]+)/i,
+          /([\d,]+)\s*원\s*(합\s*계|총\s*액|결제\s*금액)/i
+        ];
+        
+        for (const line of lines) {
+          for (const pattern of totalPatterns) {
+            const match = line.match(pattern);
+            if (match) {
+              // 숫자만 추출하여 콤마 제거
+              const priceStr = match[2] || match[1];
+              const numericPrice = priceStr.replace(/[^\d]/g, '');
+              if (numericPrice && (!this.parsedData.Price || parseInt(numericPrice) > this.parsedData.Price)) {
+                this.parsedData.Price = parseInt(numericPrice);
+              }
+            }
+          }
+        }
       },
       
       // 클립보드에 복사
       copyToClipboard() {
         const textToCopy = this.activeTab === 'raw' 
           ? this.results.ParsedText 
-          : JSON.stringify(this.extractedData, null, 2);
+          : JSON.stringify(this.parsedData, null, 2);
         
         navigator.clipboard.writeText(textToCopy)
           .then(() => {
@@ -738,16 +799,11 @@
     padding: 20px;
   }
   
-  .data-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-  }
-  
   .data-card {
     background-color: var(--gray-100);
     padding: 20px;
     border-radius: 8px;
+    margin-bottom: 20px;
   }
   
   .data-card h4 {
@@ -772,28 +828,6 @@
     width: 100px;
   }
   
-  .items-table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  
-  .items-table th {
-    text-align: left;
-    padding: 8px;
-    color: var(--gray-700);
-    border-bottom: 1px solid var(--gray-300);
-  }
-  
-  .items-table td {
-    padding: 10px 8px;
-  }
-  
-  .no-items, .items-note {
-    color: var(--gray-500);
-    text-align: center;
-    padding: 20px 0;
-  }
-  
   .data-correction {
     margin-top: 20px;
     padding-top: 20px;
@@ -804,6 +838,12 @@
     color: var(--gray-600);
     font-size: 14px;
     font-style: italic;
+  }
+  
+  .analysis-method {
+    color: var(--gray-600);
+    font-size: 14px;
+    margin-top: 10px;
   }
   
   .raw-text {
@@ -832,10 +872,6 @@
   }
   
   @media (max-width: 768px) {
-    .data-grid {
-      grid-template-columns: 1fr;
-    }
-    
     .api-key-input {
       flex-direction: column;
     }
