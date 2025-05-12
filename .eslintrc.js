@@ -15,6 +15,7 @@ module.exports = {
     'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off'
   },
   globals: {
-    google: true
+    google: true,
+    kakao: 'readonly'
   }
 }
