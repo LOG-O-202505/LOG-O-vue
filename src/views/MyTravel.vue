@@ -30,16 +30,71 @@
           <div class="statistic-value">{{ userStats.topCategory }}</div>
           <div class="statistic-label">선호 카테고리</div>
         </div>
-        <router-link to="/plan" class="plan-trip-card">
-          <div class="plan-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="8" x2="12" y2="16"></line>
-              <line x1="8" y1="12" x2="16" y2="12"></line>
-            </svg>
+      </div>
+
+      <!-- 새 여행 계획 입력 배너 -->
+      <div v-if="showNewTripForm" class="new-trip-form-overlay">
+        <div class="new-trip-form-banner">
+          <div class="banner-content">
+            <div class="banner-header">
+              <h3>새 여행 계획 만들기</h3>
+              <button class="close-banner-btn" @click="showNewTripForm = false">×</button>
+            </div>
+            
+            <div class="trip-info-form">
+              <div class="trip-info-row">
+                <div class="trip-info-field">
+                  <label for="tripTitle">여행 제목</label>
+                  <input type="text" id="tripTitle" v-model="newTrip.title" placeholder="여행 제목을 입력하세요">
+                </div>
+                <div class="trip-info-field">
+                  <label for="destination">주요 목적지</label>
+                  <input type="text" id="destination" v-model="newTrip.destination" placeholder="예: 서울, 제주도, 부산">
+                </div>
+                <div class="trip-info-field">
+                  <label for="budget">총 예산</label>
+                  <div class="input-with-icon">
+                    <span class="input-icon">₩</span>
+                    <input type="number" id="budget" v-model="newTrip.budget" placeholder="0">
+                  </div>
+                </div>
+              </div>
+              
+              <div class="trip-info-row">
+                <div class="trip-info-field">
+                  <label for="startDate">출발일</label>
+                  <input type="date" id="startDate" v-model="newTrip.startDate" class="date-input">
+                </div>
+                <div class="trip-info-field">
+                  <label for="endDate">도착일</label>
+                  <input type="date" id="endDate" v-model="newTrip.endDate" class="date-input">
+                </div>
+                <div class="trip-info-field">
+                  <label for="tripDuration">여행 기간</label>
+                  <input type="text" id="tripDuration" :value="tripDuration" disabled>
+                </div>
+              </div>
+              
+              <div class="trip-info-row">
+                <div class="trip-info-field trip-notes">
+                  <label for="notes">여행 메모</label>
+                  <textarea id="notes" v-model="newTrip.notes" placeholder="여행 준비 사항, 기대 등을 자유롭게 작성하세요"></textarea>
+                </div>
+              </div>
+              
+              <div class="banner-actions">
+                <button class="submit-trip-btn" @click="createNewTrip">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                  </svg>
+                  여행 계획 만들기
+                </button>
+              </div>
+            </div>
           </div>
-          <div class="plan-text">새 여행 계획하기</div>
-        </router-link>
+        </div>
       </div>
 
       <!-- 2. 차원별 취향 프로필 -->
@@ -199,6 +254,20 @@
                   <div class="trip-season">{{ getSeasonName(trip.season) }}</div>
                 </div>
               </div>
+              
+              <!-- Add the New Trip button at the end of the first (most recent) year's trips -->
+              <div v-if="yearIndex === 0" class="trip-item new-trip-item" @click="showNewTripForm = true">
+                <div class="new-trip-content">
+                  <div class="plus-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="8" x2="12" y2="16"></line>
+                      <line x1="8" y1="12" x2="16" y2="12"></line>
+                    </svg>
+                  </div>
+                  <div class="new-trip-text">새 여행 계획하기</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -220,6 +289,7 @@ import ctprvnGeoJson from '@/assets/ctprvn.json';
 import propertiesData from '@/assets/extracted_ctprvn.json';
 import sigGeoJson from '@/assets/sig.json';
 import sigPropertiesData from '@/assets/extracted_properties.json';
+import { useRouter } from 'vue-router';
 
 export default {
   name: 'MyTravel',
@@ -229,6 +299,96 @@ export default {
   },
 
   setup() {
+    const router = useRouter();
+    
+    // 새 여행 계획 배너 상태
+    const showNewTripForm = ref(false);
+    const newTrip = reactive({
+      title: '',
+      destination: '',
+      startDate: '',
+      endDate: '',
+      budget: '',
+      notes: ''
+    });
+    
+    // 여행 기간 계산
+    const tripDuration = computed(() => {
+      if (!newTrip.startDate || !newTrip.endDate) return '';
+      
+      const start = new Date(newTrip.startDate);
+      const end = new Date(newTrip.endDate);
+      
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) return '';
+      
+      // 날짜 차이 계산
+      const diffTime = Math.abs(end - start);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const nights = diffDays;
+      const days = diffDays + 1;
+      
+      return `${nights}박 ${days}일`;
+    });
+    
+    // 컴포넌트 마운트 시 초기 날짜 설정
+    onMounted(() => {
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      // YYYY-MM-DD 형식으로 변환
+      const formatDate = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      
+      newTrip.startDate = formatDate(today);
+      newTrip.endDate = formatDate(tomorrow);
+    });
+    
+    // 새 여행 생성
+    const createNewTrip = () => {
+      // 입력 데이터 검증
+      if (!newTrip.title || !newTrip.destination || !newTrip.startDate || !newTrip.endDate || !newTrip.budget) {
+        alert("필수 정보를 모두 입력해주세요.");
+        return;
+      }
+      
+      // 날짜 검증
+      const startDate = new Date(newTrip.startDate);
+      const endDate = new Date(newTrip.endDate);
+      
+      if (endDate < startDate) {
+        alert("도착일은 출발일보다 빠를 수 없습니다.");
+        return;
+      }
+      
+      // 예산 검증
+      if (parseInt(newTrip.budget) <= 0) {
+        alert("예산은 0보다 커야 합니다.");
+        return;
+      }
+      
+      // 입력된 정보를 콘솔에 출력
+      console.log('새 여행 계획 정보:', {
+        title: newTrip.title,
+        destination: newTrip.destination,
+        startDate: newTrip.startDate,
+        endDate: newTrip.endDate,
+        budget: parseInt(newTrip.budget),
+        notes: newTrip.notes,
+        duration: tripDuration.value
+      });
+      
+      // 계획 페이지로 이동
+      router.push('/plan');
+      
+      // 폼 숨기기
+      showNewTripForm.value = false;
+    };
+
     // 상태 변수 선언
     const mapContainer = ref(null);
     const detailMapContainer = ref(null);
@@ -1617,6 +1777,12 @@ export default {
     });
 
     return {
+      // 새 여행 계획 관련 상태 및 메서드
+      showNewTripForm,
+      newTrip,
+      tripDuration,
+      createNewTrip,
+      
       // 상태 변수
       mapContainer,
       detailMapContainer,
@@ -2448,5 +2614,230 @@ export default {
   .no-trips {
     margin-left: 1.5rem;
   }
+}
+
+/* 새 여행 계획 배너 스타일 */
+.new-trip-form-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.new-trip-form-banner {
+  width: 100%;
+  max-width: 800px;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  animation: zoomIn 0.3s ease-out;
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.banner-content {
+  padding: 2rem;
+}
+
+.banner-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.banner-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.close-banner-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #a0aec0;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.close-banner-btn:hover {
+  color: #4a5568;
+}
+
+.trip-info-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.trip-info-row {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.trip-info-field {
+  flex: 1;
+  min-width: 0; /* 필요한 경우 축소 가능하도록 설정 */
+}
+
+.trip-notes {
+  width: 100%;
+}
+
+.trip-info-field label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #4a5568;
+  margin-bottom: 0.5rem;
+}
+
+.trip-info-field input, 
+.trip-info-field textarea, 
+.trip-info-field select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  background-color: white;
+  color: #2d3748;
+  transition: all 0.2s ease;
+}
+
+.trip-info-field input:focus, 
+.trip-info-field textarea:focus, 
+.trip-info-field select:focus {
+  outline: none;
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.2);
+}
+
+.trip-info-field textarea {
+  height: 100px;
+  resize: vertical;
+}
+
+.input-with-icon {
+  position: relative;
+}
+
+.input-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #718096;
+}
+
+.input-with-icon input {
+  padding-left: 1.5rem;
+}
+
+.banner-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.submit-trip-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #4299e1;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.submit-trip-btn:hover {
+  background-color: #3182ce;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+  .trip-info-row {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .trip-info-field {
+    width: 100%;
+  }
+}
+
+/* 새 여행 버튼 (타임라인 내) */
+.new-trip-item {
+  background-color: #f0f9ff;
+  border-top-color: #4299e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-height: 222px; /* Match the height of regular trip items */
+}
+
+.new-trip-item:hover {
+  background-color: #ebf8ff;
+  transform: translateY(-5px);
+  box-shadow: 0 10px 15px rgba(66, 153, 225, 0.2);
+}
+
+.new-trip-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.plus-icon {
+  color: #4299e1;
+  margin-bottom: 1rem;
+}
+
+.new-trip-text {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #4299e1;
+  text-align: center;
 }
 </style>

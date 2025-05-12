@@ -26,6 +26,7 @@
         
         <div class="nav-group">
           <router-link to="/" class="nav-item">COMMUNITY</router-link>
+          <router-link to="/plan" class="nav-item">PLANNER</router-link>
           <router-link to="/mytravel" class="nav-item">MY JOURNEY</router-link>
         </div>
       </div>
@@ -100,7 +101,7 @@ export default {
   justify-content: center;
   align-items: center;
   text-align: center;
-  padding: 9.5rem 2rem 0rem 2rem;
+  padding: 5rem 5rem 0 5rem;
   color: white;
   max-width: 1400px;
   margin-left: auto;

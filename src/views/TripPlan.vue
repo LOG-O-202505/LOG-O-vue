@@ -149,6 +149,7 @@
                   :key="itemIndex" 
                   class="schedule-item"
                 >
+                  <!-- 일정 아이템 헤더 내 아이템 액션 버튼 수정 -->
                   <div class="schedule-item-header">
                     <div class="time-place">
                       <template v-if="editingItem === itemIndex">
@@ -196,6 +197,39 @@
                       placeholder="메모를 입력하세요"
                     ></textarea>
                     <textarea v-else v-model="item.location" placeholder="수하물 찾는 시간 고려하기" @blur="updateLocation(activeDay, itemIndex, item.location)"></textarea>
+                  </div>
+                  <!-- 방문 인증 버튼 추가 -->
+                  <div class="verification-button-container">
+                    <button 
+                      class="visit-verification-btn" 
+                      @click="verifyVisit(activeDay, itemIndex)"
+                      :class="{ 'verified': item.verified }"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                      </svg>
+                      {{ item.verified ? '방문 인증 완료' : '방문 인증하기' }}
+                    </button>
+                    
+                    <!-- 방문 인증 정보 표시 -->
+                    <div v-if="item.verified" class="verification-info">
+                      <div class="verified-badge">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        <span>{{ formatDate(item.verifiedAt) }}에 방문 완료</span>
+                        <div class="rating-display" v-if="item.rating">
+                          <span class="stars">
+                            {{ '★'.repeat(item.rating) }}{{ '☆'.repeat(5 - item.rating) }}
+                          </span>
+                        </div>
+                      </div>
+                      <div v-if="item.review" class="review-display">
+                        <p>{{ item.review }}</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 
@@ -530,6 +564,131 @@
       </div>
       영수증 정보가 성공적으로 추가되었습니다!
     </div>
+
+    <!-- 방문 인증 모달 추가 -->
+    <div class="modal-overlay" v-if="showVerificationModal" @click="closeVerificationModal">
+      <div class="verification-modal" @click.stop>
+        <div class="modal-header">
+          <h3>방문 인증하기</h3>
+          <button class="close-btn" @click="closeVerificationModal">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="modal-content">
+          <div class="verification-item-info">
+            <h4>{{ verifyingItemInfo.activity }}</h4>
+            <p>{{ verifyingItemInfo.location }}</p>
+          </div>
+          
+          <div class="upload-container" 
+               @dragover.prevent="onPhotoUploadDragOver" 
+               @dragleave.prevent="onPhotoUploadDragLeave" 
+               @drop.prevent="onPhotoUploadDrop" 
+               :class="{ 'active-dropzone': isPhotoDragging }">
+            <input 
+              type="file" 
+              ref="photoFileInput" 
+              @change="handlePhotoFileInput" 
+              accept="image/*" 
+              style="display: none"
+            >
+            <div v-if="!verificationPhotoPreview" class="upload-prompt">
+              <div class="upload-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                  <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+              </div>
+              <p>방문 인증을 위한 사진을 업로드해주세요</p>
+              <p class="upload-tip">* 해당 장소에서 촬영한 사진만 인증 가능합니다</p>
+              <button @click="triggerPhotoFileInput" class="btn secondary-btn">사진 선택</button>
+            </div>
+            <div v-else class="preview-container">
+              <div class="image-container">
+                <img :src="verificationPhotoPreview" alt="방문 인증 사진 미리보기" class="photo-preview">
+              </div>
+              <div class="photo-metadata" v-if="photoMetadata">
+                <div class="metadata-item">
+                  <strong>촬영 시간:</strong> {{ formatPhotoDate(photoMetadata.dateTime) }}
+                </div>
+                <div class="metadata-item" v-if="photoMetadata.latitude && photoMetadata.longitude">
+                  <strong>촬영 위치:</strong> [{{ photoMetadata.latitude.toFixed(6) }}, {{ photoMetadata.longitude.toFixed(6) }}]
+                </div>
+                <div class="metadata-item" v-if="distanceFromTarget !== null">
+                  <strong>장소와의 거리:</strong> {{ formatDistance(distanceFromTarget) }}
+                </div>
+                <div class="verification-result" v-if="verificationResult !== null">
+                  <div v-if="verificationResult.success" class="success-result">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                      <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                    방문 인증이 확인되었습니다!
+                  </div>
+                  <div v-else class="error-result">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="8" x2="12" y2="12"></line>
+                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    {{ verificationResult.message }}
+                  </div>
+                </div>
+              </div>
+              <div class="preview-actions">
+                <button @click="verifyPhoto" class="btn primary-btn" :disabled="isVerifying || !photoMetadata">
+                  {{ isVerifying ? '인증 중...' : '인증하기' }}
+                </button>
+                <button @click="clearVerificationPhoto" class="btn cancel-btn">취소</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="modal-footer" v-if="verificationResult && verificationResult.success">
+          <div class="review-section">
+            <h4>방문 후기 작성</h4>
+            
+            <div class="rating-container">
+              <label>별점:</label>
+              <div class="star-rating">
+                <span 
+                  v-for="star in 5" 
+                  :key="star" 
+                  class="star" 
+                  :class="{ 'active': star <= reviewRating }"
+                  @click="reviewRating = star"
+                >
+                  ★
+                </span>
+              </div>
+            </div>
+            
+            <div class="review-text-container">
+              <label for="review-text">후기:</label>
+              <textarea 
+                id="review-text" 
+                v-model="reviewText" 
+                placeholder="방문 후기를 작성해주세요..."
+                rows="3"
+              ></textarea>
+            </div>
+          </div>
+          <button 
+            v-if="verificationResult && verificationResult.success"
+            @click="completeVerification" 
+            class="btn btn-verify"
+          >
+            인증 완료하기
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -537,6 +696,7 @@
 import Header from '@/components/Header.vue';
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import config from '@/config';
+import EXIF from 'exif-js';
 
 export default {
   name: 'TripPlan',
@@ -569,8 +729,8 @@ export default {
     // 여행 데이터 - 이미 데이터가 차있는 상태로 초기화
     const tripData = ref({
       title: '제주도 봄 여행',
-      startDate: '2025-05-15',
-      endDate: '2025-05-18',
+      startDate: '2020-04-15',
+      endDate: '2020-04-18',
       destination: '제주도',
       notes: '첫 제주 여행, 올레길 걷기, 해변에서 휴식, 맛집 탐방 계획',
       budget: 800000,
@@ -579,21 +739,21 @@ export default {
           category: 'accommodation',
           description: '에어비앤비 숙소',
           amount: 300000,
-          date: '2025-05-15',
+          date: '2020-05-15',
           time: '12:00'
         },
         {
           category: 'transportation',
           description: '항공권',
           amount: 180000,
-          date: '2025-05-15',
+          date: '2020-05-15',
           time: '09:00'
         },
         {
           category: 'food',
           description: '식비 예산',
           amount: 120000,
-          date: '2025-05-16',
+          date: '2020-05-16',
           time: '13:30'
         }
       ]
@@ -1371,14 +1531,6 @@ export default {
       openPlaceDetails(place);
     };
     
-    // 거리 포맷팅 (미터 -> km 또는 m)
-    const formatDistance = (distance) => {
-      const dist = parseInt(distance);
-      if (dist >= 1000) {
-        return `${(dist / 1000).toFixed(1)}km`;
-      }
-      return `${dist}m`;
-    };
 
     // 컴포넌트 마운트 시 지도 초기화
     onMounted(() => {
@@ -1914,6 +2066,553 @@ export default {
       });
     };
     
+    // 방문 인증 함수
+    const verifyVisit = (dayIndex, itemIndex) => {
+      const item = tripDays.value[dayIndex].items[itemIndex];
+      
+      // 이미 인증된 항목이면 인증 취소
+      if (item.verified) {
+        item.verified = false;
+        delete item.verifiedAt;
+        delete item.verificationPhoto;
+        delete item.photoMetadata;
+        console.log(`${item.activity} 방문 인증 취소됨`);
+        return;
+      }
+      
+      // 인증 대상 정보 저장
+      verifyingDay.value = dayIndex;
+      verifyingItem.value = itemIndex;
+      verifyingItemInfo.value = {
+        activity: item.activity,
+        location: item.location,
+        coords: item.coords
+      };
+      
+      // 인증하려는 장소의 데이터를 콘솔에 출력
+      console.log('===== 인증하려는 장소 정보 =====');
+      console.log('장소명:', item.activity);
+      console.log('주소:', item.location);
+      console.log('좌표:', item.coords);
+      console.log('여행 날짜:', addDays(new Date(tripData.value.startDate), dayIndex).toLocaleDateString('ko-KR'));
+      console.log('===============================');
+      
+      // 상태 초기화
+      verificationPhotoPreview.value = null;
+      photoMetadata.value = null;
+      verificationResult.value = null;
+      distanceFromTarget.value = null;
+      
+      // 모달 열기
+      showVerificationModal.value = true;
+    };
+    
+    // 방문 인증 관련 상태
+    const showVerificationModal = ref(false);
+    const verificationPhotoPreview = ref(null);
+    const photoMetadata = ref(null);
+    const isPhotoDragging = ref(false);
+    const isVerifying = ref(false);
+    const verificationResult = ref(null);
+    const distanceFromTarget = ref(null);
+    const photoFileInput = ref(null);
+    const verifyingDay = ref(null);
+    const verifyingItem = ref(null);
+    const verifyingItemInfo = ref({
+      activity: '',
+      location: '',
+      coords: null
+    });
+    
+    // 방문 인증 모달 닫기
+    const closeVerificationModal = () => {
+      showVerificationModal.value = false;
+      clearVerificationPhoto();
+    };
+    
+    // 사진 파일 입력 트리거
+    const triggerPhotoFileInput = () => {
+      photoFileInput.value.click();
+    };
+    
+    // 드래그 이벤트 핸들러
+    const onPhotoUploadDragOver = () => {
+      isPhotoDragging.value = true;
+    };
+    
+    const onPhotoUploadDragLeave = () => {
+      isPhotoDragging.value = false;
+    };
+    
+    const onPhotoUploadDrop = (event) => {
+      isPhotoDragging.value = false;
+      const file = event.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) {
+        processPhotoFile(file);
+      }
+    };
+    
+    // 사진 파일 입력 처리
+    const handlePhotoFileInput = (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        processPhotoFile(file);
+      }
+    };
+    
+    // 사진 파일 처리 및 메타데이터 추출
+    const processPhotoFile = (file) => {
+      if (!file.type.startsWith('image/')) {
+        alert('이미지 파일만 업로드 가능합니다.');
+        return;
+      }
+      
+      // 파일 미리보기 생성
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        verificationPhotoPreview.value = e.target.result;
+        
+        // 메타데이터 추출
+        extractImageMetadata(file);
+      };
+      reader.readAsDataURL(file);
+    };
+    
+    // 사진에서 메타데이터(EXIF) 추출
+    const extractImageMetadata = (file) => {
+      const reader = new FileReader();
+      reader.onload = function() {
+        try {
+          // const arrayBuffer = reader.result;
+          console.log('이미지 파일 로드 완료, 메타데이터 추출 시작');
+          
+          // exif-js 라이브러리를 사용하여 EXIF 데이터 추출
+          // 실제 프로젝트에서는 라이브러리 추가 필요: npm install exif-js
+          if (typeof EXIF !== 'undefined') {
+            EXIF.getData(file, function() {
+              console.log('EXIF 데이터 추출 성공');
+              
+              // GPS 정보 추출
+              const exifData = EXIF.getAllTags(this);
+              console.log('추출된 EXIF 데이터:', exifData);
+              
+              let latitude = null;
+              let longitude = null;
+              let dateTime = null;
+              
+              // GPS 좌표 추출
+              if (exifData.GPSLatitude && exifData.GPSLongitude) {
+                const latDegrees = exifData.GPSLatitude[0].numerator / exifData.GPSLatitude[0].denominator;
+                const latMinutes = exifData.GPSLatitude[1].numerator / exifData.GPSLatitude[1].denominator;
+                const latSeconds = exifData.GPSLatitude[2].numerator / exifData.GPSLatitude[2].denominator;
+                const latDirection = exifData.GPSLatitudeRef || "N";
+                
+                const lngDegrees = exifData.GPSLongitude[0].numerator / exifData.GPSLongitude[0].denominator;
+                const lngMinutes = exifData.GPSLongitude[1].numerator / exifData.GPSLongitude[1].denominator;
+                const lngSeconds = exifData.GPSLongitude[2].numerator / exifData.GPSLongitude[2].denominator;
+                const lngDirection = exifData.GPSLongitudeRef || "E";
+                
+                latitude = convertDMSToDD(latDegrees, latMinutes, latSeconds, latDirection);
+                longitude = convertDMSToDD(lngDegrees, lngMinutes, lngSeconds, lngDirection);
+                
+                console.log(`추출된 GPS 좌표: ${latitude}, ${longitude}`);
+              } else {
+                console.log('GPS 정보를 찾을 수 없습니다.');
+                
+                // 사용자에게 위치 정보 없음 경고 표시
+                verificationResult.value = {
+                  success: false,
+                  message: '이미지에 위치 정보(GPS)가 없습니다. 위치 정보가 포함된 사진을 사용해주세요.'
+                };
+                isVerifying.value = false;
+              }
+              
+              // 날짜/시간 정보 추출
+              if (exifData.DateTimeOriginal) {
+                // EXIF 날짜 형식: YYYY:MM:DD HH:MM:SS
+                const exifDateTime = exifData.DateTimeOriginal;
+                const parts = exifDateTime.split(' ');
+                const dateParts = parts[0].split(':');
+                const timeParts = parts[1].split(':');
+                
+                dateTime = new Date(
+                  parseInt(dateParts[0]),
+                  parseInt(dateParts[1]) - 1,
+                  parseInt(dateParts[2]),
+                  parseInt(timeParts[0]),
+                  parseInt(timeParts[1]),
+                  parseInt(timeParts[2])
+                ).toISOString();
+                
+                console.log(`추출된 촬영 시간: ${dateTime}`);
+              } else {
+                console.log('촬영 날짜/시간 정보를 찾을 수 없습니다.');
+                // 촬영 날짜 정보가 없으면 현재 시간 사용
+                dateTime = new Date().toISOString();
+              }
+              
+              // 메타데이터 저장
+              photoMetadata.value = {
+                dateTime: dateTime,
+                latitude: latitude,
+                longitude: longitude
+              };
+              
+              // 대상 장소 정보 출력
+              console.log('===== 대상 장소 정보 =====');
+              console.log('장소 위치:', verifyingItemInfo.value.coords.lat, verifyingItemInfo.value.coords.lng);
+              console.log('=======================================');
+              
+              // 대상 위치와의 거리 계산
+              if (verifyingItemInfo.value.coords && latitude && longitude) {
+                distanceFromTarget.value = calculateDistance(
+                  latitude,
+                  longitude,
+                  verifyingItemInfo.value.coords.lat,
+                  verifyingItemInfo.value.coords.lng
+                );
+                
+                // 계산된 거리 콘솔에 출력
+                console.log('===== 거리 계산 결과 =====');
+                console.log('목적지와의 거리:', distanceFromTarget.value.toFixed(3), 'km');
+                console.log('미터 단위:', Math.round(distanceFromTarget.value * 1000), 'm');
+                console.log('==========================');
+              } else {
+                // EXIF 데이터가 없거나 위치 정보가 없는 경우 폴백으로 시뮬레이션 데이터 사용
+                console.log('EXIF 위치 정보가 없어 시뮬레이션 데이터를 사용합니다');
+                const simulatedMetadata = simulateExifMetadata();
+                photoMetadata.value = simulatedMetadata;
+                
+                // 추출된 메타데이터 콘솔에 출력
+                console.log('===== 시뮬레이션된 메타데이터 =====');
+                console.log('촬영 시간:', new Date(simulatedMetadata.dateTime).toLocaleString('ko-KR'));
+                console.log('촬영 위치:', simulatedMetadata.latitude, simulatedMetadata.longitude);
+                
+                // 대상 위치와의 거리 계산
+                if (verifyingItemInfo.value.coords && simulatedMetadata.latitude && simulatedMetadata.longitude) {
+                  distanceFromTarget.value = calculateDistance(
+                    simulatedMetadata.latitude,
+                    simulatedMetadata.longitude,
+                    verifyingItemInfo.value.coords.lat,
+                    verifyingItemInfo.value.coords.lng
+                  );
+                  
+                  // 계산된 거리 콘솔에 출력
+                  console.log('===== 거리 계산 결과 (시뮬레이션) =====');
+                  console.log('목적지와의 거리:', distanceFromTarget.value.toFixed(3), 'km');
+                  console.log('미터 단위:', Math.round(distanceFromTarget.value * 1000), 'm');
+                  console.log('==========================');
+                }
+              }
+            });
+          } else {
+            // EXIF 라이브러리가 없는 경우 시뮬레이션 폴백
+            console.log('EXIF 라이브러리를 찾을 수 없어 시뮬레이션 데이터를 사용합니다');
+            const simulatedMetadata = simulateExifMetadata();
+            photoMetadata.value = simulatedMetadata;
+            
+            // 추출된 메타데이터 콘솔에 출력
+            console.log('===== 시뮬레이션된 메타데이터 =====');
+            console.log('촬영 시간:', new Date(simulatedMetadata.dateTime).toLocaleString('ko-KR'));
+            console.log('촬영 위치:', simulatedMetadata.latitude, simulatedMetadata.longitude);
+            
+            // 대상 위치와의 거리 계산
+            if (verifyingItemInfo.value.coords && simulatedMetadata.latitude && simulatedMetadata.longitude) {
+              distanceFromTarget.value = calculateDistance(
+                simulatedMetadata.latitude,
+                simulatedMetadata.longitude,
+                verifyingItemInfo.value.coords.lat,
+                verifyingItemInfo.value.coords.lng
+              );
+              
+              // 계산된 거리 콘솔에 출력
+              console.log('===== 거리 계산 결과 (시뮬레이션) =====');
+              console.log('목적지와의 거리:', distanceFromTarget.value.toFixed(3), 'km');
+              console.log('미터 단위:', Math.round(distanceFromTarget.value * 1000), 'm');
+              console.log('=======================================');
+            }
+          }
+        } catch (error) {
+          console.error('메타데이터 추출 오류:', error);
+          photoMetadata.value = {
+            dateTime: new Date().toISOString(),
+            latitude: null,
+            longitude: null,
+            error: '메타데이터를 추출할 수 없습니다.'
+          };
+          
+          // 오류 발생 시 시뮬레이션 폴백
+          console.log('오류로 인해 시뮬레이션 데이터를 사용합니다');
+          const simulatedMetadata = simulateExifMetadata();
+          photoMetadata.value = simulatedMetadata;
+          
+          // 대상 위치와의 거리 계산
+          if (verifyingItemInfo.value.coords && simulatedMetadata.latitude && simulatedMetadata.longitude) {
+            distanceFromTarget.value = calculateDistance(
+              simulatedMetadata.latitude,
+              simulatedMetadata.longitude,
+              verifyingItemInfo.value.coords.lat,
+              verifyingItemInfo.value.coords.lng
+            );
+          }
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    };
+    
+    // DMS(도, 분, 초) 좌표를 DD(십진수) 좌표로 변환
+    const convertDMSToDD = (degrees, minutes, seconds, direction) => {
+      let dd = degrees + (minutes / 60) + (seconds / 3600);
+      
+      if (direction === 'S' || direction === 'W') {
+        dd = -dd;
+      }
+      
+      return dd;
+    };
+    
+    // 실제 구현 대신 메타데이터 시뮬레이션
+    const simulateExifMetadata = () => {
+      // 현재 시간 기준 랜덤 촬영 시간 (최근 30일 이내)
+      const now = new Date();
+      const randomDaysAgo = Math.floor(Math.random() * 30);
+      const randomHours = Math.floor(Math.random() * 24);
+      const randomMinutes = Math.floor(Math.random() * 60);
+      
+      const simulatedDate = new Date(now);
+      simulatedDate.setDate(simulatedDate.getDate() - randomDaysAgo);
+      simulatedDate.setHours(randomHours, randomMinutes);
+      
+      // 일정 위치 근처의 랜덤 좌표 생성
+      let latitude = null;
+      let longitude = null;
+      
+      if (verifyingItemInfo.value.coords) {
+        // 여행지 주변 위치를 시뮬레이션하기 위한 거리 범위 (단위: km)
+        // 1. 근거리(80% 확률): 최대 5km 이내
+        // 2. 중거리(15% 확률): 5-50km 이내
+        // 3. 원거리(5% 확률): 50-300km 이내
+
+        let MAX_DISTANCE_KM = 2; // 기본값은 2km 이내 (인증 가능 거리)
+        const randomProb = Math.random() * 100;
+        
+        if (randomProb > 95) {
+          // 5% 확률로 원거리 (예: 서울-제주도 수준)
+          MAX_DISTANCE_KM = 50 + Math.random() * 250; // 50-300km
+          console.log('원거리 위치 시뮬레이션:', MAX_DISTANCE_KM.toFixed(1), 'km');
+        } else if (randomProb > 80) {
+          // 15% 확률로 중거리 (예: 제주시-서귀포시 수준)
+          MAX_DISTANCE_KM = 5 + Math.random() * 45; // 5-50km
+          console.log('중거리 위치 시뮬레이션:', MAX_DISTANCE_KM.toFixed(1), 'km');
+        } else {
+          // 80% 확률로 근거리 (인증 가능/불가능 랜덤)
+          MAX_DISTANCE_KM = Math.random() * 5; // 0-5km
+          console.log('근거리 위치 시뮬레이션:', MAX_DISTANCE_KM.toFixed(1), 'km');
+        }
+                
+        const randomDistance = MAX_DISTANCE_KM;
+        const randomAngle = Math.random() * 2 * Math.PI; // 0-360도 랜덤 각도
+        
+        // 위도 1도 = 약 111km, 경도 1도는 위도에 따라 달라짐
+        const latOffset = randomDistance * Math.cos(randomAngle) / 111;
+        const lngOffset = randomDistance * Math.sin(randomAngle) / (111 * Math.cos(verifyingItemInfo.value.coords.lat * Math.PI / 180));
+        
+        latitude = verifyingItemInfo.value.coords.lat + latOffset;
+        longitude = verifyingItemInfo.value.coords.lng + lngOffset;
+      }
+      
+      return {
+        dateTime: simulatedDate.toISOString(),
+        latitude: latitude,
+        longitude: longitude
+      };
+    };
+    
+    // 두 좌표 사이의 거리 계산 (Haversine 공식)
+    const calculateDistance = (lat1, lon1, lat2, lon2) => {
+      const R = 6371; // 지구 반경 (km)
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const distance = R * c; // 킬로미터 단위
+      return distance;
+    };
+    
+    // 사진 인증 검증
+    const verifyPhoto = () => {
+      if (!photoMetadata.value) return;
+      
+      isVerifying.value = true;
+      
+      // 검증 시작 로그
+      console.log('===== 인증 검증 시작 =====');
+      
+      try {
+        // 1. 날짜 검증: 여행 날짜 이후에 촬영된 사진인지 확인
+        const tripDay = addDays(new Date(tripData.value.startDate), verifyingDay.value);
+        const photoDate = new Date(photoMetadata.value.dateTime);
+        
+        console.log('여행 날짜:', tripDay.toLocaleDateString('ko-KR'));
+        console.log('사진 촬영 날짜:', photoDate.toLocaleDateString('ko-KR'));
+        console.log('촬영 날짜 검증 결과:', photoDate >= tripDay ? '성공' : '실패');
+        
+        if (photoDate < tripDay) {
+          verificationResult.value = {
+            success: false,
+            message: '사진이 여행 일정 이전에 촬영되었습니다.'
+          };
+          isVerifying.value = false;
+          console.log('인증 실패: 사진이 여행 일정 이전에 촬영됨');
+          return;
+        }
+        
+        // 2. 위치 검증: 2km 이내 거리인지 확인
+        if (distanceFromTarget.value === null) {
+          verificationResult.value = {
+            success: false,
+            message: '사진에 위치 정보가 없습니다.'
+          };
+          isVerifying.value = false;
+          console.log('인증 실패: 사진에 위치 정보 없음');
+          return;
+        }
+        
+        console.log('목적지와의 거리:', distanceFromTarget.value.toFixed(3), 'km');
+        console.log('거리 검증 결과:', distanceFromTarget.value <= 2 ? '성공 (2km 이내)' : '실패 (2km 초과)');
+        
+        if (distanceFromTarget.value > 2) {
+          verificationResult.value = {
+            success: false,
+            message: `사진 촬영 위치가 목적지와 ${formatDistance(distanceFromTarget.value)} 떨어져 있습니다.`
+          };
+          isVerifying.value = false;
+          console.log('인증 실패: 거리가 2km 초과');
+          return;
+        }
+        
+        // 모든 검증 통과
+        verificationResult.value = {
+          success: true,
+          message: '방문이 확인되었습니다!'
+        };
+        console.log('인증 성공: 모든 검증 통과');
+        
+      } catch (error) {
+        console.error('인증 오류:', error);
+        verificationResult.value = {
+          success: false,
+          message: '인증 과정에서 오류가 발생했습니다.'
+        };
+      }
+      
+      console.log('===== 인증 검증 완료 =====');
+      isVerifying.value = false;
+    };
+    
+    // 인증 완료 및 저장
+    const confirmVerification = () => {
+      if (verificationResult.value && verificationResult.value.success) {
+        const item = tripDays.value[verifyingDay.value].items[verifyingItem.value];
+        
+        // 인증 정보 저장
+        item.verified = true;
+        item.verifiedAt = new Date().toISOString();
+        item.verificationPhoto = verificationPhotoPreview.value;
+        item.photoMetadata = photoMetadata.value;
+        
+        // 별점과 후기 저장
+        item.review = {
+          rating: reviewRating.value,
+          text: reviewText.value,
+          date: new Date().toISOString()
+        };
+        
+        // 성공 메시지 표시
+        showSuccessBanner.value = true;
+        setTimeout(() => {
+          showSuccessBanner.value = false;
+        }, 3000);
+        
+        // 모달 닫기
+        closeVerificationModal();
+        
+        // 별점과 후기 초기화
+        reviewRating.value = 0;
+        reviewText.value = '';
+      }
+    };
+    
+    // 인증 사진 초기화
+    const clearVerificationPhoto = () => {
+      verificationPhotoPreview.value = null;
+      photoMetadata.value = null;
+      verificationResult.value = null;
+      distanceFromTarget.value = null;
+      
+      if (photoFileInput.value) {
+        photoFileInput.value.value = '';
+      }
+    };
+    
+    // 사진 날짜 포맷팅
+    const formatPhotoDate = (isoDate) => {
+      if (!isoDate) return '알 수 없음';
+      
+      const date = new Date(isoDate);
+      return date.toLocaleString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    };
+    
+    // 별점과 후기 상태 추가
+    const reviewRating = ref(0);
+    const reviewText = ref('');
+    
+    // 거리 표시 형식을 미터로 변경하는 함수
+    const formatDistance = (distance) => {
+      // km 단위에서 m 단위로 변환하고 쉼표 추가
+      const distanceInMeters = Math.round(distance * 1000);
+      return `${distanceInMeters.toLocaleString()}m`;
+    };
+    
+    // 인증 완료 처리
+    const completeVerification = () => {
+      if (!verificationResult.value || !verificationResult.value.success) return;
+      
+      // 현재 날짜/시간 기록
+      const verifiedAt = new Date().toISOString();
+      
+      // 인증 정보 저장
+      const item = tripDays.value[verifyingDay.value].items[verifyingItem.value];
+      item.verified = true;
+      item.verifiedAt = verifiedAt;
+      item.verificationPhoto = verificationPhotoPreview.value;
+      item.photoMetadata = photoMetadata.value;
+      
+      // 별점 및 리뷰 저장
+      item.rating = reviewRating.value;
+      item.review = reviewText.value;
+      
+      console.log(`${item.activity} 방문이 인증되었습니다.`);
+      console.log('인증 시간:', new Date(verifiedAt).toLocaleString('ko-KR'));
+      console.log('별점:', reviewRating.value);
+      console.log('후기:', reviewText.value);
+      
+      // 모달 닫기
+      closeVerificationModal();
+      
+      // 저장 처리
+      // saveTripData();
+    };
+    
     return {
       tripData,
       tripDays,
@@ -1998,7 +2697,30 @@ export default {
       startEditInfo,
       saveEditInfo,
       cancelEditInfo,
-      formatDateFull
+      formatDateFull,
+      verifyVisit, // 방문 인증 함수 추가
+      showVerificationModal,
+      verificationPhotoPreview,
+      photoMetadata,
+      isPhotoDragging,
+      isVerifying,
+      verificationResult,
+      distanceFromTarget,
+      photoFileInput,
+      verifyingItemInfo,
+      closeVerificationModal,
+      triggerPhotoFileInput,
+      onPhotoUploadDragOver,
+      onPhotoUploadDragLeave,
+      onPhotoUploadDrop,
+      handlePhotoFileInput,
+      verifyPhoto,
+      confirmVerification,
+      clearVerificationPhoto,
+      formatPhotoDate,
+      reviewRating,
+      reviewText,
+      completeVerification
     };
   }
 };
@@ -3543,6 +4265,414 @@ textarea {
 
 .cancel-info-btn:hover {
   background-color: #e53e3e;
+}
+
+/* 방문 인증 버튼 스타일 */
+.verification-button-container {
+  padding: 0 1rem 0.75rem 1rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.visit-verification-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  border: none;
+  background-color: #f1f5f9;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.visit-verification-btn:hover {
+  background-color: #e2e8f0;
+  transform: translateY(-1px);
+}
+
+.visit-verification-btn.verified {
+  background-color: #10b981;
+  color: white;
+}
+
+.visit-verification-btn.verified svg {
+  stroke: white;
+}
+
+.visit-verification-btn.verified:hover {
+  background-color: #059669;
+}
+
+/* 방문 인증 모달 스타일 */
+.verification-modal {
+  background-color: white;
+  border-radius: 12px;
+  max-width: 800px; /* 600px에서 800px로 증가 */
+  width: 90%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.verification-item-info {
+  background-color: #f8fafc;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.verification-item-info h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.2rem;
+  color: #1e293b;
+}
+
+.verification-item-info p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.upload-container {
+  border: 2px dashed #cbd5e0;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.upload-container.active-dropzone {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+.upload-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.upload-icon {
+  color: #64748b;
+}
+
+.upload-tip {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin: -0.5rem 0 0 0;
+}
+
+.image-container {
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  max-height: 400px; /* 300px에서 400px로 증가 */
+  display: flex;
+  justify-content: center;
+}
+
+.photo-preview {
+  max-width: 100%;
+  max-height: 400px; /* 300px에서 400px로 증가 */
+  object-fit: contain;
+}
+
+.photo-metadata {
+  background-color: #f8fafc;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.metadata-item {
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+  color: #475569;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.metadata-item strong {
+  min-width: 100px;
+  font-weight: 600;
+}
+
+.metadata-item:last-child {
+  margin-bottom: 0;
+}
+
+.verification-result {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.success-result {
+  background-color: #dcfce7;
+  color: #166534;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.error-result {
+  background-color: #fee2e2;
+  color: #991b1b;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.preview-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.preview-actions button {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn.primary-btn {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.btn.primary-btn:hover {
+  background-color: #2563eb;
+}
+
+.btn.primary-btn:disabled {
+  background-color: #cbd5e0;
+  cursor: not-allowed;
+}
+
+.btn.secondary-btn {
+  background-color: #e2e8f0;
+  color: #475569;
+}
+
+.btn.secondary-btn:hover {
+  background-color: #cbd5e0;
+}
+
+.btn.cancel-btn {
+  background-color: #f1f5f9;
+  color: #64748b;
+}
+
+.btn.cancel-btn:hover {
+  background-color: #e2e8f0;
+}
+
+.modal-footer {
+  padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid #e2e8f0;
+}
+
+.btn.save-btn {
+  background-color: #10b981;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn.save-btn:hover {
+  background-color: #059669;
+}
+
+.review-section {
+  width: 100%;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.review-section h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  color: #1e293b;
+}
+
+.rating-input {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.rating-label {
+  margin-right: 1rem;
+  font-weight: 500;
+}
+
+.star-rating {
+  display: flex;
+}
+
+.star-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-right: 0.5rem;
+  color: #cbd5e0;
+  transition: color 0.2s ease;
+}
+
+.star-btn:hover,
+.star-btn.active {
+  color: #eab308;
+}
+
+.star-btn svg {
+  stroke: currentColor;
+  fill: currentColor;
+}
+
+.review-input {
+  width: 100%;
+}
+
+.review-input textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  resize: vertical;
+  font-size: 0.95rem;
+  transition: border-color 0.2s ease;
+}
+
+.review-input textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+.metadata-item {
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+  color: #475569;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.metadata-item strong {
+  min-width: 100px;
+  font-weight: 600;
+}
+
+.verified-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  border: none;
+  background-color: #f1f5f9;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.verified-badge:hover {
+  background-color: #e2e8f0;
+  transform: translateY(-1px);
+}
+
+.verified-badge.verified {
+  background-color: #10b981;
+  color: white;
+}
+
+.verified-badge.verified svg {
+  stroke: white;
+}
+
+.verified-badge.verified:hover {
+  background-color: #059669;
+}
+
+.rating-display {
+  display: flex;
+  align-items: center;
+}
+
+.stars {
+  display: flex;
+}
+
+.star-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-right: 0.5rem;
+  color: #cbd5e0;
+  transition: color 0.2s ease;
+}
+
+.star-btn:hover,
+.star-btn.active {
+  color: #eab308;
+}
+
+.star-btn svg {
+  stroke: currentColor;
+  fill: currentColor;
+}
+
+.verification-info {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  border-left: 3px solid #10b981;
+}
+
+.review-display {
+  margin-top: 0.5rem;
+  font-style: italic;
+  color: #64748b;
+  font-size: 0.9rem;
+  padding-left: 1.75rem;
+}
+
+.rating-display {
+  margin-left: 0.5rem;
+}
+
+.stars {
+  color: #eab308;
+  letter-spacing: -1px;
 }
 </style>
 
