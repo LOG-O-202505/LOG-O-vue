@@ -30,6 +30,16 @@
           <div class="statistic-value">{{ userStats.topCategory }}</div>
           <div class="statistic-label">선호 카테고리</div>
         </div>
+        <router-link to="/plan" class="plan-trip-card">
+          <div class="plan-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="16"></line>
+              <line x1="8" y1="12" x2="16" y2="12"></line>
+            </svg>
+          </div>
+          <div class="plan-text">새 여행 계획하기</div>
+        </router-link>
       </div>
 
       <!-- 2. 차원별 취향 프로필 -->
@@ -745,7 +755,7 @@ export default {
       const result = Object.entries(tripsByYear)
         .map(([year, trips]) => ({
           year: parseInt(year),
-          trips: trips.sort((a, b) => new Date(b.date) - new Date(a.date)) // 각 연도 내에서는 최신순
+          trips: trips.sort((a, b) => new Date(a.date) - new Date(b.date)) // 각 연도 내에서는 오름차순(1월부터)
         }))
         .sort((a, b) => b.year - a.year); // 연도는 내림차순
 
@@ -1672,34 +1682,55 @@ export default {
   color: #2d3748;
 }
 
-/* 통계 카드 */
+/* 통계 카드 스타일 */
 .statistics-summary {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
   margin-bottom: 2rem;
 }
 
-.statistic-card {
+.statistic-card, .plan-trip-card {
+  flex: 1;
+  min-width: 150px;
   background-color: white;
   border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
   text-align: center;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
 }
 
-.statistic-card:hover {
+.statistic-card:hover, .plan-trip-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+.plan-trip-card {
+  background-color: #4299e1;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.plan-icon {
+  margin-bottom: 0.5rem;
+}
+
+.plan-text {
+  font-weight: 600;
+  font-size: 1.1rem;
 }
 
 .statistic-value {
-  font-size: 2.5rem;
+  font-size: 2rem;
   font-weight: 700;
-  color: #4299e1;
-  /* LOG:O 브랜드 파란색 */
   margin-bottom: 0.5rem;
+  color: #4a5568;
 }
 
 .statistic-label {
@@ -2211,9 +2242,8 @@ export default {
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-  width: calc(33.333% - 1rem);
-  min-width: 250px;
-  max-width: 350px;
+  width: calc(25% - 1.125rem); /* 한 줄에 4개 블록이 들어갈 수 있도록 수정 */
+  min-width: 220px;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   border-top: 4px solid #4299e1;
   cursor: pointer;
@@ -2348,7 +2378,7 @@ export default {
   }
 
   .trip-item {
-    width: calc(50% - 1rem);
+    width: calc(33.333% - 1rem); /* 중간 화면에서는 한 줄에 3개 */
   }
 }
 
@@ -2377,12 +2407,12 @@ export default {
   }
 
   .trip-item {
-    width: 100%;
+    width: calc(50% - 0.75rem); /* 작은 화면에서는 한 줄에 2개 */
     min-width: unset;
   }
   
   .trips-wrapper {
-    flex-direction: column;
+    flex-direction: row; /* 행 방향 유지 */
     gap: 1rem;
   }
 }

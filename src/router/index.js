@@ -4,6 +4,7 @@ import OnboardingPage from '../views/OnboardingPage.vue'
 import LookAround from '../views/LookAround.vue'
 import KeywordSearch from '../views/KeywordSearch.vue'
 import MyTravel from '../views/MyTravel.vue'
+import TripPlan from '../views/TripPlan.vue'
 
 const routes = [
   {
@@ -30,6 +31,11 @@ const routes = [
     path: '/mytravel',
     name: 'MyTravel',
     component: MyTravel
+  },
+  {
+    path: '/plan',
+    name: 'TripPlan',
+    component: TripPlan
   }
 ]
 
