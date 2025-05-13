@@ -114,7 +114,7 @@ export const analyzeImage = async (imageFile, signal) => {
     console.log('이미지 파일 크기:', (imageFile.size / 1024).toFixed(2), 'KB');
     
     // 이미지에서 위치 정보 추출
-    const geoLocationData = await extractGeoLocationData(imageFile);
+    // const geoLocationData = await extractGeoLocationData(imageFile);
     
     // 이미지를 Base64로 변환 (크기 조정됨)
     const base64Image = await fileToBase64(imageFile);
@@ -159,9 +159,9 @@ export const analyzeImage = async (imageFile, signal) => {
     // 위치 정보와 분석 결과 통합
     return {
       ...analysisResult,
-      geoLocation: geoLocationData, // 위치 정보 포함
-      suggestedName: geoLocationData?.suggestedName || '', // 제안된 이미지 이름
-      googleMapsUrl: geoLocationData?.googleMapsUrl || '' // 구글 지도 URL
+      // geoLocation: geoLocationData, // 위치 정보 포함
+      // suggestedName: geoLocationData?.suggestedName || '', // 제안된 이미지 이름
+      // googleMapsUrl: geoLocationData?.googleMapsUrl || '' // 구글 지도 URL
     };
     
   } catch (error) {
