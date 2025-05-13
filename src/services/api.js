@@ -173,6 +173,187 @@ export const analyzeImage = async (imageFile, signal) => {
 };
 
 /**
+ * 2단계 이미지 분석 API 호출 함수
+ * @param {File} imageFile - 분석할 이미지 파일
+ * @param {AbortSignal} signal - 요청 취소를 위한 AbortSignal
+ * @returns {Promise<Object>} - 분석 결과
+ */
+export const analyzeImage2 = async (imageFile, signal) => {
+  try {
+    console.log('2단계 이미지 분석 시작:', imageFile ? imageFile.name : 'No file');
+    
+    // 이미지 파일 타입 확인
+    if (!imageFile.type.startsWith('image/')) {
+      throw new Error('유효한 이미지 파일이 아닙니다.');
+    }
+    
+    console.log('이미지 파일 타입:', imageFile.type);
+    console.log('이미지 파일 크기:', (imageFile.size / 1024).toFixed(2), 'KB');
+    
+    // 이미지를 Base64로 변환 (크기 조정됨)
+    const base64Image = await fileToBase64(imageFile);
+    console.log('이미지 변환 완료: Base64');
+    
+    // 1단계: 영문 설명 생성
+    console.log("이미지 설명 생성 API 호출 시작...");
+    
+    // Ollama API 형식으로 요청 구성
+    const descriptionRequestBody = {
+      model: 'light_2', // config.MODEL_NAME에서 가져오거나 적절한 모델 사용
+      prompt: 'Describe this travel destination in detail according to your instructions.',
+      images: [base64Image.split(',')[1]], // Base64 이미지 데이터만 추출
+      stream: false // 스트리밍 비활성화
+    };
+    
+    const descriptionResponse = await fetch(`http://localhost:11434/api/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(descriptionRequestBody),
+      signal: signal
+    });
+    
+    if (!descriptionResponse.ok) {
+      console.error("API 응답 상태:", descriptionResponse.status, descriptionResponse.statusText);
+      throw new Error(`이미지 설명 API 응답 오류: ${descriptionResponse.status}`);
+    }
+    
+    const descriptionData = await descriptionResponse.json();
+    console.log("이미지 설명 API 응답:", descriptionData);
+    
+    // 이미지 설명 추출
+    const imageDescription = descriptionData.response || "이미지 설명을 얻을 수 없습니다.";
+    console.log("이미지 설명 생성 완료:", imageDescription);
+    
+    // 2단계: 10차원 분석
+    console.log("10차원 분석 API 호출 시작...");
+    
+    const analysisRequestBody = {
+      model: 'ko_2', // config.MODEL_NAME에서 가져오거나 적절한 모델 사용
+      prompt: imageDescription, // 이전 단계에서 얻은 설명을 프롬프트로 사용
+      stream: false
+    };
+    
+    const analysisResponse = await fetch(`http://localhost:11434/api/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(analysisRequestBody),
+      signal: signal
+    });
+    
+    if (!analysisResponse.ok) {
+      console.error("API 응답 상태:", analysisResponse.status, analysisResponse.statusText);
+      throw new Error(`10차원 분석 API 응답 오류: ${analysisResponse.status}`);
+    }
+    
+    const analysisData = await analysisResponse.json();
+    console.log("10차원 분석 API 응답:", analysisData);
+    
+    // 10차원 분석 결과 파싱
+    let result = {};
+    
+    if (analysisData && analysisData.response) {
+      try {
+        // 1. JSON 형식의 문자열인 경우 파싱 시도
+        if (analysisData.response.trim().startsWith('{')) {
+          result = JSON.parse(analysisData.response);
+          console.log("10차원 분석 파싱 결과 (JSON):", result);
+        } else {
+          // 2. 각 줄이 "키": 값 형태로 되어 있는 경우 정규식으로 파싱
+          const dimensions = {};
+          const lines = analysisData.response.split('\n');
+          
+          for (const line of lines) {
+            // "Natural Elements": 0.9 형태의 라인 파싱
+            const match = line.match(/"([^"]+)":\s*([0-9.]+)/);
+            if (match) {
+              const key = match[1];
+              const value = parseFloat(match[2]);
+              dimensions[key] = value;
+            }
+          }
+          
+          // 추출된 차원이 있는지 확인
+          if (Object.keys(dimensions).length > 0) {
+            console.log("10차원 분석 파싱 결과 (라인 파싱):", dimensions);
+            result = dimensions;
+          } else {
+            // 3. 파싱 실패 시 테스트 데이터 제공
+            console.warn("응답 파싱 실패, 테스트 데이터 사용");
+            result = {
+              "Natural Elements": 0.7,
+              "Urban Character": 0.3,
+              "Water Features": 0.5,
+              "Seasonal Appeal": 0.8,
+              "Relaxation Potential": 0.7,
+              "Romantic Atmosphere": 0.6,
+              "Activity Opportunities": 0.4,
+              "Historical/Cultural Value": 0.5,
+              "Food Experience": 0.3,
+              "Shopping Potential": 0.2
+            };
+          }
+        }
+      } catch (jsonError) {
+        console.error("10차원 분석 파싱 오류:", jsonError, "원본 내용:", analysisData.response);
+        // 파싱 실패 시 테스트 데이터 사용
+        result = {
+          "Natural Elements": 0.7,
+          "Urban Character": 0.3,
+          "Water Features": 0.5,
+          "Seasonal Appeal": 0.8,
+          "Relaxation Potential": 0.7,
+          "Romantic Atmosphere": 0.6,
+          "Activity Opportunities": 0.4,
+          "Historical/Cultural Value": 0.5,
+          "Food Experience": 0.3,
+          "Shopping Potential": 0.2
+        };
+      }
+    } else {
+      console.warn("API에서 유효한 응답을 받지 못했습니다. 테스트 데이터 사용");
+      result = {
+        "Natural Elements": 0.7,
+        "Urban Character": 0.3,
+        "Water Features": 0.5,
+        "Seasonal Appeal": 0.8,
+        "Relaxation Potential": 0.7,
+        "Romantic Atmosphere": 0.6,
+        "Activity Opportunities": 0.4,
+        "Historical/Cultural Value": 0.5,
+        "Food Experience": 0.3,
+        "Shopping Potential": 0.2
+      };
+    }
+    
+    // 추가 메타데이터 설정
+    result.imageDescription = imageDescription;
+    
+    // 이미지에서 위치 정보 추출
+    const geoLocationData = await extractGeoLocationData(imageFile);
+    
+    // 위치 정보와 분석 결과 통합
+    if (geoLocationData) {
+      result.geoLocation = geoLocationData;
+      result.suggestedName = geoLocationData.suggestedName || '';
+      result.googleMapsUrl = geoLocationData.googleMapsUrl || '';
+    }
+    
+    console.log("최종 분석 결과:", result);
+    return result;
+    
+  } catch (error) {
+    console.error('API 호출 오류 타입:', error.name);
+    console.error('API 호출 오류 메시지:', error.message);
+    console.error('API 호출 오류 스택:', error.stack);
+    throw error;
+  }
+};
+
+/**
  * 응답 문자열에서 JSON 부분을 파싱하는 함수 (수정됨)
  * @param {string} responseText - 분석 응답 텍스트
  * @returns {Object} - 파싱된 결과 객체
@@ -414,8 +595,30 @@ export const saveToElasticsearch = async (
     console.log('태그:', tags);
     console.log('설명:', description);
     
+    // 이미지 압축 확인 및 필요 시 압축 처리
+    let compressedImageBase64 = imageBase64;
+    
+    // 만약 이미지가 아직 압축되지 않은 상태라면 압축 처리
+    if (imageBase64.length > 0 && !imageBase64.includes('data:image/')) {
+      // 이미 Base64 데이터만 있는 경우 (data:image/... 접두사가 없는 경우)
+      console.log('이미지가 이미 Base64 데이터만 있는 형식입니다.');
+    } else {
+      // 압축 처리가 필요한 경우 (원본 이미지인 경우)
+      console.log('이미지 압축 시작...');
+      
+      // File 객체로 변환 후 압축 (임시 방법)
+      const blob = await fetch(imageBase64).then(res => res.blob());
+      const file = new File([blob], 'temp.jpg', { type: 'image/jpeg' });
+      
+      // fileToBase64 함수로 압축
+      compressedImageBase64 = await fileToBase64(file);
+      console.log('이미지 압축 완료');
+    }
+    
+    // Base64 데이터 추출 (접두사 제거)
+    const base64Data = compressedImageBase64.split(',')[1] || compressedImageBase64;
+    
     // Base64 이미지 크기 계산 및 로깅
-    const base64Data = imageBase64.split(',')[1];
     const base64Length = base64Data ? base64Data.length : 0;
     console.log('이미지 Base64 길이:', base64Length, '자');
     console.log('이미지 Base64 크기:', (base64Length * 0.75 / 1024).toFixed(2), 'KB (디코딩 후 예상)');
@@ -439,7 +642,7 @@ export const saveToElasticsearch = async (
       location: finalLocationData, // 새로운 구조화된 위치 정보
       image_tags: tags,
       image_description: description,
-      image_data: imageBase64.split(',')[1], // base64 데이터만 저장
+      image_data: base64Data, // 압축된 Base64 데이터 저장
       upload_date: new Date().toISOString(),
       features_vector: featuresVector,
       dimensions: {

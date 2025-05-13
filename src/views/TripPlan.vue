@@ -531,7 +531,7 @@
           <polyline points="22 4 12 14.01 9 11.01"></polyline>
         </svg>
       </div>
-      영수증 정보가 성공적으로 추가되었습니다!
+      {{ successMessage || '영수증 정보가 성공적으로 추가되었습니다!' }}
     </div>
 
     <!-- 방문 인증 모달 (개선된 버전) -->
@@ -541,7 +541,7 @@
         <div class="verification-photo-modal" @click.stop>
           <div class="modal-header">
             <h3>방문 인증하기</h3>
-            <button class="close-btn" @click="closeVerificationModal">
+            <button class="close-btn" @click="closeVerificationModal" :disabled="isVerifying">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -551,10 +551,7 @@
           </div>
 
           <div class="verification-content">
-            <div class="verification-item-info">
-              <h4>{{ verifyingItemInfo.activity }}</h4>
-              <p>{{ verifyingItemInfo.location }}</p>
-            </div>
+  
 
             <div class="upload-container" @dragover.prevent="onPhotoUploadDragOver"
               @dragleave.prevent="onPhotoUploadDragLeave" @drop.prevent="onPhotoUploadDrop"
@@ -610,11 +607,18 @@
                     </div>
                   </div>
                 </div>
+                
+                <!-- 로딩 인디케이터를 여기로 이동 (콘텐츠와 버튼 사이) -->
+                <div v-if="isVerifying" class="verification-loading-section">
+                  <div class="spinner"></div>
+                  <p>{{ loadingMessage }}</p>
+                </div>
+                
                 <div class="preview-actions">
                   <button @click="verifyPhoto" class="btn primary-btn" :disabled="isVerifying || !photoMetadata">
                     {{ isVerifying ? '인증 중...' : '인증하기' }}
                   </button>
-                  <button @click="clearVerificationPhoto" class="btn cancel-btn">취소</button>
+                  <button @click="clearVerificationPhoto" class="btn cancel-btn" :disabled="isVerifying">취소</button>
                 </div>
               </div>
             </div>
@@ -653,10 +657,16 @@
               <label for="review-text">방문 후기:</label>
               <textarea id="review-text" v-model="reviewText" placeholder="이 장소에 대한 후기를 작성해주세요..." rows="6"></textarea>
             </div>
+            
+            <!-- 로딩 인디케이터를 여기로 이동 (콘텐츠와 버튼 사이) -->
+            <div v-if="isVerifying" class="verification-loading-section">
+              <div class="spinner"></div>
+              <p>{{ loadingMessage }}</p>
+            </div>
 
             <div class="form-actions">
-              <button @click="completeVerification" class="btn-verify">
-                인증 완료하기
+              <button @click="completeVerification" class="btn-verify" :disabled="isVerifying">
+                {{ isVerifying ? '처리 중...' : '인증 완료하기' }}
               </button>
             </div>
           </div>
@@ -671,6 +681,12 @@ import Header from '@/components/Header.vue';
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import config from '@/config';
 import EXIF from 'exif-js';
+import { 
+  analyzeImage2, 
+  saveToElasticsearch, 
+  createFeaturesVector,
+  reverseGeocode
+} from '@/services/api';
 
 export default {
   name: 'TripPlan',
@@ -1468,18 +1484,13 @@ export default {
       // 카카오 장소 검색 API 사용
       const places = new kakao.maps.services.Places();
 
-      // 현재 지도의 중심 좌표 (제주도)
-      const center = new kakao.maps.LatLng(33.3846, 126.5535);
-
-      // 검색 옵션
+      // 검색 옵션 - 지역 제한 없이 전국 검색
       const searchOptions = {
-        location: center,
-        radius: 20000, // 20km 반경 내 검색
         size: 15 // 최대 15개 결과
       };
 
-      // 키워드 + 제주도로 검색 범위 좁히기
-      const keyword = `${placeSearchKeyword.value} 제주도`;
+      // 키워드로 검색 - 제주도 제한 없이 검색
+      const keyword = placeSearchKeyword.value;
 
       places.keywordSearch(keyword, (result, status) => {
         isSearching.value = false;
@@ -2001,6 +2012,7 @@ export default {
 
     // 성공 배너 상태
     const showSuccessBanner = ref(false);
+    const successMessage = ref('');
 
     // 여행 기본 정보 수정 관련 상태
     const isEditingInfo = ref(false);
@@ -2554,40 +2566,142 @@ export default {
     };
 
     // 방문 인증 완료 처리 함수 수정
-    const completeVerification = () => {
+    const completeVerification = async () => {
       if (!verificationResult.value || !verificationResult.value.success) return;
 
-      // 현재 날짜/시간 기록
-      const verifiedAt = new Date().toISOString();
+      try {
+        // 인증 사진 저장 및 분석 프로세스 시작
+        loadingMessage.value = "이미지 분석 및 저장 중...";
+        isVerifying.value = true; // 모달은 닫지 않고 로딩 상태 활성화
 
-      // 인증 정보 저장
-      const item = tripDays.value[verifyingDay.value].items[verifyingItem.value];
-      item.verified = true;
-      item.verifiedAt = verifiedAt;
-      item.verificationPhoto = verificationPhotoPreview.value;
-      item.photoMetadata = photoMetadata.value;
+        // 현재 날짜/시간 기록
+        const verifiedAt = new Date().toISOString();
 
-      // 별점 및 리뷰 저장
-      item.rating = reviewRating.value;
-      item.review = reviewText.value;
+        // 인증 정보 저장
+        const item = tripDays.value[verifyingDay.value].items[verifyingItem.value];
+        item.verified = true;
+        item.verifiedAt = verifiedAt;
+        item.verificationPhoto = verificationPhotoPreview.value;
+        item.photoMetadata = photoMetadata.value;
 
-      console.log(`${item.activity} 방문이 인증되었습니다.`);
-      console.log('인증 시간:', new Date(verifiedAt).toLocaleString('ko-KR'));
-      console.log('별점:', reviewRating.value);
-      console.log('후기:', reviewText.value);
+        // 별점 및 리뷰 저장
+        item.rating = reviewRating.value;
+        item.review = reviewText.value;
 
-      // 성공 메시지 표시
-      showSuccessBanner.value = true;
-      setTimeout(() => {
-        showSuccessBanner.value = false;
-      }, 3000);
+        console.log(`${item.activity} 방문이 인증되었습니다.`);
+        console.log('인증 시간:', new Date(verifiedAt).toLocaleString('ko-KR'));
+        console.log('별점:', reviewRating.value);
+        console.log('후기:', reviewText.value);
 
-      // 모달 닫기
-      closeVerificationModal();
+        // Base64 이미지를 File 객체로 변환
+        const response = await fetch(verificationPhotoPreview.value);
+        const blob = await response.blob();
+        const imageFile = new File([blob], `verification-${Date.now()}.jpg`, { type: 'image/jpeg' });
 
-      // 별점과 후기 초기화
-      reviewRating.value = 0;
-      reviewText.value = '';
+        console.log('이미지 분석 시작...');
+        
+        // 이미지 분석 (analyzeImage2 사용)
+        const analysisResult = await analyzeImage2(imageFile);
+        console.log('이미지 분석 결과:', analysisResult);
+        
+        // 특성 벡터 생성
+        const featuresVector = createFeaturesVector(analysisResult);
+        console.log('생성된 특성 벡터:', featuresVector);
+        
+        // 고유 ID 생성
+        const imageId = `trip-verification-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+        
+        // 좌표로부터 지오 데이터 가져오기
+        let locationInfo = null;
+        let locationText = '';
+        
+        // 아이템의 좌표가 있으면 역지오코딩 실행
+        if (item.coords && item.coords.lat && item.coords.lng) {
+          try {
+            // 좌표로부터 주소 정보 가져오기
+            const geoData = await reverseGeocode(item.coords.lat, item.coords.lng);
+            console.log('역지오코딩 결과:', geoData);
+            
+            if (geoData) {
+              // 주소 문자열 생성
+              locationText = [
+                geoData.country,
+                geoData.province,
+                geoData.city,
+                geoData.district,
+                geoData.road
+              ].filter(Boolean).join(' ');
+              
+              // 지역 정보 저장
+              locationInfo = {
+                full_text: locationText,
+                province_code: geoData.regionInfo?.province_code || null,
+                province_name: geoData.regionInfo?.province_name || geoData.province || null,
+                city_code: geoData.regionInfo?.city_code || null,
+                city_name: geoData.regionInfo?.city_name || geoData.city || null
+              };
+            }
+          } catch (geoError) {
+            console.error('역지오코딩 오류:', geoError);
+          }
+        }
+        
+        // 위치 정보가 없으면 기본값 사용
+        if (!locationText) {
+          locationText = item.location || verifyingItemInfo.value.location || '장소 정보 없음';
+        }
+        
+        // 태그 생성 (장소 정보 포함)
+        const tags = [item.activity, '방문인증', `별점:${reviewRating.value}`, '여행기록'];
+        
+        // 설명에 리뷰 포함
+        const description = reviewText.value || '방문 인증 사진';
+        
+        // Elasticsearch에 저장
+        await saveToElasticsearch(
+          imageId,
+          item.activity, // activity를 이미지 이름으로 사용 (방문 인증 텍스트 제거)
+          locationText,
+          tags,
+          description,
+          verificationPhotoPreview.value,
+          analysisResult,
+          featuresVector,
+          locationInfo // 지오코딩으로 얻은 구조화된 위치 정보
+        );
+        
+        console.log('Elasticsearch에 저장 완료:', imageId);
+        
+        // 성공 메시지 표시
+        successMessage.value = '방문이 인증되었고 사진이 저장되었습니다!';
+        showSuccessBanner.value = true;
+        setTimeout(() => {
+          showSuccessBanner.value = false;
+        }, 3000);
+        
+        // 로딩 완료 후 모달 닫기
+        setTimeout(() => {
+          // 모든 작업이 완료된 후에만 모달 닫기
+          showVerificationModal.value = false;
+        }, 1000);
+        
+      } catch (error) {
+        console.error('인증 저장 오류:', error);
+        
+        // 오류 메시지 표시
+        successMessage.value = '방문은 인증되었으나 이미지 저장 중 오류가 발생했습니다';
+        showSuccessBanner.value = true;
+        setTimeout(() => {
+          showSuccessBanner.value = false;
+        }, 3000);
+      } finally {
+        // 로딩 상태 종료
+        isVerifying.value = false;
+        
+        // 별점과 후기 초기화
+        reviewRating.value = 0;
+        reviewText.value = '';
+      }
     };
 
     return {
@@ -2696,7 +2810,8 @@ export default {
       formatPhotoDate,
       reviewRating,
       reviewText,
-      completeVerification
+      completeVerification,
+      successMessage
     };
   }
 };
@@ -4490,5 +4605,79 @@ textarea {
   font-size: 0.85rem;
   color: #94a3b8;
   margin: -0.5rem 0 0 0;
+}
+
+.verification-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.85);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+  border-radius: 8px;
+}
+
+.verification-loading-overlay .spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #e2e8f0;
+  border-top-color: #4299e1;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+.verification-loading-overlay p {
+  font-size: 1.1rem;
+  color: #2d3748;
+  font-weight: 500;
+  text-align: center;
+  margin: 10px 0;
+}
+
+.close-btn:disabled, 
+.btn.cancel-btn:disabled, 
+.btn.primary-btn:disabled,
+.btn-verify:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.verification-loading-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.verification-loading-section .spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #4299e1;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 10px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.verification-loading-section p {
+  font-size: 0.9rem;
+  color: #2d3748;
+  font-weight: 500;
+  text-align: center;
+  margin: 5px 0;
 }
 </style>
