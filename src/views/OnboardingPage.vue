@@ -42,7 +42,7 @@
         </div>
         
         <div class="nav-group">
-          <router-link to="/" class="nav-item">COMMUNITY</router-link>
+          <router-link to="/imgsearch" class="nav-item">IMG SEARCH</router-link>
           <router-link to="/plan" class="nav-item">PLANNER</router-link>
           <router-link to="/mytravel" class="nav-item">MY JOURNEY</router-link>
       </div>

@@ -5,6 +5,7 @@ import LookAround from '../views/LookAround.vue'
 import KeywordSearch from '../views/KeywordSearch.vue'
 import MyTravel from '../views/MyTravel.vue'
 import TripPlan from '../views/TripPlan.vue'
+import ImgSearch from '../views/ImgSearch.vue'
 
 const routes = [
   {
@@ -36,6 +37,11 @@ const routes = [
     path: '/plan',
     name: 'TripPlan',
     component: TripPlan
+  },
+  {
+    path: '/imgsearch',
+    name: 'ImgSearch',
+    component: ImgSearch
   }
 ]
 

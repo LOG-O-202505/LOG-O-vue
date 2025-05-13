@@ -165,13 +165,6 @@
                         </button>
                       </template>
                       <template v-else>
-                        <button class="edit-btn" @click="startEditItem(itemIndex)">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                          </svg>
-                        </button>
                         <button class="delete-btn" @click="removeScheduleItem(activeDay, itemIndex)">
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -847,18 +840,6 @@ export default {
         return a.time.localeCompare(b.time);
       });
     });
-
-    // 아이템 수정 시작
-    const startEditItem = (index) => {
-      const item = tripDays.value[activeDay.value].items[index];
-      editingItem.value = index;
-      editItemTime.value = item.time;
-      editItemMemo.value = item.location;
-
-      // 원본 값 저장 (수정 취소 시 복원용)
-      originalItemTime.value = item.time;
-      originalItemMemo.value = item.location;
-    };
 
     // 아이템 수정 저장
     const saveItemEdit = (index) => {
@@ -2654,7 +2635,6 @@ export default {
       editingItem,
       editItemTime,
       editItemMemo,
-      startEditItem,
       saveItemEdit,
       cancelItemEdit,
       forceRefresh,
