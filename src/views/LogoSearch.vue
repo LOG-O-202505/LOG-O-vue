@@ -1,14 +1,9 @@
 <template>
   <div class="logo-search">
     <!-- 헤더 - 페이지와 함께 스크롤됨 -->
-    <Header 
-      :showHero="true"
-      heroImageSrc="https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1470"
-      heroTitle="여행 이미지 분석"
-      heroSubtitle="찾고 있는 분위기의 여행지를 발견하세요"
-      heroHeight="320px"
-    />
-    
+    <Header :showHero="true" heroImageSrc="https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1470"
+      heroTitle="여행 이미지 분석" heroSubtitle="찾고 있는 분위기의 여행지를 발견하세요" heroHeight="320px" />
+
     <!-- 컨텐츠 영역 - 히어로 섹션과 겹치지 않게 여백 추가 -->
     <div class="content-wrapper">
       <!-- 상단 두 컬럼 레이아웃: 이미지 업로드 | 분석 차트 -->
@@ -18,13 +13,14 @@
           <div class="panel-header">
             <h3 class="panel-title">검색을 위한 이미지</h3>
           </div>
-          
+
           <div class="panel-content">
             <!-- 이미지 미리보기 또는 업로드 안내 -->
             <div class="image-container">
               <img v-if="imagePreview" :src="imagePreview" alt="이미지 미리보기" class="preview-image">
               <div v-else class="upload-placeholder">
-                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                   <circle cx="8.5" cy="8.5" r="1.5"></circle>
                   <polyline points="21 15 16 10 5 21"></polyline>
@@ -32,47 +28,37 @@
                 <p>이미지를 선택하면 여기에 표시됩니다</p>
               </div>
             </div>
-            
+
             <!-- 버튼 영역 -->
             <div class="button-group">
-              <button 
-                v-if="isLoading"
-                @click="cancelAnalysis" 
-                class="btn btn-danger btn-cancel-analysis"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <button v-if="isLoading" @click="cancelAnalysis" class="btn btn-danger btn-cancel-analysis">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
                 분석 취소하기
               </button>
-              
-              <button 
-                v-if="!analysisResult && !isLoading" 
-                @click="triggerFileInput" 
-                class="btn btn-primary">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+
+              <button v-if="!analysisResult && !isLoading" @click="triggerFileInput" class="btn btn-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                   <polyline points="17 8 12 3 7 8"></polyline>
                   <line x1="12" y1="3" x2="12" y2="15"></line>
                 </svg>
                 이미지 선택하기
               </button>
-              
-              <button 
-                v-if="imageFile && !analysisResult && !isLoading" 
-                @click="analyzeCurrentImage" 
+
+              <button v-if="imageFile && !analysisResult && !isLoading" @click="analyzeCurrentImage"
                 class="btn btn-analyze">
                 이미지 분석하기
               </button>
-              
-              <button 
-                v-if="(imageFile || analysisResult) && !isLoading" 
-                @click="reset" 
-                class="btn btn-secondary">
+
+              <button v-if="(imageFile || analysisResult) && !isLoading" @click="reset" class="btn btn-secondary">
                 초기화
               </button>
-              
+
               <!-- 분석 시간 정보 추가 -->
               <div v-if="analysisResult && !isLoading" class="analysis-timing">
                 <div class="timing-item">
@@ -89,17 +75,11 @@
                 </div>
               </div>
             </div>
-            
-            <input
-              type="file"
-              ref="fileInput"
-              @change="handleFileChange"
-              accept="image/*"
-              class="hidden-input"
-            >
+
+            <input type="file" ref="fileInput" @change="handleFileChange" accept="image/*" class="hidden-input">
           </div>
         </div>
-        
+
         <!-- 오른쪽: 분석 차트 패널 -->
         <div class="analysis-panel">
           <div class="panel-header">
@@ -107,38 +87,35 @@
               {{ isLoading ? '이미지 분석 중...' : (analysisResult ? '이미지 분석 결과' : '분석 데이터') }}
             </h3>
           </div>
-          
+
           <div class="panel-content" :class="{ 'no-padding': isLoading }">
             <!-- 로딩 중일 때 - 업데이트된 LoadingSpinner 사용 -->
             <div v-if="isLoading" class="loading-state">
-              <LoadingSpinner 
-                :current-phase="loadingPhase" 
-                :image-analysis-duration="imageAnalysisDuration" 
-                :meaning-analysis-duration="meaningAnalysisDuration" 
-                :search-duration="searchDuration" 
-              />
+              <LoadingSpinner :current-phase="loadingPhase" :image-analysis-duration="imageAnalysisDuration"
+                :meaning-analysis-duration="meaningAnalysisDuration" :search-duration="searchDuration" />
             </div>
-            
+
             <!-- 분석 결과가 없을 때 -->
             <div v-else-if="!analysisResult" class="guide-state">
               <div class="guide-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                  <circle cx="12" cy="13" r="4"/>
+                <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
                 </svg>
               </div>
-              
+
               <p class="guide-description">
                 원하는 분위기의 이미지를 업로드하면 AI가 분석하여 유사한 여행지를 추천해드립니다
               </p>
-              
+
               <div class="steps-container">
                 <div class="step"><span>1</span> 이미지 선택</div>
                 <div class="step"><span>2</span> 분석 실행</div>
                 <div class="step"><span>3</span> 여행지 추천 확인</div>
               </div>
             </div>
-            
+
             <!-- 분석 결과 표 -->
             <div v-else class="analysis-table-container">
               <table class="analysis-table">
@@ -165,35 +142,33 @@
           </div>
         </div>
       </div>
-      
+
       <!-- 중간 섹션: 분석 결과 (전체 너비) -->
       <div v-if="analysisResult && !isLoading" class="middle-section">
         <div class="results-panel">
           <div class="panel-header">
             <h3 class="panel-title">유사한 여행지 추천</h3>
           </div>
-          
+
           <div class="panel-content">
             <div v-if="searchResults.length === 0" class="no-results">
               <p>검색 결과가 없습니다</p>
               <p class="hint">다른 이미지로 다시 시도해보세요</p>
             </div>
-            
+
             <div v-else class="results-grid">
-              <div 
-                v-for="(result, index) in sortedSearchResults" 
-                :key="result._id"
-                class="result-card"
-                @click="openDetailModal(result)"
-              >
+              <div v-for="(result, index) in sortedSearchResults" :key="result._id" class="result-card"
+                @click="openDetailModal(result)">
                 <div class="result-rank">{{ index + 1 }}</div>
                 <div class="result-image-container">
-                  <img :src="`data:image/jpeg;base64,${result._source.image_data}`" :alt="result._source.image_name" class="result-image">
+                  <img :src="`data:image/jpeg;base64,${result._source.image_data}`" :alt="result._source.image_name"
+                    class="result-image">
                 </div>
                 <div class="result-info">
                   <h4 class="result-name">{{ result._source.image_name }}</h4>
                   <div class="result-location">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                       <circle cx="12" cy="10" r="3"></circle>
                     </svg>
@@ -202,7 +177,8 @@
                   <div class="result-similarity">
                     <span>유사도:</span>
                     <div class="similarity-bar">
-                      <div class="similarity-fill" :style="{ width: `${Math.round(result._score * 100) / 100 * 100}%` }"></div>
+                      <div class="similarity-fill"
+                        :style="{ width: `${Math.round(result._score * 100) / 100 * 100}%` }"></div>
                     </div>
                     <span class="similarity-value">{{ (Math.round(result._score * 100) / 100).toFixed(2) }}</span>
                   </div>
@@ -218,67 +194,71 @@
         </div>
       </div>
     </div>
-    
+
     <!-- 푸터 -->
     <footer class="footer">
       <p>© 2025 LOG:O - 당신의 여행을 기록하다</p>
     </footer>
-    
+
     <!-- 장소 상세 모달 -->
     <div v-if="showDetailModal" class="modal-overlay" @click="closeDetailModal">
       <div class="place-detail-modal" @click.stop>
         <div class="modal-header">
-          <h3>{{ selectedDetail.image_name }}</h3>
+          <div class="modal-title-location">
+            <h3>{{ selectedDetail.image_name }}</h3>
+            <div class="modal-location">{{ selectedDetail.image_location }}</div>
+          </div>
           <div class="modal-actions">
-            <button 
-              class="heart-btn"
-              :class="{ 'active': isInWishlist(selectedDetail._id) }"
-              @click="toggleWishlist(selectedDetail)"
-              title="여행 계획에 추가"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            <button class="heart-btn" :class="{ 'active': isInWishlist(selectedDetail._id) }"
+              @click="toggleWishlist(selectedDetail)" title="여행 계획에 추가">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path
+                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
+                </path>
               </svg>
             </button>
             <button class="close-btn" @click="closeDetailModal">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
               </svg>
             </button>
           </div>
         </div>
-        
+
         <div class="modal-content">
           <div class="detail-left-section">
             <div class="detail-image-container">
-              <img :src="`data:image/jpeg;base64,${selectedDetail.image_data}`" :alt="selectedDetail.image_name" class="detail-image">
+              <img :src="`data:image/jpeg;base64,${selectedDetail.image_data}`" :alt="selectedDetail.image_name"
+                class="detail-image">
             </div>
-            
+
             <!-- 지도 영역 추가 -->
             <div class="detail-map-container">
               <div id="detailMap" class="detail-map"></div>
             </div>
           </div>
-          
+
           <div class="detail-info">
             <div class="detail-section">
               <h4>위치 정보</h4>
               <p>{{ selectedDetail.image_location }}</p>
             </div>
-            
+
             <div class="detail-section" v-if="selectedDetail.image_description">
               <h4>설명</h4>
               <p>{{ selectedDetail.image_description }}</p>
             </div>
-            
+
             <div class="detail-section" v-if="selectedDetail.image_tags && selectedDetail.image_tags.length > 0">
               <h4>태그</h4>
               <div class="tag-list">
                 <span v-for="(tag, index) in selectedDetail.image_tags" :key="index" class="tag">{{ tag }}</span>
               </div>
             </div>
-            
+
             <div class="detail-section">
               <h4>특성 분석</h4>
               <div class="detail-dimensions">
@@ -293,7 +273,7 @@
             </div>
           </div>
         </div>
-        
+
         <div class="modal-footer">
           <button class="cancel-btn" @click="closeDetailModal">닫기</button>
         </div>
@@ -307,24 +287,25 @@ import { ref, computed, onMounted, watch, nextTick } from "vue";
 import { useStore } from "vuex";
 import Header from "@/components/Header.vue";
 import LoadingSpinner from "@/components/LoadingSpinner.vue";
-import { 
+import {
   searchSimilarImages,
   createFeaturesVector,
   fileToBase64
 } from "@/services/api";
+import config from "@/config.js";
 
 export default {
   name: "LogoSearch",
-  
+
   components: {
     Header,
     LoadingSpinner
   },
-  
+
   setup() {
     const store = useStore();
     const fileInput = ref(null);
-    
+
     // 상태 관리
     const imageFile = computed(() => store.state.image.file);
     const imagePreview = computed(() => store.state.image.preview);
@@ -333,7 +314,7 @@ export default {
     const searchResults = ref([]);
     const abortController = ref(null);
     const actionStatus = ref({ message: "", type: "" });
-    
+
     // 추가된 API 단계 및 타이밍 상태
     const loadingPhase = ref('analysis');
     const imageAnalysisDuration = ref(null);
@@ -343,7 +324,7 @@ export default {
     // 분석 결과에서 차원 데이터만 필터링
     const dimensionResults = computed(() => {
       if (!analysisResult.value) return null;
-      
+
       const dimensionKeys = [
         "Natural Elements",
         "Urban Character",
@@ -356,7 +337,7 @@ export default {
         "Food Experience",
         "Shopping Potential"
       ];
-      
+
       // 차원 데이터만 추출
       const result = {};
       dimensionKeys.forEach(key => {
@@ -364,15 +345,15 @@ export default {
           result[key] = analysisResult.value[key];
         }
       });
-      
+
       return result;
     });
-    
+
     // 검색 결과를 유사도 순으로 정렬
     const sortedSearchResults = computed(() => {
       return [...searchResults.value].sort((a, b) => b._score - a._score);
     });
-    
+
     // 차원 영어-한글 매핑
     const dimensionTranslations = {
       "Natural Elements": "자연 요소",
@@ -386,12 +367,12 @@ export default {
       "Food Experience": "식도락 경험",
       "Shopping Potential": "쇼핑 잠재력"
     };
-    
+
     // 차원 헤더 생성
     const getDimensionHeader = (dimension) => {
       return dimensionTranslations[dimension] || dimension;
     };
-    
+
     // 상태 메시지 및 클래스
     const statusMessage = computed(() => actionStatus.value.message || '');
     const statusClass = computed(() => {
@@ -402,19 +383,55 @@ export default {
       }
       return '';
     });
-    
+
+    // 카카오 맵 API 로드 함수
+    const loadKakaoMapsScript = () => {
+      return new Promise((resolve, reject) => {
+        // 이미 로드된 경우
+        if (window.kakao && window.kakao.maps) {
+          console.log("카카오 맵 API가 이미 로드되어 있습니다");
+          resolve();
+          return;
+        }
+
+        console.log("카카오 맵 API 로드 시작...");
+        const script = document.createElement('script');
+        script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${config.KAKAO_MAPS_API_KEY}&autoload=false`;
+        script.onload = () => {
+          window.kakao.maps.load(() => {
+            console.log("카카오 맵 API 로드 완료!");
+            resolve();
+          });
+        };
+        script.onerror = (error) => {
+          console.error("카카오 맵 API 로드 실패:", error);
+          reject(error);
+        };
+
+        document.head.appendChild(script);
+      });
+    };
+
     // 컴포넌트 마운트 시 실행
-    onMounted(() => {
+    onMounted(async () => {
       console.log("LogoSearch 컴포넌트 마운트");
-      
+
       // 위시리스트 복원
       const savedWishlist = localStorage.getItem('logo_wishlist');
       if (savedWishlist) {
         const wishlistIds = JSON.parse(savedWishlist);
         console.log('저장된 위시리스트 ID:', wishlistIds);
       }
+
+      // 카카오 맵 API 로드
+      try {
+        await loadKakaoMapsScript();
+        console.log("카카오 맵 API 준비 완료");
+      } catch (error) {
+        console.error("카카오 맵 API 로드 실패:", error);
+      }
     });
-    
+
     // 이미지 선택 시 자동으로 파일명을 이미지 이름으로 설정
     watch(imageFile, (newFile) => {
       if (newFile) {
@@ -423,18 +440,18 @@ export default {
         searchResults.value = [];
       }
     });
-    
+
     // 상세 모달 관련 상태
     const showDetailModal = ref(false);
     const selectedDetail = ref({});
     const wishlistItems = ref([]);
-    
+
     // 검색 결과에서 차원 데이터 추출
     const dimensionsFromDetail = computed(() => {
       if (!selectedDetail.value || !selectedDetail.value.dimensions) return {};
       return selectedDetail.value.dimensions;
     });
-    
+
     // 상세 모달 열기
     const openDetailModal = (result) => {
       selectedDetail.value = {
@@ -443,77 +460,88 @@ export default {
         ...result._source
       };
       showDetailModal.value = true;
-      
+
       // 모달이 열린 후 지도 초기화를 위해 nextTick 사용
       nextTick(() => {
-        initDetailMap();
+        // 약간의 지연 추가로 모달 애니메이션 완료 후 지도 초기화
+        setTimeout(() => {
+          initDetailMap();
+        }, 300);
       });
     };
-    
+
     // 상세 모달의 지도 초기화
-    const initDetailMap = () => {
-      if (!window.kakao || !window.kakao.maps) {
-        console.error('Kakao Maps API is not loaded');
-        return;
-      }
-      
+    const initDetailMap = async () => {
       try {
+        // API가 로드되지 않았다면 로드
+        if (!window.kakao || !window.kakao.maps) {
+          console.log('카카오 맵 API 로드 필요');
+          await loadKakaoMapsScript();
+        }
+
         const mapContainer = document.getElementById('detailMap');
         if (!mapContainer) {
-          console.error('Map container not found');
+          console.error('지도 컨테이너를 찾을 수 없습니다');
           return;
         }
-        
-        // 역삼 멀티캠퍼스 좌표로 고정
-        const lat = 37.501212;
-        const lng = 127.039508;
-        
+
+        // 선택한 장소의 위치 정보가 있으면 사용, 없으면 기본값
+        let lat = 37.501212; // 기본값: 역삼 멀티캠퍼스
+        let lng = 127.039508;
+
+        // selectedDetail에서 위치 정보 추출 시도
+        if (selectedDetail.value && selectedDetail.value.geoLocation &&
+          selectedDetail.value.geoLocation.coordinates) {
+          lat = selectedDetail.value.geoLocation.coordinates.latitude || lat;
+          lng = selectedDetail.value.geoLocation.coordinates.longitude || lng;
+        }
+
         // 지도 옵션
         const mapOption = {
           center: new kakao.maps.LatLng(lat, lng),
           level: 3
         };
-        
+
         // 지도 생성
         const map = new kakao.maps.Map(mapContainer, mapOption);
-        
+
         // 마커 생성
         const markerPosition = new kakao.maps.LatLng(lat, lng);
         const marker = new kakao.maps.Marker({
           position: markerPosition
         });
-        
+
         // 마커를 지도에 표시
         marker.setMap(map);
-        
+
         // 인포윈도우 생성
         const infowindow = new kakao.maps.InfoWindow({
-          content: '<div style="padding:5px;font-size:12px;">역삼 멀티캠퍼스</div>'
+          content: `<div style="padding:5px;font-size:12px;">${selectedDetail.value.image_name || '선택한 위치'}</div>`
         });
-        
+
         // 인포윈도우 표시
         infowindow.open(map, marker);
-        
+
         // 지도 컨트롤 추가
         const zoomControl = new kakao.maps.ZoomControl();
         map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
-        
-        console.log('Detail map initialized at Yeoksam Multicampus:', lat, lng);
+
+        console.log('카카오 지도 초기화 완료:', lat, lng);
       } catch (error) {
-        console.error('Error initializing detail map:', error);
+        console.error('카카오 지도 초기화 오류:', error);
       }
     };
-    
+
     // 상세 모달 닫기
     const closeDetailModal = () => {
       showDetailModal.value = false;
     };
-    
+
     // 위시리스트 관리 함수
     const isInWishlist = (id) => {
       return wishlistItems.value.some(item => item._id === id);
     };
-    
+
     const toggleWishlist = (item) => {
       if (isInWishlist(item._id)) {
         // 위시리스트에서 제거
@@ -524,17 +552,17 @@ export default {
         wishlistItems.value.push(item);
         showActionStatus(`${item.image_name}이(가) 위시리스트에 추가되었습니다.`, "success");
       }
-      
+
       // 로컬 스토리지에 저장
       localStorage.setItem('logo_wishlist', JSON.stringify(wishlistItems.value.map(i => i._id)));
     };
-    
-    
+
+
     // 파일 선택 창 열기
     const triggerFileInput = () => {
       fileInput.value.click();
     };
-    
+
     // 파일 선택 처리
     const handleFileChange = (event) => {
       const file = event.target.files[0];
@@ -542,14 +570,14 @@ export default {
         store.commit("image/setFile", file);
       }
     };
-    
+
     // 이미지 분석 처리 - 업데이트됨
     const analyzeCurrentImage = async () => {
       if (!imageFile.value) {
         alert("먼저 이미지를 선택해주세요.");
         return;
       }
-      
+
       try {
         // 상태 초기화 및 로딩 시작
         isLoading.value = true;
@@ -557,23 +585,23 @@ export default {
         imageAnalysisDuration.value = null;
         meaningAnalysisDuration.value = null;
         searchDuration.value = null;
-        
+
         // AbortController 설정
         abortController.value = new AbortController();
-        
+
         console.log("이미지 분석 시작:", imageFile.value.name);
-        
+
         // ImgSearch.vue에서 가져온 분석 로직 적용
         try {
           const imageAnalysisStartTime = performance.now();
-          
+
           // 이미지 압축 및 Base64 변환
           const base64Image = await fileToBase64(imageFile.value);
           console.log("이미지 압축 완료, Base64 길이:", base64Image.length);
-          
+
           // 1단계: 영문 설명 생성
           console.log("이미지 설명 생성 API 호출 시작...");
-          
+
           // Ollama API 형식으로 요청 구성
           const descriptionRequestBody = {
             model: 'light_2', // config.MODEL_NAME에서 가져오거나 적절한 모델 사용
@@ -581,7 +609,7 @@ export default {
             images: [base64Image.split(',')[1]], // Base64 이미지 데이터만 추출
             stream: false // 스트리밍 비활성화
           };
-          
+
           const descriptionResponse = await fetch('http://localhost:11434/api/generate', {
             method: 'POST',
             headers: {
@@ -590,34 +618,34 @@ export default {
             body: JSON.stringify(descriptionRequestBody),
             signal: abortController.value.signal
           });
-          
+
           if (!descriptionResponse.ok) {
             console.error("API 응답 상태:", descriptionResponse.status, descriptionResponse.statusText);
             throw new Error(`이미지 설명 API 응답 오류: ${descriptionResponse.status}`);
           }
-          
+
           const descriptionData = await descriptionResponse.json();
           console.log("이미지 설명 API 응답:", descriptionData);
-          
+
           // 이미지 설명 추출
           const imageDescription = descriptionData.response || "이미지 설명을 얻을 수 없습니다.";
           console.log("이미지 설명 생성 완료:", imageDescription);
-          
+
           // 이미지 분석 시간 계산
           const imageAnalysisEndTime = performance.now();
           imageAnalysisDuration.value = ((imageAnalysisEndTime - imageAnalysisStartTime) / 1000).toFixed(1);
-          
+
           // 2단계: 10차원 분석
           console.log("10차원 분석 API 호출 시작...");
           loadingPhase.value = 'meaningAnalysis';
           const meaningAnalysisStartTime = performance.now();
-          
+
           const analysisRequestBody = {
             model: 'ko_2', // config.MODEL_NAME에서 가져오거나 적절한 모델 사용
             prompt: imageDescription, // 이전 단계에서 얻은 설명을 프롬프트로 사용
             stream: false
           };
-          
+
           const analysisResponse = await fetch('http://localhost:11434/api/generate', {
             method: 'POST',
             headers: {
@@ -626,18 +654,18 @@ export default {
             body: JSON.stringify(analysisRequestBody),
             signal: abortController.value.signal
           });
-          
+
           if (!analysisResponse.ok) {
             console.error("API 응답 상태:", analysisResponse.status, analysisResponse.statusText);
             throw new Error(`10차원 분석 API 응답 오류: ${analysisResponse.status}`);
           }
-          
+
           const analysisData = await analysisResponse.json();
           console.log("10차원 분석 API 응답:", analysisData);
-          
+
           // 10차원 분석 결과 파싱
           let result = {};
-          
+
           if (analysisData && analysisData.response) {
             try {
               // 1. JSON 형식의 문자열인 경우 파싱 시도
@@ -648,7 +676,7 @@ export default {
                 // 2. 각 줄이 "키": 값 형태로 되어 있는 경우 정규식으로 파싱
                 const dimensions = {};
                 const lines = analysisData.response.split('\n');
-                
+
                 for (const line of lines) {
                   // "Natural Elements": 0.9 형태의 라인 파싱
                   const match = line.match(/"([^"]+)":\s*([0-9.]+)/);
@@ -658,7 +686,7 @@ export default {
                     dimensions[key] = value;
                   }
                 }
-                
+
                 // 추출된 차원이 있는지 확인
                 if (Object.keys(dimensions).length > 0) {
                   console.log("10차원 분석 파싱 결과 (라인 파싱):", dimensions);
@@ -711,30 +739,30 @@ export default {
               "Shopping Potential": 0.2
             };
           }
-          
+
           // 추가 메타데이터 설정 (원래 LogoSearch에서 필요한 것들)
           result.imageDescription = imageDescription;
-          
+
           // 의미 분석 시간 계산
           const meaningAnalysisEndTime = performance.now();
           meaningAnalysisDuration.value = ((meaningAnalysisEndTime - meaningAnalysisStartTime) / 1000).toFixed(1);
-          
+
           // 결과 저장
           analysisResult.value = result;
           console.log("최종 분석 결과:", result);
-          
+
           // 검색 단계로 전환
           loadingPhase.value = 'search';
-          
+
           // 분석이 완료되면 자동으로 유사 이미지 검색 실행
           const searchStartTime = performance.now();
           await searchSimilarHandler();
           const searchEndTime = performance.now();
           searchDuration.value = ((searchEndTime - searchStartTime) / 1000).toFixed(1);
-          
+
         } catch (apiError) {
           console.error("API 호출 오류:", apiError);
-          
+
           // 오류 발생 시 테스트 데이터 사용
           if (!abortController.value.signal.aborted) {
             console.log("테스트 데이터 사용");
@@ -750,16 +778,16 @@ export default {
               "Food Experience": 0.0,
               "Shopping Potential": 0.0
             };
-            
+
             // 테스트 데이터용 시간 설정
             imageAnalysisDuration.value = '0.3'; // 가상 시간
             meaningAnalysisDuration.value = '0.2'; // 가상 시간
-            
+
             alert("API 연결 오류로 테스트 데이터를 사용합니다. 실제 서버 상태를 확인하세요.");
-            
+
             // 검색 단계로 전환
             loadingPhase.value = 'search';
-            
+
             // 테스트 데이터로도 유사 이미지 검색 실행
             const searchStartTime = performance.now();
             await searchSimilarHandler();
@@ -780,7 +808,7 @@ export default {
         abortController.value = null;
       }
     };
-    
+
     // 초기화 처리
     const reset = () => {
       console.log("초기화");
@@ -789,30 +817,30 @@ export default {
       searchResults.value = [];
       actionStatus.value = { message: "", type: "" };
     };
-    
+
     // 유사 이미지 검색 핸들러
     const searchSimilarHandler = async () => {
       if (!analysisResult.value) {
         showActionStatus("이미지를 먼저 분석해주세요.", "error");
         return;
       }
-      
+
       try {
         showActionStatus("유사한 이미지 검색 중...", "pending");
-        
+
         // 특성 벡터 생성
         const featuresVector = createFeaturesVector(analysisResult.value);
-        
+
         // Elasticsearch에서 유사 이미지 검색
         const results = await searchSimilarImages(featuresVector, 10);
         searchResults.value = results;
-        
+
         // 검색 결과 전체를 콘솔에 출력
         console.log('===== Elasticsearch 검색 결과 시작 =====');
         console.log('결과 수:', results.length);
         console.log(results);
         console.log('===== Elasticsearch 검색 결과 끝 =====');
-        
+
         showActionStatus("검색이 완료되었습니다!", "success");
       } catch (error) {
         showActionStatus(
@@ -822,12 +850,12 @@ export default {
         console.error("검색 오류:", error);
       }
     };
-    
+
     // 상태 메시지 표시 함수
     const showActionStatus = (message, type) => {
       actionStatus.value = { message, type };
     };
-    
+
     // cancelAnalysis 함수 추가
     const cancelAnalysis = () => {
       if (abortController.value) {
@@ -837,7 +865,7 @@ export default {
       }
       reset(); // 상태를 초기화합니다.
     };
-    
+
     return {
       imageFile,
       imagePreview,
@@ -888,20 +916,25 @@ export default {
 }
 
 .analysis-table th {
-  background-color: #f8f9fa; /* 밝은 헤더 배경색 */
-  color: #333; /* 어두운 헤더 글자색 */
+  background-color: #f8f9fa;
+  /* 밝은 헤더 배경색 */
+  color: #333;
+  /* 어두운 헤더 글자색 */
   text-align: left;
   padding: 0.75rem 1rem;
   font-size: 0.9rem;
   font-weight: 600;
-  border-bottom: 2px solid #dee2e6; /* 헤더 하단 구분선 */
+  border-bottom: 2px solid #dee2e6;
+  /* 헤더 하단 구분선 */
 }
 
 .analysis-table td {
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid #e9ecef; /* 밝은 셀 구분선 */
+  border-bottom: 1px solid #e9ecef;
+  /* 밝은 셀 구분선 */
   vertical-align: middle;
-  color: #495057; /* 셀 글자색 */
+  color: #495057;
+  /* 셀 글자색 */
 }
 
 .analysis-table tr:last-child td {
@@ -914,7 +947,8 @@ export default {
 }
 
 .dimension-score {
-  color: #0d6efd; /* 파란색 계열 유지 또는 변경 */
+  color: #0d6efd;
+  /* 파란색 계열 유지 또는 변경 */
   font-weight: 600;
   text-align: center;
   width: 10%;
@@ -928,7 +962,8 @@ export default {
 
 .bar-container {
   height: 16px;
-  background-color: #e9ecef; /* 밝은 막대 배경색 */
+  background-color: #e9ecef;
+  /* 밝은 막대 배경색 */
   border-radius: 8px;
   overflow: hidden;
   position: relative;
@@ -949,14 +984,16 @@ export default {
 /* 취소 버튼 스타일 추가 */
 .btn-cancel-analysis {
   margin-top: 1.5rem;
-  background-color: #dc3545; /* 부트스트랩 danger 색상 */
+  background-color: #dc3545;
+  /* 부트스트랩 danger 색상 */
   color: white;
   padding: 0.6rem 1.2rem;
   font-size: 0.9rem;
 }
 
 .btn-cancel-analysis:hover {
-  background-color: #c82333; /* 더 어두운 danger 색상 */
+  background-color: #c82333;
+  /* 더 어두운 danger 색상 */
   transform: translateY(-1px);
 }
 
@@ -1001,9 +1038,9 @@ export default {
 }
 
 /* 패널 공통 스타일 */
-.upload-panel, 
-.analysis-panel, 
-.results-panel, 
+.upload-panel,
+.analysis-panel,
+.results-panel,
 .details-panel {
   background-color: white;
   border-radius: 8px;
@@ -1203,7 +1240,9 @@ export default {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-text {
@@ -1226,8 +1265,15 @@ export default {
 }
 
 @keyframes dots {
-  0%, 100% { opacity: 0; }
-  50% { opacity: 1; }
+
+  0%,
+  100% {
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 /* 가이드 상태 */
@@ -1248,8 +1294,15 @@ export default {
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 .guide-description {
@@ -1502,36 +1555,6 @@ export default {
   transition: width 1s ease;
 }
 
-/* 반응형 스타일 */
-@media (max-width: 900px) {
-  .top-section {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-  }
-  
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .form-actions {
-    grid-column: span 1;
-  }
-  
-  .results-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  }
-}
-
-@media (max-width: 600px) {
-  .content-wrapper {
-    padding: 1.5rem 1rem;
-  }
-  
-  .results-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 /* 결과 카드의 이미지 설명 스타일 */
 .result-description {
   margin-top: 0.75rem;
@@ -1551,7 +1574,8 @@ export default {
   color: #6c757d;
   margin: 0;
   line-height: 1.4;
-  max-height: 4.2em; /* 3줄로 제한 */
+  max-height: 4.2em;
+  /* 3줄로 제한 */
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -1654,8 +1678,15 @@ export default {
 }
 
 @keyframes heartbeat {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.2); }
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.2);
+  }
 }
 
 .modal-content {
@@ -1686,8 +1717,8 @@ export default {
   max-width: 100%;
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  object-fit: cover;
-  max-height: 400px;
+  overflow: hidden;
+  margin-bottom: 1rem;
 }
 
 .detail-map-container {
@@ -1695,13 +1726,15 @@ export default {
   border-radius: 8px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+  margin-top: 1rem;
 }
 
 .detail-map {
   width: 100%;
-  height: 200px;
+  height: 300px;
+  /* 충분한 높이 확보 */
   border-radius: 8px;
-  object-fit: cover;
+  overflow: hidden;
 }
 
 .detail-info {
@@ -1812,12 +1845,189 @@ export default {
   height: 300px;
   object-fit: cover;
   border-radius: 8px;
-  margin-bottom: 1rem;
 }
 
-.dimension-name {
-  width: 100px;
-  font-size: 0.85rem;
-  color: #4a5568;
+/* 반응형 스타일 */
+@media (max-width: 900px) {
+  .top-section {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-actions {
+    grid-column: span 1;
+  }
+
+  .results-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .content-wrapper {
+    padding: 1.5rem 1rem;
+  }
+
+  .results-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 모달 전체 크기 조정 */
+.place-detail-modal {
+  max-width: 1200px;
+  /* 모달 전체 너비 크게 증가 */
+  width: 95%;
+  max-height: 85vh;
+  /* 화면 높이의 85%로 제한 */
+}
+
+/* 모달 헤더 레이아웃 개선 - 제목과 위치 정보 표시를 위한 레이아웃 */
+.modal-header {
+  display: flex;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  background-color: white;
+  z-index: 10;
+}
+
+/* 제목과 위치 정보 컨테이너 */
+.modal-title-location {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+/* 모달 제목 */
+.modal-title-location h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+/* 위치 정보 스타일 */
+.modal-location {
+  margin-left: 1.5rem;
+  color: #718096;
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
+}
+
+/* 모달 콘텐츠 영역 개선 */
+.modal-content {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 왼쪽 섹션 (이미지+지도) 개선 */
+.detail-left-section {
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  gap: 15px;
+  /* 사진과 지도 사이 간격 추가 */
+  align-items: center;
+  /* 중앙 정렬 */
+}
+
+/* 이미지 컨테이너 - 1:1 비율로 설정 */
+.detail-image-container {
+  width: 350px;
+  /* 고정 너비 */
+  height: 350px;
+  /* 고정 높이 - 너비와 동일하게 설정 */
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  aspect-ratio: 1/1;
+  /* 1:1 비율 강제 */
+}
+
+/* 이미지 */
+.detail-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 지도 컨테이너 - 1:1 비율로 설정 */
+.detail-map-container {
+  width: 350px;
+  /* 이미지와 동일한 너비 */
+  height: 350px;
+  /* 이미지와 동일한 높이 */
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  aspect-ratio: 1/1;
+  /* 1:1 비율 강제 */
+}
+
+/* 지도 요소 */
+.detail-map {
+  width: 100%;
+  height: 100%;
+}
+
+/* 오른쪽 텍스트 영역 너비 증가 */
+@media (min-width: 768px) {
+  .modal-content {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 1.5rem;
+  }
+
+  .detail-left-section {
+    width: 35%;
+    /* 전체 너비의 35%로 줄임 */
+    flex-shrink: 0;
+  }
+
+  .detail-info {
+    flex: 1;
+    overflow-y: auto;
+    /* 내용이 많을 경우 스크롤 */
+    max-height: 750px;
+    /* 최대 높이 증가 */
+  }
+
+  /* 위치 정보 섹션 숨기기 (이미 헤더에 표시) */
+  .detail-section:first-child {
+    display: none;
+  }
+
+  /* 작은 화면에서 이미지/지도 크기 조정 */
+  @media (max-width: 1100px) {
+
+    .detail-image-container,
+    .detail-map-container {
+      width: 300px;
+      /* 작은 화면에서는 더 작게 */
+      height: 300px;
+    }
+  }
+
+  /* 더 작은 화면에서 이미지/지도 크기 조정 */
+  @media (max-width: 900px) {
+
+    .detail-image-container,
+    .detail-map-container {
+      width: 250px;
+      height: 250px;
+    }
+  }
 }
 </style>
