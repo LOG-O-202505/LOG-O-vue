@@ -723,7 +723,7 @@ export const searchSimilarImages = async (featuresVector, limit = 10) => {
       body: JSON.stringify({
         size: limit,
         query: query,
-        _source: ["image_id", "image_name", "image_location", "image_tags", "image_data", "dimensions"]
+        _source: ["image_id", "image_name", "image_location", "image_tags","image_description", "image_data", "dimensions"]
       })
     });
     

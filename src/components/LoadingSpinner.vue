@@ -5,14 +5,19 @@
     
     <!-- Progress indicators -->
     <div class="progress-steps">
-      <div class="step" :class="{ 'active': currentPhase === 'analysis', 'completed': currentPhase === 'search' || currentPhase === 'completed' }">
+      <div class="step" :class="{ 'active': currentPhase === 'imageAnalysis', 'completed': currentPhase === 'meaningAnalysis' || currentPhase === 'search' || currentPhase === 'completed' }">
         <div class="step-circle">1</div>
-        <div class="step-label">이미지 분석</div>
-        <div v-if="analysisDuration" class="step-time">{{ analysisDuration }}초</div>
+        <div class="step-label">AI 이미지 분석</div>
+        <div v-if="imageAnalysisDuration" class="step-time">{{ imageAnalysisDuration }}초</div>
+      </div>
+      <div class="step" :class="{ 'active': currentPhase === 'meaningAnalysis', 'completed': currentPhase === 'search' || currentPhase === 'completed' }">
+        <div class="step-circle">2</div>
+        <div class="step-label">AI 의미 분석</div>
+        <div v-if="meaningAnalysisDuration" class="step-time">{{ meaningAnalysisDuration }}초</div>
       </div>
       <div class="step" :class="{ 'active': currentPhase === 'search', 'completed': currentPhase === 'completed' }">
-        <div class="step-circle">2</div>
-        <div class="step-label">유사도 검색</div>
+        <div class="step-circle">3</div>
+        <div class="step-label">벡터 검색</div>
         <div v-if="searchDuration" class="step-time">{{ searchDuration }}초</div>
       </div>
     </div>
@@ -25,10 +30,14 @@ export default {
   props: {
     currentPhase: {
       type: String,
-      default: 'analysis',
-      validator: (value) => ['analysis', 'search', 'completed'].includes(value)
+      default: 'imageAnalysis',
+      validator: (value) => ['imageAnalysis', 'meaningAnalysis', 'search', 'completed'].includes(value)
     },
-    analysisDuration: {
+    imageAnalysisDuration: {
+      type: Number,
+      default: null
+    },
+    meaningAnalysisDuration: {
       type: Number,
       default: null
     },
@@ -39,8 +48,10 @@ export default {
   },
   computed: {
     loadingText() {
-      if (this.currentPhase === 'analysis') {
-        return '이미지를 분석 중입니다';
+      if (this.currentPhase === 'imageAnalysis') {
+        return 'AI가 이미지를 분석 중입니다';
+      } else if (this.currentPhase === 'meaningAnalysis') {
+        return '이미지의 의미를 분석 중입니다';
       } else if (this.currentPhase === 'search') {
         return '유사한 이미지 검색 중입니다';
       }

@@ -76,11 +76,15 @@
               <!-- 분석 시간 정보 추가 -->
               <div v-if="analysisResult && !isLoading" class="analysis-timing">
                 <div class="timing-item">
-                  <span class="timing-label">이미지 분석 시간:</span>
-                  <span class="timing-value">{{ analysisDuration }}초</span>
+                  <span class="timing-label">AI 이미지 분석:</span>
+                  <span class="timing-value">{{ imageAnalysisDuration }}초</span>
                 </div>
                 <div class="timing-item">
-                  <span class="timing-label">이미지 검색 시간:</span>
+                  <span class="timing-label">AI 의미 분석:</span>
+                  <span class="timing-value">{{ meaningAnalysisDuration }}초</span>
+                </div>
+                <div class="timing-item">
+                  <span class="timing-label">벡터 검색:</span>
                   <span class="timing-value">{{ searchDuration }}초</span>
                 </div>
               </div>
@@ -109,7 +113,8 @@
             <div v-if="isLoading" class="loading-state">
               <LoadingSpinner 
                 :current-phase="loadingPhase" 
-                :analysis-duration="analysisDuration" 
+                :image-analysis-duration="imageAnalysisDuration" 
+                :meaning-analysis-duration="meaningAnalysisDuration" 
                 :search-duration="searchDuration" 
               />
             </div>
@@ -179,6 +184,7 @@
                 v-for="(result, index) in sortedSearchResults" 
                 :key="result._id"
                 class="result-card"
+                @click="openDetailModal(result)"
               >
                 <div class="result-rank">{{ index + 1 }}</div>
                 <div class="result-image-container">
@@ -217,11 +223,87 @@
     <footer class="footer">
       <p>© 2025 LOG:O - 당신의 여행을 기록하다</p>
     </footer>
+    
+    <!-- 장소 상세 모달 -->
+    <div v-if="showDetailModal" class="modal-overlay" @click="closeDetailModal">
+      <div class="place-detail-modal" @click.stop>
+        <div class="modal-header">
+          <h3>{{ selectedDetail.image_name }}</h3>
+          <div class="modal-actions">
+            <button 
+              class="heart-btn"
+              :class="{ 'active': isInWishlist(selectedDetail._id) }"
+              @click="toggleWishlist(selectedDetail)"
+              title="여행 계획에 추가"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+              </svg>
+            </button>
+            <button class="close-btn" @click="closeDetailModal">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        <div class="modal-content">
+          <div class="detail-left-section">
+            <div class="detail-image-container">
+              <img :src="`data:image/jpeg;base64,${selectedDetail.image_data}`" :alt="selectedDetail.image_name" class="detail-image">
+            </div>
+            
+            <!-- 지도 영역 추가 -->
+            <div class="detail-map-container">
+              <div id="detailMap" class="detail-map"></div>
+            </div>
+          </div>
+          
+          <div class="detail-info">
+            <div class="detail-section">
+              <h4>위치 정보</h4>
+              <p>{{ selectedDetail.image_location }}</p>
+            </div>
+            
+            <div class="detail-section" v-if="selectedDetail.image_description">
+              <h4>설명</h4>
+              <p>{{ selectedDetail.image_description }}</p>
+            </div>
+            
+            <div class="detail-section" v-if="selectedDetail.image_tags && selectedDetail.image_tags.length > 0">
+              <h4>태그</h4>
+              <div class="tag-list">
+                <span v-for="(tag, index) in selectedDetail.image_tags" :key="index" class="tag">{{ tag }}</span>
+              </div>
+            </div>
+            
+            <div class="detail-section">
+              <h4>특성 분석</h4>
+              <div class="detail-dimensions">
+                <div v-for="(value, dimension) in dimensionResults" :key="dimension" class="dimension-item">
+                  <span class="dimension-name">{{ getDimensionHeader(dimension) }}</span>
+                  <div class="dimension-bar-small">
+                    <div class="dimension-fill" :style="{ width: `${value * 100}%` }"></div>
+                  </div>
+                  <span class="dimension-value">{{ value.toFixed(1) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="closeDetailModal">닫기</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch, nextTick } from "vue";
 import { useStore } from "vuex";
 import Header from "@/components/Header.vue";
 import LoadingSpinner from "@/components/LoadingSpinner.vue";
@@ -254,7 +336,8 @@ export default {
     
     // 추가된 API 단계 및 타이밍 상태
     const loadingPhase = ref('analysis');
-    const analysisDuration = ref(null);
+    const imageAnalysisDuration = ref(null);
+    const meaningAnalysisDuration = ref(null);
     const searchDuration = ref(null);
 
     // 분석 결과에서 차원 데이터만 필터링
@@ -323,6 +406,13 @@ export default {
     // 컴포넌트 마운트 시 실행
     onMounted(() => {
       console.log("LogoSearch 컴포넌트 마운트");
+      
+      // 위시리스트 복원
+      const savedWishlist = localStorage.getItem('logo_wishlist');
+      if (savedWishlist) {
+        const wishlistIds = JSON.parse(savedWishlist);
+        console.log('저장된 위시리스트 ID:', wishlistIds);
+      }
     });
     
     // 이미지 선택 시 자동으로 파일명을 이미지 이름으로 설정
@@ -333,6 +423,112 @@ export default {
         searchResults.value = [];
       }
     });
+    
+    // 상세 모달 관련 상태
+    const showDetailModal = ref(false);
+    const selectedDetail = ref({});
+    const wishlistItems = ref([]);
+    
+    // 검색 결과에서 차원 데이터 추출
+    const dimensionsFromDetail = computed(() => {
+      if (!selectedDetail.value || !selectedDetail.value.dimensions) return {};
+      return selectedDetail.value.dimensions;
+    });
+    
+    // 상세 모달 열기
+    const openDetailModal = (result) => {
+      selectedDetail.value = {
+        _id: result._id,
+        _score: result._score,
+        ...result._source
+      };
+      showDetailModal.value = true;
+      
+      // 모달이 열린 후 지도 초기화를 위해 nextTick 사용
+      nextTick(() => {
+        initDetailMap();
+      });
+    };
+    
+    // 상세 모달의 지도 초기화
+    const initDetailMap = () => {
+      if (!window.kakao || !window.kakao.maps) {
+        console.error('Kakao Maps API is not loaded');
+        return;
+      }
+      
+      try {
+        const mapContainer = document.getElementById('detailMap');
+        if (!mapContainer) {
+          console.error('Map container not found');
+          return;
+        }
+        
+        // 역삼 멀티캠퍼스 좌표로 고정
+        const lat = 37.501212;
+        const lng = 127.039508;
+        
+        // 지도 옵션
+        const mapOption = {
+          center: new kakao.maps.LatLng(lat, lng),
+          level: 3
+        };
+        
+        // 지도 생성
+        const map = new kakao.maps.Map(mapContainer, mapOption);
+        
+        // 마커 생성
+        const markerPosition = new kakao.maps.LatLng(lat, lng);
+        const marker = new kakao.maps.Marker({
+          position: markerPosition
+        });
+        
+        // 마커를 지도에 표시
+        marker.setMap(map);
+        
+        // 인포윈도우 생성
+        const infowindow = new kakao.maps.InfoWindow({
+          content: '<div style="padding:5px;font-size:12px;">역삼 멀티캠퍼스</div>'
+        });
+        
+        // 인포윈도우 표시
+        infowindow.open(map, marker);
+        
+        // 지도 컨트롤 추가
+        const zoomControl = new kakao.maps.ZoomControl();
+        map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
+        
+        console.log('Detail map initialized at Yeoksam Multicampus:', lat, lng);
+      } catch (error) {
+        console.error('Error initializing detail map:', error);
+      }
+    };
+    
+    // 상세 모달 닫기
+    const closeDetailModal = () => {
+      showDetailModal.value = false;
+    };
+    
+    // 위시리스트 관리 함수
+    const isInWishlist = (id) => {
+      return wishlistItems.value.some(item => item._id === id);
+    };
+    
+    const toggleWishlist = (item) => {
+      if (isInWishlist(item._id)) {
+        // 위시리스트에서 제거
+        wishlistItems.value = wishlistItems.value.filter(i => i._id !== item._id);
+        showActionStatus(`${item.image_name}이(가) 위시리스트에서 제거되었습니다.`, "success");
+      } else {
+        // 위시리스트에 추가
+        wishlistItems.value.push(item);
+        showActionStatus(`${item.image_name}이(가) 위시리스트에 추가되었습니다.`, "success");
+      }
+      
+      // 로컬 스토리지에 저장
+      localStorage.setItem('logo_wishlist', JSON.stringify(wishlistItems.value.map(i => i._id)));
+    };
+    
     
     // 파일 선택 창 열기
     const triggerFileInput = () => {
@@ -357,8 +553,9 @@ export default {
       try {
         // 상태 초기화 및 로딩 시작
         isLoading.value = true;
-        loadingPhase.value = 'analysis';
-        analysisDuration.value = null;
+        loadingPhase.value = 'imageAnalysis';
+        imageAnalysisDuration.value = null;
+        meaningAnalysisDuration.value = null;
         searchDuration.value = null;
         
         // AbortController 설정
@@ -368,7 +565,7 @@ export default {
         
         // ImgSearch.vue에서 가져온 분석 로직 적용
         try {
-          const analysisStartTime = performance.now();
+          const imageAnalysisStartTime = performance.now();
           
           // 이미지 압축 및 Base64 변환
           const base64Image = await fileToBase64(imageFile.value);
@@ -406,8 +603,14 @@ export default {
           const imageDescription = descriptionData.response || "이미지 설명을 얻을 수 없습니다.";
           console.log("이미지 설명 생성 완료:", imageDescription);
           
+          // 이미지 분석 시간 계산
+          const imageAnalysisEndTime = performance.now();
+          imageAnalysisDuration.value = ((imageAnalysisEndTime - imageAnalysisStartTime) / 1000).toFixed(1);
+          
           // 2단계: 10차원 분석
           console.log("10차원 분석 API 호출 시작...");
+          loadingPhase.value = 'meaningAnalysis';
+          const meaningAnalysisStartTime = performance.now();
           
           const analysisRequestBody = {
             model: 'ko_2', // config.MODEL_NAME에서 가져오거나 적절한 모델 사용
@@ -512,9 +715,9 @@ export default {
           // 추가 메타데이터 설정 (원래 LogoSearch에서 필요한 것들)
           result.imageDescription = imageDescription;
           
-          // 분석 시간 계산
-          const analysisEndTime = performance.now();
-          analysisDuration.value = ((analysisEndTime - analysisStartTime) / 1000).toFixed(1);
+          // 의미 분석 시간 계산
+          const meaningAnalysisEndTime = performance.now();
+          meaningAnalysisDuration.value = ((meaningAnalysisEndTime - meaningAnalysisStartTime) / 1000).toFixed(1);
           
           // 결과 저장
           analysisResult.value = result;
@@ -549,7 +752,8 @@ export default {
             };
             
             // 테스트 데이터용 시간 설정
-            analysisDuration.value = '0.5'; // 가상 시간
+            imageAnalysisDuration.value = '0.3'; // 가상 시간
+            meaningAnalysisDuration.value = '0.2'; // 가상 시간
             
             alert("API 연결 오류로 테스트 데이터를 사용합니다. 실제 서버 상태를 확인하세요.");
             
@@ -603,6 +807,12 @@ export default {
         const results = await searchSimilarImages(featuresVector, 10);
         searchResults.value = results;
         
+        // 검색 결과 전체를 콘솔에 출력
+        console.log('===== Elasticsearch 검색 결과 시작 =====');
+        console.log('결과 수:', results.length);
+        console.log(results);
+        console.log('===== Elasticsearch 검색 결과 끝 =====');
+        
         showActionStatus("검색이 완료되었습니다!", "success");
       } catch (error) {
         showActionStatus(
@@ -639,7 +849,8 @@ export default {
       statusClass,
       fileInput,
       loadingPhase,
-      analysisDuration,
+      imageAnalysisDuration,
+      meaningAnalysisDuration,
       searchDuration,
       triggerFileInput,
       handleFileChange,
@@ -647,7 +858,16 @@ export default {
       reset,
       getDimensionHeader,
       dimensionResults,
-      cancelAnalysis
+      cancelAnalysis,
+      showDetailModal,
+      selectedDetail,
+      wishlistItems,
+      dimensionsFromDetail,
+      openDetailModal,
+      closeDetailModal,
+      isInWishlist,
+      toggleWishlist,
+      initDetailMap
     };
   }
 };
@@ -1082,11 +1302,12 @@ export default {
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   transition: all 0.3s ease;
+  cursor: pointer;
 }
 
 .result-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
 }
 
 .result-rank {
@@ -1337,5 +1558,266 @@ export default {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
 }
-/* --- src/styles/LogoSearch.css 내용 끝 --- */
+
+/* 모달 오버레이 및 공통 모달 스타일 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  overflow-y: auto;
+  padding: 2rem 0;
+}
+
+.place-detail-modal {
+  background-color: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 900px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  background-color: white;
+  z-index: 1;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #718096;
+  cursor: pointer;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background-color: #f7fafc;
+  color: #4a5568;
+}
+
+.heart-btn {
+  background: none;
+  border: none;
+  color: #cbd5e0;
+  cursor: pointer;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.heart-btn:hover {
+  color: #f56565;
+  transform: scale(1.1);
+}
+
+.heart-btn.active {
+  color: #f56565;
+  animation: heartbeat 1s ease-in-out;
+}
+
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+.modal-content {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .modal-content {
+    flex-direction: row;
+  }
+}
+
+.detail-left-section {
+  flex: 1;
+  max-width: 100%;
+}
+
+@media (min-width: 768px) {
+  .detail-left-section {
+    max-width: 50%;
+  }
+}
+
+.detail-image-container {
+  max-width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  object-fit: cover;
+  max-height: 400px;
+}
+
+.detail-map-container {
+  max-width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.detail-map {
+  width: 100%;
+  height: 200px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.detail-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.detail-section {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.detail-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.detail-section h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #4a5568;
+  margin: 0 0 0.75rem 0;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tag {
+  background-color: #ebf5ff;
+  color: #3182ce;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+}
+
+.detail-dimensions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dimension-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.dimension-bar-small {
+  flex: 1;
+  height: 8px;
+  background-color: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.dimension-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3182ce, #63b3ed);
+  border-radius: 4px;
+}
+
+.dimension-value {
+  width: 30px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #4a5568;
+  text-align: right;
+}
+
+.modal-footer {
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  position: sticky;
+  bottom: 0;
+  background-color: white;
+  z-index: 1;
+}
+
+.cancel-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-btn {
+  background-color: #fff;
+  color: #4a5568;
+  border: 1px solid #e2e8f0;
+}
+
+.cancel-btn:hover {
+  background-color: #f7fafc;
+}
+
+.detail-image {
+  width: 100%;
+  height: 300px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.dimension-name {
+  width: 100px;
+  font-size: 0.85rem;
+  color: #4a5568;
+}
 </style>
