@@ -72,6 +72,18 @@
                 class="btn btn-secondary">
                 초기화
               </button>
+              
+              <!-- 분석 시간 정보 추가 -->
+              <div v-if="analysisResult && !isLoading" class="analysis-timing">
+                <div class="timing-item">
+                  <span class="timing-label">이미지 분석 시간:</span>
+                  <span class="timing-value">{{ analysisDuration }}초</span>
+                </div>
+                <div class="timing-item">
+                  <span class="timing-label">이미지 검색 시간:</span>
+                  <span class="timing-value">{{ searchDuration }}초</span>
+                </div>
+              </div>
             </div>
             
             <input
@@ -188,77 +200,11 @@
                     </div>
                     <span class="similarity-value">{{ (Math.round(result._score * 100) / 100).toFixed(2) }}</span>
                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- 하단 섹션: 이미지 정보 입력 (전체 너비) -->
-      <div v-if="analysisResult && !isLoading" class="bottom-section">
-        <div class="details-panel">
-          <div class="panel-header">
-            <h3 class="panel-title">이미지 정보 입력</h3>
-          </div>
-          
-          <div class="panel-content">
-            <div class="details-form">
-              <div class="form-grid">
-                <div class="form-group">
-                  <label for="image-name">이미지 이름</label>
-                  <input 
-                    type="text" 
-                    id="image-name"
-                    v-model="imageDetails.name"
-                    placeholder="이미지 이름을 입력하세요"
-                  >
-                </div>
-                
-                <div class="form-group">
-                  <label for="image-location">위치 정보</label>
-                  <LocationSearch @location-selected="onLocationSelected" ref="locationSearchRef" />
-                </div>
-                
-                <div class="form-group">
-                  <label for="image-tags">태그</label>
-                  <input 
-                    type="text" 
-                    id="image-tags"
-                    v-model="imageDetails.tags"
-                    placeholder="쉼표로 구분된 태그를 입력하세요 (예: 바다,산,휴양지)"
-                  >
-                </div>
-                
-                <div class="form-group">
-                  <label for="image-description">이미지 설명</label>
-                  <textarea 
-                    id="image-description"
-                    v-model="imageDetails.description"
-                    placeholder="이미지에 대한 간단한 설명을 입력하세요"
-                  ></textarea>
-                </div>
-              </div>
-              
-              <div class="form-actions">
-                <button 
-                  @click="saveToElasticsearchHandler" 
-                  class="btn btn-save"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                    <polyline points="7 3 7 8 15 8"></polyline>
-                  </svg>
-                  데이터베이스에 저장하기
-                </button>
-                
-                <div 
-                  v-if="statusMessage" 
-                  class="status-message" 
-                  :class="statusClass"
-                >
-                  {{ statusMessage }}
+                  <!-- 이미지 설명 추가 -->
+                  <div v-if="result._source.image_description" class="result-description">
+                    <div class="description-title">설명:</div>
+                    <p class="description-text">{{ result._source.image_description }}</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -275,13 +221,11 @@
 </template>
 
 <script>
-import { ref, reactive, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useStore } from "vuex";
 import Header from "@/components/Header.vue";
-import LocationSearch from "@/components/LocationSearch.vue";
 import LoadingSpinner from "@/components/LoadingSpinner.vue";
 import { 
-  saveToElasticsearch as callSaveToElasticsearch,
   searchSimilarImages,
   createFeaturesVector,
   fileToBase64
@@ -292,16 +236,12 @@ export default {
   
   components: {
     Header,
-    LocationSearch,
     LoadingSpinner
   },
   
   setup() {
     const store = useStore();
     const fileInput = ref(null);
-    
-    // LocationSearch 컴포넌트 참조
-    const locationSearchRef = ref(null);
     
     // 상태 관리
     const imageFile = computed(() => store.state.image.file);
@@ -311,22 +251,12 @@ export default {
     const searchResults = ref([]);
     const abortController = ref(null);
     const actionStatus = ref({ message: "", type: "" });
-    const mapInitialized = ref(false);
     
     // 추가된 API 단계 및 타이밍 상태
     const loadingPhase = ref('analysis');
     const analysisDuration = ref(null);
     const searchDuration = ref(null);
-    
-    // 이미지 정보 관리
-    const imageDetails = reactive({
-      name: '',
-      location: '', // 사용자에게 보이는 주소 문자열
-      locationData: null, // 지역 정보 데이터 (province_code, city_code 등)
-      tags: '',
-      description: ''
-    });
-    
+
     // 분석 결과에서 차원 데이터만 필터링
     const dimensionResults = computed(() => {
       if (!analysisResult.value) return null;
@@ -393,20 +323,11 @@ export default {
     // 컴포넌트 마운트 시 실행
     onMounted(() => {
       console.log("LogoSearch 컴포넌트 마운트");
-      
-      // Google Maps API 로드 상태 이벤트 감시
-      window.addEventListener('google_maps_loaded', () => {
-        console.log("Google Maps 로드 이벤트 감지");
-        mapInitialized.value = true;
-      });
     });
     
     // 이미지 선택 시 자동으로 파일명을 이미지 이름으로 설정
     watch(imageFile, (newFile) => {
       if (newFile) {
-        const fileName = newFile.name.replace(/\.[^/.]+$/, ""); // 확장자 제거
-        imageDetails.name = fileName;
-        
         // 기존 분석 결과 초기화 (새 이미지 선택 시)
         analysisResult.value = null;
         searchResults.value = [];
@@ -424,189 +345,6 @@ export default {
       if (file) {
         store.commit("image/setFile", file);
       }
-    };
-    
-    // 위치 선택 처리
-    const onLocationSelected = (locationData) => {
-      console.log('=== onLocationSelected 호출 ===');
-      console.log('locationData 전체:', locationData);
-      
-      if (!locationData) {
-        // 위치 초기화된 경우
-        console.log('위치 초기화됨');
-        imageDetails.location = '';
-        imageDetails.locationData = null;
-        return;
-      }
-      
-      // 새로운 형식: { formatted_address, region_info }
-      imageDetails.location = locationData.formatted_address;
-      imageDetails.locationData = locationData.region_info;
-      
-      console.log("위치 정보 선택됨:", imageDetails.location);
-      console.log("지역 정보:", JSON.stringify(imageDetails.locationData, null, 2));
-      
-      // 위치가 수동으로 선택된 경우에만 지도 업데이트
-      // 분석 결과에서 자동으로 설정된 경우에는 이미 updateMapFromGeoLocation에서 처리됨
-      if (locationData.manuallySelected && locationData.formatted_address && mapInitialized.value) {
-        if (locationSearchRef.value && locationSearchRef.value.displayMapFromAddress) {
-          locationSearchRef.value.displayMapFromAddress(locationData.formatted_address);
-        }
-      }
-    };
-    
-    // 위치 정보에서 지도 업데이트 함수 개선
-    const updateMapFromGeoLocation = (geoLocation) => {
-      if (!geoLocation || !geoLocation.coordinates || !mapInitialized.value) {
-        console.warn("지도 업데이트를 위한 위치 정보가 없거나 지도가 초기화되지 않았습니다");
-        return;
-      }
-      
-      // 약간의 지연을 두어 컴포넌트가 렌더링될 시간을 확보
-      setTimeout(() => {
-        // 컴포넌트 메서드를 직접 호출하여 지도 설정
-        if (locationSearchRef.value && locationSearchRef.value.setMapFromCoordinates) {
-          locationSearchRef.value.setMapFromCoordinates(
-            geoLocation.coordinates.latitude,
-            geoLocation.coordinates.longitude
-          );
-          console.log("위치 정보 기반 지도 업데이트 성공");
-        } else {
-          console.warn("LocationSearch 컴포넌트를 찾을 수 없거나 setMapFromCoordinates 메서드가 없습니다");
-        }
-      }, 500);
-    };
-    
-    // 분석 결과를 기반으로 태그 제안
-    const generateSuggestedTags = () => {
-      if (!analysisResult.value) return;
-      
-      // 태그가 이미 설정되어 있으면 건너뜀
-      if (imageDetails.tags) return;
-      
-      const result = analysisResult.value;
-      const tags = [];
-      
-      // 자연 요소가 높은 경우
-      if (result["Natural Elements"] > 0.6) {
-        tags.push("자연", "풍경");
-      }
-      
-      // 도시 특성이 높은 경우
-      if (result["Urban Character"] > 0.6) {
-        tags.push("도시", "건축물");
-      }
-      
-      // 수경 요소가 높은 경우
-      if (result["Water Features"] > 0.6) {
-        tags.push("물", "바다", "강");
-      }
-      
-      // 계절적 매력이 높은 경우
-      if (result["Seasonal Appeal"] > 0.6) {
-        // 현재 계절 파악
-        const month = new Date().getMonth() + 1;
-        if (month >= 3 && month <= 5) tags.push("봄");
-        else if (month >= 6 && month <= 8) tags.push("여름");
-        else if (month >= 9 && month <= 11) tags.push("가을");
-        else tags.push("겨울");
-      }
-      
-      // 휴식 잠재력이 높은 경우
-      if (result["Relaxation Potential"] > 0.6) {
-        tags.push("휴식", "힐링");
-      }
-      
-      // 로맨틱한 분위기가 높은 경우
-      if (result["Romantic Atmosphere"] > 0.6) {
-        tags.push("로맨틱", "데이트");
-      }
-      
-      // 액티비티 기회가 높은 경우
-      if (result["Activity Opportunities"] > 0.6) {
-        tags.push("액티비티", "활동");
-      }
-      
-      // 역사/문화적 가치가 높은 경우
-      if (result["Historical/Cultural Value"] > 0.6) {
-        tags.push("역사", "문화");
-      }
-      
-      // 식도락 경험이 높은 경우
-      if (result["Food Experience"] > 0.6) {
-        tags.push("맛집", "음식");
-      }
-      
-      // 쇼핑 잠재력이 높은 경우
-      if (result["Shopping Potential"] > 0.6) {
-        tags.push("쇼핑");
-      }
-      
-      // 위치 정보에서 태그 추가
-      if (result.geoLocation && result.geoLocation.address) {
-        if (result.geoLocation.address.province) {
-          tags.push(result.geoLocation.address.province);
-        }
-        if (result.geoLocation.address.city) {
-          tags.push(result.geoLocation.address.city);
-        }
-      }
-      
-      // 중복 제거 및 최대 5개 태그만 사용
-      const uniqueTags = [...new Set(tags)].slice(0, 5);
-      imageDetails.tags = uniqueTags.join(", ");
-      console.log("자동 생성된 태그:", imageDetails.tags);
-    };
-    
-    // 분석 결과를 기반으로 설명 생성
-    const generateSuggestedDescription = () => {
-      if (!analysisResult.value) return;
-      
-      // 설명이 이미 설정되어 있으면 건너뜀
-      if (imageDetails.description) return;
-      
-      const result = analysisResult.value;
-      let description = '';
-      let locationText = '';
-      
-      // 위치 정보에서 설명 시작 문구 생성
-      if (result.geoLocation && result.geoLocation.address) {
-        const address = result.geoLocation.address;
-        if (address.province || address.city) {
-          const location = [address.province, address.city]
-            .filter(Boolean)
-            .join(' ');
-          
-          if (location) {
-            locationText = `${location}에서 `;
-          }
-        }
-      }
-      
-      // 특성 기반 설명 생성
-      const features = [];
-      
-      // 주요 특성 확인 (0.7 이상이면 주요 특성으로 간주)
-      if (result["Natural Elements"] > 0.7) features.push("자연 풍경");
-      if (result["Urban Character"] > 0.7) features.push("도시 경관");
-      if (result["Water Features"] > 0.7) features.push("수변 공간");
-      if (result["Relaxation Potential"] > 0.7) features.push("휴식 공간");
-      if (result["Romantic Atmosphere"] > 0.7) features.push("로맨틱한 분위기");
-      if (result["Food Experience"] > 0.7) features.push("맛집 체험");
-      if (result["Shopping Potential"] > 0.7) features.push("쇼핑 장소");
-      
-      // 주요 특성으로 문장 구성
-      if (features.length > 0) {
-        description = `${locationText}촬영한 ${features.join(', ')} 사진입니다.`;
-      } else {
-        // 주요 특성이 없으면 간단히 구성
-        description = `${locationText}촬영한 여행 사진입니다.`;
-      }
-      
-      // URL은 별도 description에 추가하지 않음 (이미 geoLocation.googleMapsUrl로 저장됨)
-      
-      imageDetails.description = description;
-      console.log("자동 생성된 설명:", description);
     };
     
     // 이미지 분석 처리 - 업데이트됨
@@ -782,41 +520,6 @@ export default {
           analysisResult.value = result;
           console.log("최종 분석 결과:", result);
           
-          // 위치 정보가 있다면 이미지 이름과 위치정보 자동 설정 (원래 LogoSearch 기능 유지)
-          if (result.geoLocation) {
-            // 제안된 이름이 있으면 이미지 이름으로 설정
-            if (result.suggestedName) {
-              imageDetails.name = result.suggestedName;
-            }
-            
-            // 위치 정보가 있는 경우 위치 정보 설정
-            if (result.geoLocation.address) {
-              const address = result.geoLocation.address;
-              // 위치 정보 텍스트 구성
-              const locationText = [
-                address.province, 
-                address.city, 
-                address.district, 
-                address.road
-              ].filter(Boolean).join(' ');
-              
-              // 위치 정보 및 지역 데이터 설정
-              imageDetails.location = locationText || address.display_name;
-              imageDetails.locationData = address.regionInfo;
-              
-              // 위치 정보가 있으면 지도 업데이트를 위한 별도 함수 사용
-              if (result.geoLocation) {
-                updateMapFromGeoLocation(result.geoLocation);
-              }
-            }
-          }
-          
-          // 분석 결과를 기반으로 태그 제안
-          generateSuggestedTags();
-          
-          // 분석 결과를 기반으로 설명 제안
-          generateSuggestedDescription();
-          
           // 검색 단계로 전환
           loadingPhase.value = 'search';
           
@@ -881,87 +584,6 @@ export default {
       analysisResult.value = null;
       searchResults.value = [];
       actionStatus.value = { message: "", type: "" };
-      
-      // 이미지 정보 초기화
-      imageDetails.name = '';
-      imageDetails.location = '';
-      imageDetails.locationData = null;
-      imageDetails.tags = '';
-      imageDetails.description = '';
-      
-      // LocationSearch 컴포넌트의 지도 초기화
-      if (locationSearchRef.value && locationSearchRef.value.clearLocation) {
-        locationSearchRef.value.clearLocation();
-      }
-    };
-    
-    // Elasticsearch에 저장 핸들러
-    const saveToElasticsearchHandler = async () => {
-      console.log('=== saveToElasticsearchHandler 호출 ===');
-      console.log('현재 이미지 정보:', {
-        name: imageDetails.name || "무제",
-        location: imageDetails.location || "미지정",
-        locationData: imageDetails.locationData,
-        tags: imageDetails.tags
-            ? imageDetails.tags.split(",").map((tag) => tag.trim())
-            : [],
-        description: imageDetails.description || ""
-      });
-      
-      if (!analysisResult.value) {
-        showActionStatus("이미지를 먼저 분석해주세요.", "error");
-        return;
-      }
-      
-      try {
-        showActionStatus("사진을 서버에 저장 중...", "pending");
-        
-        // 특성 벡터 생성
-        const featuresVector = createFeaturesVector(analysisResult.value);
-        console.log('생성된 특성 벡터:', featuresVector);
-        
-        // 이미지를 Base64로 변환
-        const imageBase64 = imagePreview.value;
-        console.log('이미지 Base64 길이:', imageBase64?.split(',')[1]?.length || 0, '자');
-        
-        // 고유 ID 생성
-        const imageId = generateUniqueId();
-        console.log('생성된 이미지 ID:', imageId);
-        
-        const locationVal = imageDetails.location || "미지정";
-        const tagsArray = imageDetails.tags
-          ? imageDetails.tags.split(",").map((tag) => tag.trim())
-          : [];
-        
-        console.log('Elasticsearch 저장 직전 데이터:');
-        console.log('- 이미지 ID:', imageId);
-        console.log('- 이미지 이름:', imageDetails.name || "무제");
-        console.log('- 위치 정보:', locationVal);
-        console.log('- 태그:', tagsArray);
-        console.log('- 설명:', imageDetails.description || "");
-        console.log('- 지역 데이터:', imageDetails.locationData);
-        
-        // Elasticsearch에 저장
-        await callSaveToElasticsearch(
-          imageId,
-          imageDetails.name || "무제",
-          locationVal,
-          tagsArray,
-          imageDetails.description || "",
-          imageBase64,
-          analysisResult.value,
-          featuresVector,
-          imageDetails.locationData
-        );
-        
-        showActionStatus("이미지가 성공적으로 저장되었습니다!", "success");
-      } catch (error) {
-        showActionStatus(
-          "저장 중 오류가 발생했습니다: " + error.message,
-          "error"
-        );
-        console.error("저장 오류:", error);
-      }
     };
     
     // 유사 이미지 검색 핸들러
@@ -996,11 +618,6 @@ export default {
       actionStatus.value = { message, type };
     };
     
-    // 고유 ID 생성 함수
-    const generateUniqueId = () => {
-      return Date.now().toString(36) + Math.random().toString(36).substring(2);
-    };
-    
     // cancelAnalysis 함수 추가
     const cancelAnalysis = () => {
       if (abortController.value) {
@@ -1014,7 +631,6 @@ export default {
     return {
       imageFile,
       imagePreview,
-      imageDetails,
       isLoading,
       analysisResult,
       searchResults,
@@ -1022,20 +638,16 @@ export default {
       statusMessage,
       statusClass,
       fileInput,
-      loadingPhase, // 추가된 상태
-      analysisDuration, // 추가된 상태
-      searchDuration, // 추가된 상태
+      loadingPhase,
+      analysisDuration,
+      searchDuration,
       triggerFileInput,
       handleFileChange,
-      onLocationSelected,
       analyzeCurrentImage,
       reset,
-      saveToElasticsearchHandler,
-      searchSimilarHandler,
       getDimensionHeader,
       dimensionResults,
-      locationSearchRef, // LocationSearch 컴포넌트 참조 노출
-      cancelAnalysis // cancelAnalysis 함수 노출
+      cancelAnalysis
     };
   }
 };
@@ -1331,7 +943,7 @@ export default {
   background-color: transparent;
 }
 
-.loading-spinner {
+.spinner {
   width: 50px;
   height: 50px;
   border: 3px solid rgba(13, 110, 253, 0.3);
@@ -1339,6 +951,35 @@ export default {
   border-top-color: #0d6efd;
   animation: spin 1s ease-in-out infinite;
   margin-bottom: 1.5rem;
+}
+
+/* 분석 시간 정보 스타일 */
+.analysis-timing {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+}
+
+.timing-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.timing-item:last-child {
+  margin-bottom: 0;
+}
+
+.timing-label {
+  font-size: 0.9rem;
+  color: #6c757d;
+}
+
+.timing-value {
+  font-weight: 600;
+  color: #0d6efd;
 }
 
 @keyframes spin {
@@ -1555,51 +1196,15 @@ export default {
 
 /* 이미지 정보 입력 */
 .form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
+  display: none;
 }
 
 .form-group {
-  margin-bottom: 1rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: #495057;
-}
-
-.form-group input,
-.form-group textarea {
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  background-color: white;
-  color: #333;
-}
-
-.form-group input:focus,
-.form-group textarea:focus {
-  border-color: #86b7fe;
-  outline: 0;
-  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-}
-
-.form-group textarea {
-  min-height: 100px;
-  resize: vertical;
+  display: none;
 }
 
 .form-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 1rem;
-  grid-column: span 2;
+  display: none;
 }
 
 .status-message {
@@ -1704,6 +1309,33 @@ export default {
   .results-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* 결과 카드의 이미지 설명 스타일 */
+.result-description {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.description-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 0.25rem;
+}
+
+.description-text {
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin: 0;
+  line-height: 1.4;
+  max-height: 4.2em; /* 3줄로 제한 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
 }
 /* --- src/styles/LogoSearch.css 내용 끝 --- */
 </style>
