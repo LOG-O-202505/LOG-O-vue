@@ -50,11 +50,6 @@
 
         <p class="korean-subtitle" :class="{ visible: isLoaded }">여행의 가장 아름다운 순간을 계획하고 기록합니다</p>
 
-        <div class="cta-container" :class="{ visible: isLoaded }">
-          <a href="/llamasearch" class="cta-button" :class="{ visible: isLoaded }">
-            여행 검색 시작하기
-          </a>
-        </div>
       </div>
 
       <!-- Scroll indicator -->
@@ -828,7 +823,7 @@ body {
   font-family: 'Dancing Script', cursive;
   font-size: 7rem;
   font-weight: 700;
-  margin-bottom: 0.5rem;
+  margin-bottom: 2.5rem;
   line-height: 1.2;
   display: block;
   opacity: 0;
@@ -875,34 +870,6 @@ body {
 .cta-container.visible {
   opacity: 1;
   transform: translateY(0);
-}
-
-.cta-button {
-  display: inline-block;
-  background-color: transparent;
-  color: white;
-  padding: 1rem 2.5rem;
-  border-radius: 0;
-  font-weight: 500;
-  font-size: 1.1rem;
-  text-decoration: none;
-  transition: all 0.3s ease;
-  border: 1px solid white;
-  font-family: 'Cormorant Garamond', serif;
-  letter-spacing: 1px;
-  opacity: 0;
-  transform: translateY(20px);
-  transition: all 0.8s ease-out 0.4s;
-}
-
-.cta-button.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.cta-button:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  transform: translateY(-3px);
 }
 
 /* Location info styles */
