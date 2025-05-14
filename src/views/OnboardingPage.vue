@@ -1,227 +1,395 @@
 <template>
   <div class="onboarding">
-    <!-- 배경 컨테이너 -->
+    <!-- Background container -->
     <div class="background-container">
       <div class="overlay"></div>
-      
-      <!-- 비디오가 사용 가능한 경우 -->
-      <template v-if="isVideoAvailable">
-        <video 
-          ref="backgroundVideo" 
-          class="background-video" 
-          autoplay 
-          muted 
-          loop 
-          playsinline
-          @loadeddata="handleVideoLoaded"
-          @error="handleVideoError"
-        >
-          <!-- WebM 파일만 사용 -->
-          <source :src="currentVideoSrc + '.webm'" type="video/webm">
-          비디오를 재생할 수 없습니다.
-        </video>
-      </template>
-      
-      <!-- 비디오가 사용 불가능한 경우 정적 배경 이미지 표시 -->
-      <template v-else>
-        <div class="static-background animated-bg"></div>
-      </template>
+
+      <video
+        v-if="isVideoAvailable"
+        ref="backgroundVideoRef"
+        class="background-video"
+        autoplay
+        muted
+        loop
+        playsinline
+        @error="handleVideoError"
+      >
+        <source :src="`${currentVideoSrc}.webm`" type="video/webm" />
+        비디오를 재생할 수 없습니다.
+      </video>
+      <div v-else class="static-background animated-bg"></div>
     </div>
-    
-     <!-- 상단 네비게이션 바 -->
-     <nav class="navbar">
+
+    <!-- Navigation bar -->
+    <nav class="navbar" :class="{ scrolled: isScrolled }">
       <div class="navbar-container">
         <div class="nav-group">
-          <router-link to="/lookAround" class="nav-item">HOT PLACE</router-link>
-          <router-link to="/llamasearch" class="nav-item">SEARCH</router-link>
-          <router-link to="/keyword" class="nav-item">KEYWORD</router-link>
+          <a href="/lookAround" class="nav-item">HOT PLACE</a>
+          <a href="/llamasearch" class="nav-item">SEARCH</a>
+          <a href="/keyword" class="nav-item">KEYWORD</a>
         </div>
-        
+
         <div class="nav-center">
-          <router-link to="/" class="logo-text">LOG:O</router-link>
+          <a href="/" class="logo-text">LOG:O</a>
         </div>
-        
+
         <div class="nav-group">
-          <router-link to="/imgsearch" class="nav-item">IMG SEARCH</router-link>
-          <router-link to="/plan" class="nav-item">PLANNER</router-link>
-          <router-link to="/mytravel" class="nav-item">MY JOURNEY</router-link>
-      </div>
+          <a href="/imgsearch" class="nav-item">IMG SEARCH</a>
+          <a href="/plan" class="nav-item">PLANNER</a>
+          <a href="/mytravel" class="nav-item">MY JOURNEY</a>
+        </div>
       </div>
     </nav>
-    
-    <!-- 메인 콘텐츠 -->
+
+    <!-- Main content -->
     <main class="onboarding-content">
       <div class="hero-section">
         <h1 class="main-title">
-          <span class="travel-title">Log Your Travel</span>
+          <span class="travel-title" :class="{ visible: isLoaded }">Log Your Travel</span>
         </h1>
-        
-        <p class="korean-subtitle">
-          여행의 가장 아름다운 순간을 계획하고 기록합니다
-        </p>
-        
-        <div class="cta-container">
-          <router-link to="/llamasearch" class="cta-button">
+
+        <p class="korean-subtitle" :class="{ visible: isLoaded }">여행의 가장 아름다운 순간을 계획하고 기록합니다</p>
+
+        <div class="cta-container" :class="{ visible: isLoaded }">
+          <a href="/llamasearch" class="cta-button" :class="{ visible: isLoaded }">
             여행 검색 시작하기
-          </router-link>
+          </a>
         </div>
       </div>
-      
-      <!-- 스크롤 인디케이터 -->
+
+      <!-- Scroll indicator -->
       <div class="scroll-indicator"></div>
-      
-      <!-- 위치 정보 -->
+
+      <!-- Location info -->
       <div class="location-info">
         <span class="location-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-            <circle cx="12" cy="10" r="3"></circle>
-          </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
         </span>
         <span class="location-text">{{ currentLocation }}</span>
       </div>
     </main>
-    
-    <!-- 서비스 기능 소개 섹션 -->
-    <section class="features-section" id="features">
-      <div class="section-content">
-        <h2 class="section-title">LOG:O와 함께하는 여행 경험</h2>
-        <p class="section-description">여행의 모든 단계를 더 스마트하고 즐겁게 만들어드립니다</p>
-        
-        <!-- 기능 1: 핫플레이스 -->
-        <div class="feature-card" ref="featureCard1">
-          <div class="feature-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-              <circle cx="12" cy="10" r="3"></circle>
-            </svg>
+
+    <!-- Features section - New Design -->
+    <section class="features-container">
+      <div class="features-intro">
+        <h2 class="features-title">LOG:O와 함께하는 여행 경험</h2>
+        <p class="features-subtitle">여행의 모든 단계를 더 스마트하고 즐겁게 만들어드립니다</p>
+      </div>
+
+      <!-- Feature 1: Hot Places - Text Left, Image Right -->
+      <div class="feature-section" ref="featureSection1Ref" :class="{ visible: visibleSections.section1 }">
+        <div class="feature-content">
+          <div class="feature-tag">핫플레이스 서비스</div>
+          <h3 class="feature-heading">
+            한눈에 핫플레이스
+            <br />
+            조회로 여행 계획
+          </h3>
+          <p class="feature-description">
+            사용자가 실제 방문한 후 인증을 거친 별점과 인증 횟수를 기반으로 D3.js를 활용한 인터랙티브 지도를 통해
+            한눈에 가장 핫한 여행지를 조회할 수 있습니다. 실시간으로 업데이트되는 인기 여행지 정보로 최신 트렌드를
+            놓치지 마세요.
+          </p>
+          <div class="tech-tags">
+            <span class="tech-tag">D3.js</span>
+            <span class="tech-tag">실시간 데이터</span>
+            <span class="tech-tag">위치 기반</span>
           </div>
-          <div class="feature-content">
-            <h3 class="feature-title">한눈에 핫플레이스 조회</h3>
-            <p class="feature-description">
-              전국 각지의 인기 여행지를 한눈에 살펴보세요. 다양한 카테고리와 지역별 필터링으로 원하는 핫플레이스를 쉽고 빠르게 찾아볼 수 있습니다.
-            </p>
-            <router-link to="/lookAround" class="feature-link">
-              핫플레이스 살펴보기
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-            </router-link>
+          <a href="/lookAround" class="feature-link">
+            핫플레이스 살펴보기
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feature-arrow"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </a>
+        </div>
+        <div class="feature-device laptop-mockup">
+          <div class="device-frame">
+            <div class="mockup-content hotplace-mockup">
+              <div class="mockup-map">
+                <img
+                  src="/img/seoul_hotplace.png"
+                  alt="대한민국 핫플레이스 지도"
+                  width="450"
+                  height="300"
+                  class="korea-map"
+                />
+              </div>
+              <div class="mockup-caption">대한민국 시도별 핫플레이스 한눈에 보기</div>
+            </div>
           </div>
         </div>
-        
-        <!-- 기능 2: AI 이미지 기반 여행지 추천 -->
-        <div class="feature-card reverse" ref="featureCard2">
-          <div class="feature-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-              <circle cx="8.5" cy="8.5" r="1.5"></circle>
-              <polyline points="21 15 16 10 5 21"></polyline>
-            </svg>
-          </div>
-          <div class="feature-content">
-            <h3 class="feature-title">AI 이미지 기반 여행지 추천</h3>
-            <p class="feature-description">
-              원하는 분위기의 이미지를 업로드하면 Llama와 Llava AI가 이미지를 분석하여 유사한 분위기의 여행지를 추천해드립니다. 당신의 취향에 딱 맞는 새로운 여행지를 발견하세요.
-            </p>
-            <router-link to="/LogoSearch" class="feature-link">
-              이미지로 여행지 찾기
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-            </router-link>
-          </div>
-        </div>
-        
-        <!-- 기능 3: ElasticSearch 기반 검색 -->
-        <div class="feature-card" ref="featureCard3">
-          <div class="feature-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-          </div>
-          <div class="feature-content">
-            <h3 class="feature-title">스마트한 여행지 검색</h3>
-            <p class="feature-description">
-              딱딱한 검색은 이제 그만! ElasticSearch를 활용한 직관적이고 자연스러운 검색으로 원하는 여행지를 쉽게 찾아보세요. 키워드와 태그를 기반으로 쉽고 빠르게 검색합니다.
-            </p>
-            <router-link to="/keyword" class="feature-link">
-              키워드로 검색하기
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-            </router-link>
+      </div>
+
+      <!-- Feature 2: AI Image Search - Image Left, Text Right -->
+      <div class="feature-section" ref="featureSection2Ref" :class="{ visible: visibleSections.section2 }">
+        <div class="feature-device tablet-mockup">
+          <div class="device-frame">
+            <div class="mockup-content ai-mockup">
+              <div class="mockup-title">이미지 기반 AI 여행지 추천</div>
+              <div class="mockup-ai-logos">
+                <div class="ai-logo-container">
+                  <img
+                    src="/img/llava-color.png"
+                    alt="Llava 마스코트"
+                    width="100"
+                    height="100"
+                    style="background-color: white;"
+                    class="ai-logo"
+                  />
+                  <div class="ai-name">Llava</div>
+                </div>
+                <div class="plus-container">
+                  <div class="plus-circle">+</div>
+                </div>
+                <div class="ai-logo-container">
+                  <img
+                    src="/img/ollama.png"
+                    alt="Llama 마스코트"
+                    width="100"
+                    height="100"
+                    style="background-color: white;"
+                    class="ai-logo"
+                  />
+                  <div class="ai-name">Llama</div>
+                </div>
+              </div>
+              <div class="mockup-caption">두 AI의 결합으로 정확한 이미지 분석과 여행지 추천</div>
+            </div>
           </div>
         </div>
-        
-        <!-- 기능 4: 일정 및 소비 관리 -->
-        <div class="feature-card reverse" ref="featureCard4">
-          <div class="feature-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-              <line x1="16" y1="2" x2="16" y2="6"></line>
-              <line x1="8" y1="2" x2="8" y2="6"></line>
-              <line x1="3" y1="10" x2="21" y2="10"></line>
-            </svg>
+        <div class="feature-content">
+          <div class="feature-tag">AI 검색 서비스</div>
+          <h3 class="feature-heading">
+            이미지 기반 AI
+            <br />
+            여행지 추천
+          </h3>
+          <p class="feature-description">
+            원하는 분위기의 이미지를 업로드하면 Llava와 Llama AI가 이미지를 분석하여 ElasticSearch를 통해 유사한
+            분위기의 여행지를 추천해드립니다. 텍스트로 설명하기 어려운 여행지의 분위기도 이미지 한 장으로 찾을 수 있는
+            혁신적인 서비스입니다.
+          </p>
+          <div class="tech-tags">
+            <span class="tech-tag">Llava</span>
+            <span class="tech-tag">Llama</span>
+            <span class="tech-tag">ElasticSearch</span>
           </div>
-          <div class="feature-content">
-            <h3 class="feature-title">스마트한 일정 및 소비 관리</h3>
-            <p class="feature-description">
-              일정관리를 한눈에! 소비 관리도 AI를 이용해서 결제 내역이나 영수증을 업로드하면 자동으로 지출 내역이 관리됩니다. 여행 계획부터 예산 관리까지 모두 한곳에서 해결하세요.
-            </p>
-            <router-link to="/plan" class="feature-link">
-              여행 계획 세우기
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-            </router-link>
+          <a href="/LogoSearch" class="feature-link">
+            이미지로 여행지 찾기
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feature-arrow"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </a>
+        </div>
+      </div>
+
+      <!-- Feature 3: ElasticSearch - Text Left, Image Right -->
+      <div class="feature-section" ref="featureSection3Ref" :class="{ visible: visibleSections.section3 }">
+        <div class="feature-content">
+          <div class="feature-tag">키워드 검색</div>
+          <h3 class="feature-heading">
+            스마트한 여행지
+            <br />
+            검색 기능
+          </h3>
+          <p class="feature-description">
+            ElasticSearch를 활용한 직관적이고 자연스러운 검색으로 키워드, 여행지 이름, 설명, 후기 등을 한번에 검색할
+            수 있습니다. 정확한 검색어를 몰라도 연관 검색과 자동 완성 기능으로 원하는 여행지를 쉽고 빠르게 찾아보세요.
+          </p>
+          <div class="tech-tags">
+            <span class="tech-tag">ElasticSearch</span>
+            <span class="tech-tag">자연어 처리</span>
+            <span class="tech-tag">통합 검색</span>
+          </div>
+          <a href="/keyword" class="feature-link">
+            키워드로 검색하기
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feature-arrow"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </a>
+        </div>
+        <div class="feature-device laptop-mockup">
+          <div class="device-frame">
+            <div class="mockup-content search-mockup">
+              <div class="mockup-logos">
+                <img
+                  src="/img/elasticsearch.png"
+                  alt="ElasticSearch 로고"
+                  width="80"
+                  height="80"
+                  style="background-color: white;"
+                  class="tech-logo"
+                />
+                <span class="plus-icon">+</span>
+                <img
+                  src="/img/ollama.png"
+                  alt="Llama 로고"
+                  width="80"
+                  height="80"
+                  style="background-color: white;"
+                  class="tech-logo"
+                />
+              </div>
+              <div class="mockup-search-flow">
+                <div class="flow-item">
+                  <div class="flow-title">키워드 추출</div>
+                  <div class="flow-arrow">↓</div>
+                </div>
+                <div class="flow-item">
+                  <div class="flow-title">장소 설명 분석</div>
+                  <div class="flow-arrow">↓</div>
+                </div>
+                <div class="flow-item">
+                  <div class="flow-title">통합 검색 결과</div>
+                </div>
+              </div>
+              <div class="mockup-caption">Llama로 추출한 키워드와 장소 설명 기반 ElasticSearch 검색</div>
+            </div>
           </div>
         </div>
-        
-        <!-- 기능 5: 나만의 여행 기록 -->
-        <div class="feature-card" ref="featureCard5">
-          <div class="feature-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-              <polyline points="9 22 9 12 15 12 15 22"></polyline>
-            </svg>
+      </div>
+
+      <!-- Feature 4: Schedule and Budget - Image Left, Text Right -->
+      <div class="feature-section" ref="featureSection4Ref" :class="{ visible: visibleSections.section4 }">
+        <div class="feature-device tablet-mockup">
+          <div class="device-frame">
+            <div class="mockup-content budget-mockup">
+              <div class="mockup-title">영수증 자동 분석</div>
+              <div class="mockup-process">
+                <div class="process-item">
+                  <img
+                    src="/img/ocr.png"
+                    alt="OCR 아이콘"
+                    width="100"
+                    height="80"
+                    style="background-color: white;"
+                    class="process-icon"
+                  />
+                  <div class="process-name">OCR 텍스트 추출</div>
+                </div>
+                <div class="process-arrow">→</div>
+                <div class="process-item">
+                  <img
+                    src="/img/ollama.png"
+                    alt="Llama 아이콘"
+                    width="80"
+                    height="80"
+                    style="background-color: white;"
+                    class="process-icon"
+                  />
+                  <div class="process-name">Llama 분석</div>
+                </div>
+              </div>
+              <div class="mockup-result">
+                <div class="result-title">자동 분류된 지출 내역</div>
+                <div class="result-items">
+                  <div class="result-item">
+                    <span class="item-category">식비</span>
+                    <span class="item-amount">₩25,000</span>
+                  </div>
+                  <div class="result-item">
+                    <span class="item-category">교통비</span>
+                    <span class="item-amount">₩12,500</span>
+                  </div>
+                  <div class="result-item">
+                    <span class="item-category">관광</span>
+                    <span class="item-amount">₩30,000</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="feature-content">
-            <h3 class="feature-title">당신의 여행을 한눈에</h3>
-            <p class="feature-description">
-              나만의 여행 취향 분석과 실제 사진 기반 여행 인증을 통해 수집 욕구를 불러일으키는 전국 각지의 지도 모형 채우기! 당신의 여행 기록을 시각적으로 확인하고 공유하세요.
-            </p>
-            <router-link to="/mytravel" class="feature-link">
-              나의 여행 기록 보기
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-            </router-link>
+        </div>
+        <div class="feature-content">
+          <div class="feature-tag">일정 및 예산 관리</div>
+          <h3 class="feature-heading">
+            스마트한 일정 및<br />
+            소비 관리
+          </h3>
+          <p class="feature-description">
+            결제 내역과 영수증 사진을 찍으면 OCR과 Llama를 이용해서 소비 내역을 자동으로 관리할 수 있습니다. 또한 여행
+            일정을 실시간으로 거리 기반으로 인증하고 방문 후기를 남길 수 있습니다. 여행 계획부터 예산 관리까지 모두
+            한곳에서 해결하세요.
+          </p>
+          <div class="tech-tags">
+            <span class="tech-tag">OCR</span>
+            <span class="tech-tag">Llama</span>
+            <span class="tech-tag">위치 기반 인증</span>
+          </div>
+          <a href="/plan" class="feature-link">
+            여행 계획 세우기
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feature-arrow"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </a>
+        </div>
+      </div>
+
+      <!-- Feature 5: Travel Records - Text Left, Image Right -->
+      <div class="feature-section" ref="featureSection5Ref" :class="{ visible: visibleSections.section5 }">
+        <div class="feature-content">
+          <div class="feature-tag">여행 기록 관리</div>
+          <h3 class="feature-heading">
+            당신의 여행을
+            <br />
+            한눈에
+          </h3>
+          <p class="feature-description">
+            앞서 인증한 일정을 기반으로 한눈에 내가 어떤 여행지를 좋아하는지, 대한민국에서 어떤 여행지를 몇%
+            방문했는지 볼 수 있습니다. 나만의 여행 취향 분석과 실제 사진 기반 여행 인증을 통해 수집 욕구를
+            불러일으키는 전국 각지의 지도 모형 채우기! 당신의 여행 기록을 시각적으로 확인하고 공유하세요.
+          </p>
+          <div class="tech-tags">
+            <span class="tech-tag">데이터 시각화</span>
+            <span class="tech-tag">인터랙티브 지도</span>
+            <span class="tech-tag">여행 통계</span>
+          </div>
+          <a href="/mytravel" class="feature-link">
+            나의 여행 기록 보기
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feature-arrow"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </a>
+        </div>
+        <div class="feature-device laptop-mockup">
+          <div class="device-frame">
+            <div class="mockup-content travel-record-mockup">
+              <div class="mockup-header">
+                <div class="mockup-title">나의 여행 히스토리</div>
+                <div class="mockup-subtitle">대한민국 방문 지역: 39%</div>
+              </div>
+              <div class="mockup-images-container">
+                <div class="mockup-image">
+                  <img
+                    src="/img/mypage_map.png"
+                    alt="대한민국 방문 지도"
+                    width="450"
+                    height="200"
+                    class="korea-visited-map"
+                  />
+                </div>
+              </div>
+              <div class="mockup-stats">
+                <div class="stat-item">
+                  <div class="stat-label">방문 지역</div>
+                  <div class="stat-value">38곳</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-label">여행 일수</div>
+                  <div class="stat-value">143일</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-label">인증 횟수</div>
+                  <div class="stat-value">217회</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- 푸터 -->
+    <!-- Footer -->
     <footer class="onboarding-footer">
       <div class="social-links">
         <a href="#" class="social-link">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path>
-          </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-twitter"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
         </a>
         <a href="#" class="social-link">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-          </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-instagram"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
         </a>
         <a href="#" class="social-link">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
-          </svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-facebook"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
         </a>
       </div>
       <p class="copyright">© 2025 LOG:O - 당신의 여행을 기록하다</p>
@@ -229,286 +397,256 @@
   </div>
 </template>
 
-<script>
-import '../styles/animations.css';
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+<script setup>
+import { ref, onMounted, onUnmounted, reactive, computed, watch, nextTick } from 'vue'
 
-export default {
-  name: 'OnboardingPage',
-  
-  setup() {
-    // ---------- 동영상 파일 관련 ----------
-    // 동영상 파일 이름 (확장자 제외)
-    const videoNames = [
-      'videos/train',
-      'videos/river',
-      'videos/europe',
-      'videos/canyon',
-      'videos/city'
-    ];
-    
-    // 각 비디오 위치 정보 매핑
-    const videoLocations = {
-      'videos/train': 'Interlaken, Switzerland',
-      'videos/river': 'Bahamas',
-      'videos/europe': 'Arc de Triomphe, Paris, France',
-      'videos/canyon': 'Sedona, Arizona',
-      'videos/city': 'Seville Cathedral, Spain'
-    };
-    
-    // 비디오 존재 여부 확인 변수
-    const isVideoAvailable = ref(true);
-    
-    // 현재 재생 중인 비디오 인덱스
-    const currentVideoIndex = ref(0);
-    // 현재 재생 중인 비디오 및 위치 정보
-    const currentVideoName = computed(() => videoNames[currentVideoIndex.value]);
-    const currentVideoSrc = computed(() => videoNames[currentVideoIndex.value]);
-    const currentLocation = computed(() => videoLocations[videoNames[currentVideoIndex.value]] || '위치 정보 없음');
-    const backgroundVideo = ref(null);
-    
-    // 기능 카드 요소 참조
-    const featureCard1 = ref(null);
-    const featureCard2 = ref(null);
-    const featureCard3 = ref(null);
-    const featureCard4 = ref(null);
-    const featureCard5 = ref(null);
-    
-    // 자동 전환 타이머
-    let autoChangeTimer = null;
-    
-    // 비디오 로드 실패 시 처리하는 함수
-    const handleVideoLoadError = () => {
-      isVideoAvailable.value = false;
-      console.warn('비디오를 로드할 수 없어 정적 배경으로 전환합니다');
-    };
-    
-    // 비디오 경로 검증 함수
-    const checkVideoPaths = () => {
-      // webm 형식의 첫 번째 비디오 파일 존재 확인
-      fetch(videoNames[0] + '.webm')
-        .then(response => {
-          if (!response.ok) {
-            throw new Error('비디오 파일을 찾을 수 없습니다');
-          }
-          isVideoAvailable.value = true;
-        })
-        .catch(error => {
-          console.error('비디오 경로 검증 실패:', error);
-          handleVideoLoadError();
-        });
-    };
-    
-    // 다음 비디오로 자동 이동하는 함수 (사용자 조작 없음)
-    const moveToNextVideo = () => {
-      // 다음 인덱스 계산 (원형 큐 방식)
-      currentVideoIndex.value = (currentVideoIndex.value + 1) % videoNames.length;
-      changeVideo();
-    };
-    
-    // 비디오 재생 시도 함수
-    const tryPlayVideo = () => {
-      if (!backgroundVideo.value) {
-        console.warn('비디오 요소가 아직 로드되지 않았습니다');
-        return;
+// Video related state and refs
+const isVideoAvailable = ref(true)
+const currentVideoIndex = ref(0)
+const backgroundVideoRef = ref(null)
+const autoChangeTimerRef = ref(null)
+const isLoaded = ref(false)
+const isScrolled = ref(false)
+
+// Feature section refs for animation
+const featureSection1Ref = ref(null)
+const featureSection2Ref = ref(null)
+const featureSection3Ref = ref(null)
+const featureSection4Ref = ref(null)
+const featureSection5Ref = ref(null)
+
+// Track visible sections
+const visibleSections = reactive({
+  section1: false,
+  section2: false,
+  section3: false,
+  section4: false,
+  section5: false
+})
+
+// Video data
+const videoNames = ["videos/train", "videos/river", "videos/europe", "videos/canyon", "videos/city"]
+
+const videoLocations = {
+  "videos/train": "Interlaken, Switzerland",
+  "videos/river": "Bahamas",
+  "videos/europe": "Arc de Triomphe, Paris, France",
+  "videos/canyon": "Sedona, Arizona",
+  "videos/city": "Seville Cathedral, Spain",
+}
+
+const currentVideoSrc = computed(() => videoNames[currentVideoIndex.value])
+const currentLocation = computed(() => videoLocations[videoNames[currentVideoIndex.value]] || "위치 정보 없음")
+
+// Video handling functions
+const handleVideoLoadError = () => {
+  isVideoAvailable.value = false
+  console.warn("비디오를 로드할 수 없어 정적 배경으로 전환합니다")
+}
+
+const checkVideoPaths = () => {
+  fetch(videoNames[0] + ".webm")
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("비디오 파일을 찾을 수 없습니다")
       }
-      
-      try {
-        const playPromise = backgroundVideo.value.play();
-        
-        if (playPromise !== undefined) {
-          playPromise.catch(error => {
-            console.error('비디오 재생 오류:', error);
-            
-            // 자동 재생 정책 우회 - 사용자 인터랙션이 필요할 수 있음
-            const videoElement = backgroundVideo.value; // 현재 참조를 로컬 변수에 저장
-            
-            document.addEventListener('click', () => {
-              // 클릭 이벤트 발생 시 videoElement가 여전히 존재하는지 확인
-              if (videoElement && typeof videoElement.play === 'function') {
-                videoElement.play()
-                  .catch(e => console.warn('사용자 클릭 후에도 비디오 재생 실패:', e));
-              }
-            }, { once: true });
-          });
-        }
-      } catch (error) {
-        console.error('비디오 재생 시도 중 예외 발생:', error);
-      }
-    };
-    
-    // 동영상 변경 함수 (인덱스 변경 없이 현재 인덱스의 비디오 로드)
-    const changeVideo = () => {
-      // 페이드 아웃 효과 적용
-      if (backgroundVideo.value) {
-        backgroundVideo.value.classList.add('fade-out');
-      }
-      
-      // 짧은 지연 후 비디오 로드 및 재생 (페이드 아웃 효과 동안)
-      setTimeout(() => {
-        // 비디오 요소가 유효한지 확인 후 재설정 및 재생
-        if (backgroundVideo.value) {
-          try {
-            // 현재 비디오 일시 정지
-            backgroundVideo.value.pause();
-            
-            // 새 비디오 로드 후 재생
-            backgroundVideo.value.load();
-            tryPlayVideo();
-            
-            // 페이드 인 효과 적용
-            setTimeout(() => {
-              if (backgroundVideo.value) {
-                backgroundVideo.value.classList.remove('fade-out');
-              }
-            }, 50);
-          } catch (error) {
-            console.error('비디오 변경 중 오류:', error);
-          }
-        } else {
-          console.warn('비디오 요소가 없어 변경할 수 없습니다');
-        }
-      }, 300);
-      
-      // 자동 전환 타이머 재설정
-      resetAutoChangeTimer();
-    };
-    
-    // 자동 전환 타이머 설정 
-    const setupAutoChangeTimer = () => {
-      autoChangeTimer = setInterval(() => {
-        moveToNextVideo();
-      }, 6000); // 6초마다 자동 전환
-    };
-    
-    // 자동 전환 타이머 재설정
-    const resetAutoChangeTimer = () => {
-      if (autoChangeTimer) {
-        clearInterval(autoChangeTimer);
-      }
-      setupAutoChangeTimer();
-    };
-    
-    // 비디오 로드 완료 이벤트 핸들러
-    const handleVideoLoaded = () => {
-      console.log('비디오 로드 완료:', currentVideoName.value);
-    };
-    
-    // 비디오 로드 오류 이벤트 핸들러
-    const handleVideoError = (error) => {
-      console.error('비디오 로드 오류:', error);
-      // 오류 발생 시 다음 비디오로 이동 (계속 재생 유지)
-      moveToNextVideo();
-    };
-    
-    // Intersection Observer를 사용하여 요소가 화면에 나타날 때 애니메이션 적용
-    const setupIntersectionObserver = () => {
-      const options = {
-        root: null, // viewport를 root로 사용
-        rootMargin: '0px',
-        threshold: 0.1 // 10% 이상 보일 때 콜백 실행
-      };
-      
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('visible');
-            // 이미 표시된 요소는 관찰 중단
-            observer.unobserve(entry.target);
-          }
-        });
-      }, options);
-      
-      // 기능 카드 요소들 관찰 시작
-      const featureCards = [featureCard1.value, featureCard2.value, featureCard3.value, featureCard4.value, featureCard5.value];
-      featureCards.forEach(card => {
-        if (card) {
-          observer.observe(card);
-        }
-      });
-    };
-    
-    onMounted(() => {
-      // 비디오 경로 검증
-      checkVideoPaths();
-      
-      // 비디오 객체 설정 및 재생
-      if (backgroundVideo.value) {
-        // 비디오 이벤트 리스너 설정
-        backgroundVideo.value.addEventListener('loadeddata', handleVideoLoaded);
-        backgroundVideo.value.addEventListener('error', handleVideoError);
-        
-        // 비디오 실행 시도
-        tryPlayVideo();
-      }
-      
-      // 자동 전환 타이머 설정
-      setupAutoChangeTimer();
-      
-      // 페이지 로드 시 애니메이션 효과
-      document.querySelectorAll('.travel-title, .korean-subtitle, .cta-button').forEach((el, index) => {
-        setTimeout(() => {
-          el.classList.add('visible');
-        }, 300 + (index * 200));
-      });
-      
-      // 스크롤 시 네비게이션 바 스타일 변경
-      const navbar = document.querySelector('.navbar');
-      
-      const handleScroll = () => {
-        if (window.scrollY > 100) {
-          navbar.classList.add('scrolled');
-        } else {
-          navbar.classList.remove('scrolled');
-        }
-      };
-      
-      window.addEventListener('scroll', handleScroll);
-      
-      // 인터섹션 옵저버 설정 (요소가 화면에 나타날 때 애니메이션)
-      setupIntersectionObserver();
-      
-      // 컴포넌트 언마운트 시 이벤트 리스너와 타이머 제거
-      onBeforeUnmount(() => {
-        window.removeEventListener('scroll', handleScroll);
-        
-        // 자동 전환 타이머 정리
-        if (autoChangeTimer) {
-          clearInterval(autoChangeTimer);
-        }
-        
-        // 비디오 이벤트 리스너 제거
-        if (backgroundVideo.value) {
-          backgroundVideo.value.removeEventListener('loadeddata', handleVideoLoaded);
-          backgroundVideo.value.removeEventListener('error', handleVideoError);
-        }
-      });
-    });
-    
-    return {
-      backgroundVideo,
-      currentVideoSrc,
-      currentVideoName,
-      currentLocation,
-      isVideoAvailable,
-      videoNames,
-      changeVideo,
-      moveToNextVideo,
-      handleVideoLoaded,
-      handleVideoError,
-      featureCard1,
-      featureCard2,
-      featureCard3,
-      featureCard4,
-      featureCard5
-    };
+      isVideoAvailable.value = true
+    })
+    .catch((error) => {
+      console.error("비디오 경로 검증 실패:", error)
+      handleVideoLoadError()
+    })
+}
+
+const tryPlayVideo = () => {
+  if (!backgroundVideoRef.value) {
+    console.warn("비디오 요소가 아직 로드되지 않았습니다")
+    return
+  }
+
+  try {
+    const playPromise = backgroundVideoRef.value.play()
+
+    if (playPromise !== undefined) {
+      playPromise.catch((error) => {
+        console.error("비디오 재생 오류:", error)
+
+        // 자동 재생 정책 우회 - 사용자 인터랙션이 필요할 수 있음
+        const videoElement = backgroundVideoRef.value
+
+        document.addEventListener(
+          "click",
+          () => {
+            if (videoElement && typeof videoElement.play === "function") {
+              videoElement.play().catch((e) => console.warn("사용자 클릭 후에도 비디오 재생 실패:", e))
+            }
+          },
+          { once: true },
+        )
+      })
+    }
+  } catch (error) {
+    console.error("비디오 재생 시도 중 예외 발생:", error)
   }
 }
+
+const moveToNextVideo = () => {
+  currentVideoIndex.value = (currentVideoIndex.value + 1) % videoNames.length
+}
+
+const changeVideo = () => {
+  if (backgroundVideoRef.value) {
+    backgroundVideoRef.value.classList.add("fade-out")
+  }
+
+  setTimeout(() => {
+    if (backgroundVideoRef.value) {
+      try {
+        backgroundVideoRef.value.pause()
+        backgroundVideoRef.value.load()
+        tryPlayVideo()
+
+        setTimeout(() => {
+          if (backgroundVideoRef.value) {
+            backgroundVideoRef.value.classList.remove("fade-out")
+          }
+        }, 50)
+      } catch (error) {
+        console.error("비디오 변경 중 오류:", error)
+      }
+    } else {
+      console.warn("비디오 요소가 없어 변경할 수 없습니다")
+    }
+  }, 300)
+
+  resetAutoChangeTimer()
+}
+
+const setupAutoChangeTimer = () => {
+  autoChangeTimerRef.value = setInterval(() => {
+    moveToNextVideo()
+  }, 6000) // 6초마다 자동 전환
+}
+
+const resetAutoChangeTimer = () => {
+  if (autoChangeTimerRef.value) {
+    clearInterval(autoChangeTimerRef.value)
+  }
+  setupAutoChangeTimer()
+}
+
+const handleVideoLoaded = () => {
+  console.log("비디오 로드 완료:", currentVideoSrc.value)
+}
+
+const handleVideoError = (error) => {
+  console.error("비디오 로드 오류:", error)
+  moveToNextVideo()
+}
+
+// Setup intersection observer for animations
+const setupIntersectionObserver = () => {
+  const options = {
+    root: null,
+    rootMargin: "0px",
+    threshold: 0.1,
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        if (entry.target === featureSection1Ref.value) visibleSections.section1 = true
+        if (entry.target === featureSection2Ref.value) visibleSections.section2 = true
+        if (entry.target === featureSection3Ref.value) visibleSections.section3 = true
+        if (entry.target === featureSection4Ref.value) visibleSections.section4 = true
+        if (entry.target === featureSection5Ref.value) visibleSections.section5 = true
+        observer.unobserve(entry.target)
+      }
+    })
+  }, options)
+
+  const featureSections = [
+    featureSection1Ref.value,
+    featureSection2Ref.value,
+    featureSection3Ref.value,
+    featureSection4Ref.value,
+    featureSection5Ref.value,
+  ]
+
+  featureSections.forEach((section) => {
+    if (section) {
+      observer.observe(section)
+    }
+  })
+}
+
+// Handle scroll events
+const handleScroll = () => {
+  isScrolled.value = window.scrollY > 100
+}
+
+// Watch for video changes
+watch(currentVideoIndex, () => {
+  changeVideo()
+})
+
+// Lifecycle hooks
+onMounted(() => {
+  checkVideoPaths()
+
+  if (backgroundVideoRef.value) {
+    backgroundVideoRef.value.addEventListener("loadeddata", handleVideoLoaded)
+    backgroundVideoRef.value.addEventListener("error", handleVideoError)
+    tryPlayVideo()
+  }
+
+  setupAutoChangeTimer()
+
+  // Page load animations
+  setTimeout(() => {
+    isLoaded.value = true
+  }, 300)
+
+  // Scroll event for navbar
+  window.addEventListener("scroll", handleScroll)
+
+  // Setup intersection observer after DOM is ready
+  nextTick(() => {
+    setupIntersectionObserver()
+  })
+})
+
+onUnmounted(() => {
+  window.removeEventListener("scroll", handleScroll)
+
+  if (autoChangeTimerRef.value) {
+    clearInterval(autoChangeTimerRef.value)
+  }
+
+  if (backgroundVideoRef.value) {
+    backgroundVideoRef.value.removeEventListener("loadeddata", handleVideoLoaded)
+    backgroundVideoRef.value.removeEventListener("error", handleVideoError)
+  }
+})
 </script>
 
-<style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Cormorant+Garamond:wght@300;400;500;600;700&family=Dancing+Script:wght@400;500;600;700&family=Parisienne&family=Petit+Formal+Script&family=Playfair+Display:wght@400;500;600;700&family=Satisfy&display=swap');
+<style>
+/* Base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Cormorant Garamond', serif;
+  color: white;
+  overflow-x: hidden;
+}
+
+/* Onboarding styles */
 .onboarding {
   min-height: 100vh;
   position: relative;
@@ -517,7 +655,7 @@ export default {
   overflow-x: hidden;
 }
 
-/* 비디오 배경 스타일 */
+/* Video background styles */
 .background-container {
   position: fixed;
   top: 0;
@@ -538,7 +676,7 @@ export default {
   transition: opacity 0.8s ease-in-out;
 }
 
-/* 비디오 페이드 효과 */
+/* Video fade effect */
 .background-video.fade-out {
   opacity: 0.2;
 }
@@ -553,19 +691,19 @@ export default {
   z-index: 1;
 }
 
-/* 정적 배경 스타일 */
+/* Static background styles */
 .static-background {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: url('https://images.unsplash.com/photo-1465310477141-6fb93167a273?q=80&w=1470');
+  background-image: url("https://images.unsplash.com/photo-1465310477141-6fb93167a273?q=80&w=1470");
   background-size: cover;
   background-position: center;
 }
 
-/* 추가 애니메이션 효과 */
+/* Additional animation effects */
 .animated-bg {
   animation: kenburns 30s infinite alternate ease-in-out;
 }
@@ -579,7 +717,7 @@ export default {
   }
 }
 
-/* 네비게이션 바 스타일 */
+/* Navigation bar styles */
 .navbar {
   position: fixed;
   top: 0;
@@ -643,7 +781,7 @@ export default {
 }
 
 .nav-item::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: -5px;
   left: 0;
@@ -668,7 +806,7 @@ export default {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-/* 메인 콘텐츠 */
+/* Main content */
 .onboarding-content {
   display: flex;
   flex-direction: column;
@@ -684,13 +822,6 @@ export default {
 .hero-section {
   max-width: 800px;
   margin: 0 auto;
-  background: none !important;
-  background-image: none !important;
-}
-
-.main-title {
-  background: none !important;
-  background-image: none !important;
 }
 
 .travel-title {
@@ -705,8 +836,6 @@ export default {
   transition: all 0.8s ease-out;
   color: white;
   text-shadow: 0 4px 8px rgba(0, 0, 0, 0.8), 0 6px 20px rgba(0, 0, 0, 0.6);
-  background: none !important;
-  background-image: none !important;
 }
 
 .travel-title.visible {
@@ -726,8 +855,6 @@ export default {
   transition: all 0.8s ease-out 0.2s;
   color: rgba(255, 255, 255, 0.95);
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7), 0 4px 10px rgba(0, 0, 0, 0.5);
-  background: none !important;
-  background-image: none !important;
 }
 
 .korean-subtitle.visible {
@@ -778,7 +905,7 @@ export default {
   transform: translateY(-3px);
 }
 
-/* 위치 정보 스타일 */
+/* Location info styles */
 .location-info {
   position: absolute;
   bottom: 2rem;
@@ -825,7 +952,7 @@ export default {
   font-weight: 600;
 }
 
-/* 스크롤 인디케이터 애니메이션 */
+/* Scroll indicator animation */
 .scroll-indicator {
   position: absolute;
   bottom: 50px;
@@ -863,120 +990,159 @@ export default {
   }
 }
 
-/* 서비스 기능 소개 섹션 스타일 */
-.features-section {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* NEW FEATURES SECTION STYLES */
+.features-container {
+  background-color: #fff;
+  color: #333;
+  padding: 0;
   position: relative;
   z-index: 10;
-  padding: 8rem 2rem;
-  color: #333;
-  background-color: rgba(250, 250, 250, 0.95);
-  box-shadow: 0 0 50px 20px rgba(0, 0, 0, 0.1);
 }
 
-.section-content {
+.features-intro {
+  padding: 8rem 2rem 4rem;
+  text-align: center;
   max-width: 1200px;
   margin: 0 auto;
-  width: 100%;
 }
 
-.section-title {
-  text-align: center;
+.features-title {
   font-size: 2.5rem;
-  margin-bottom: 3rem;
-  color: #333;
-  position: relative;
   font-weight: 700;
+  margin-bottom: 1rem;
+  color: #333;
   font-family: 'Noto Sans KR', sans-serif;
 }
 
-.section-title::after {
-  content: '';
-  position: absolute;
-  bottom: -15px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 80px;
-  height: 4px;
-  background-color: #48b0e4;
-  border-radius: 2px;
-}
-
-.section-description {
-  text-align: center;
+.features-subtitle {
+  font-size: 1.2rem;
+  color: #666;
   max-width: 700px;
   margin: 0 auto 3rem;
-  color: #666;
-  font-size: 1.1rem;
-  line-height: 1.8;
+  line-height: 1.6;
   font-family: 'Noto Sans KR', sans-serif;
-  font-weight: 300;
 }
 
-.feature-card {
+/* Feature section styles */
+.feature-section {
   display: flex;
-  align-items: flex-start;
-  gap: 2rem;
-  margin-bottom: 6rem;
-  padding: 2rem;
-  background-color: white;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-  transition: all 0.8s ease;
+  align-items: center;
+  padding: 8rem 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  gap: 8rem; /* Increased spacing between content and device */
   position: relative;
-  overflow: hidden;
-  opacity: 0;
-  transform: translateY(50px);
 }
 
-.feature-card.visible {
+.feature-section:nth-child(odd) {
+  flex-direction: row;
+}
+
+.feature-section:nth-child(even) {
+  flex-direction: row-reverse;
+}
+
+.feature-section::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  height: 1px;
+  background-color: #eee;
+}
+
+.feature-section:last-of-type::after {
+  display: none;
+}
+
+.feature-content {
+  flex: 1.2; /* Increased text area */
+  padding: 2rem 0;
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.8s ease-out;
+}
+
+.feature-section.visible .feature-content {
   opacity: 1;
   transform: translateY(0);
 }
 
-.feature-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
-}
-
-.feature-card.reverse {
-  flex-direction: row-reverse;
-  background-color: rgba(240, 247, 255, 0.7);
-}
-
-.feature-icon {
-  width: 80px;
-  height: 80px;
-  min-width: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(72, 176, 228, 0.1);
-  border-radius: 50%;
-  color: #48b0e4;
-  margin-top: 0.5rem;
-}
-
-.feature-content {
+.feature-device {
   flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.8s ease-out 0.2s;
+  max-width: 500px; /* Limit the size of device mockups */
 }
 
-.feature-title {
-  margin: 0 0 1rem 0;
-  font-size: 1.5rem;
-  color: #2d3748;
+.feature-section.visible .feature-device {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.feature-tag {
+  display: inline-block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #4285f4;
+  margin-bottom: 1rem;
+  font-family: 'Noto Sans KR', sans-serif;
+  position: relative;
+  padding-left: 1rem;
+}
+
+.feature-tag::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #4285f4;
+}
+
+.feature-heading {
+  font-size: 2.5rem;
   font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: #333;
+  line-height: 1.2;
   font-family: 'Noto Sans KR', sans-serif;
 }
 
 .feature-description {
-  margin: 0 0 1.5rem 0;
-  font-size: 1rem;
+  font-size: 1.1rem;
   line-height: 1.7;
-  color: #4a5568;
+  color: #666;
+  margin-bottom: 1.5rem;
+  max-width: 90%;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+/* Tech tags */
+.tech-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.tech-tag {
+  display: inline-block;
+  padding: 0.3rem 0.8rem;
+  background-color: rgba(66, 133, 244, 0.1);
+  color: #4285f4;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
   font-family: 'Noto Sans KR', sans-serif;
 }
 
@@ -984,20 +1150,347 @@ export default {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  color: #48b0e4;
-  text-decoration: none;
+  color: #4285f4;
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 1rem;
+  text-decoration: none;
   transition: all 0.3s ease;
   font-family: 'Noto Sans KR', sans-serif;
 }
 
 .feature-link:hover {
-  color: #3283ad;
   gap: 0.8rem;
 }
 
-/* 푸터 */
+.feature-arrow {
+  transition: transform 0.3s ease;
+}
+
+.feature-link:hover .feature-arrow {
+  transform: translateX(3px);
+}
+
+/* Device mockups */
+.device-frame {
+  position: relative;
+  border-radius: 12px;
+  background-color: #f5f5f5;
+  padding: 20px;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.12);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  width: 100%;
+  max-width: 450px; /* Smaller device mockups */
+}
+
+/* Remove hover effect on device frames */
+.feature-device .device-frame {
+  transform: none;
+}
+
+.laptop-mockup .device-frame {
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
+  padding: 20px 20px 0;
+}
+
+.laptop-mockup .device-frame::after {
+  content: "";
+  position: absolute;
+  bottom: -20px;
+  left: -10%;
+  width: 120%;
+  height: 20px;
+  background-color: #e0e0e0;
+  border-radius: 0 0 8px 8px;
+}
+
+.tablet-mockup .device-frame {
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  max-width: 380px; /* Smaller tablet mockups */
+}
+
+.device-screen {
+  border-radius: 4px;
+  overflow: hidden;
+  width: 100%;
+  height: auto;
+}
+
+/* Mockup content styles */
+.mockup-content {
+  background-color: white;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+  color: #333;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+/* Hot Place Mockup */
+.hotplace-mockup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.mockup-map {
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.korea-map {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
+.mockup-caption {
+  font-size: 14px;
+  color: #666;
+  margin-top: 10px;
+}
+
+/* AI Mockup */
+.ai-mockup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.mockup-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.mockup-ai-logos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.ai-logo-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.ai-logo {
+  border-radius: 50%;
+  background-color: #f0f0f0;
+}
+
+.ai-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.plus-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.plus-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #4285f4;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+/* Search Mockup */
+.search-mockup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 25px;
+}
+
+.mockup-logos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+}
+
+.mockup-search-flow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.flow-item {
+  width: 100%;
+  text-align: center;
+}
+
+.flow-title {
+  background-color: #f0f0f0;
+  padding: 10px 15px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.flow-arrow {
+  font-size: 20px;
+  color: #4285f4;
+  margin: 5px 0;
+}
+
+/* Budget Mockup */
+.budget-mockup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.mockup-process {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.process-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.process-icon {
+  border-radius: 8px;
+  background-color: #f0f0f0;
+}
+
+.process-name {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.process-arrow {
+  color: #4285f4;
+  font-size: 20px;
+  margin: 0 5px;
+}
+
+.mockup-result {
+  width: 100%;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  padding: 15px;
+}
+
+.result-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.result-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.item-category {
+  font-weight: 500;
+}
+
+.item-amount {
+  color: #4285f4;
+  font-weight: 600;
+}
+
+/* Travel Record Mockup */
+.travel-record-mockup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.mockup-header {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.mockup-subtitle {
+  font-size: 14px;
+  color: #4285f4;
+  font-weight: 500;
+}
+
+/* New vertical layout for travel record images */
+.mockup-images-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: 100%;
+}
+
+.mockup-image {
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.korea-visited-map,
+.character-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 8px;
+}
+
+.mockup-stats {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+  margin-top: 20px;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #666;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #4285f4;
+}
+
+/* Footer */
 .onboarding-footer {
   display: flex;
   flex-direction: column;
@@ -1032,14 +1525,51 @@ export default {
   opacity: 0.7;
 }
 
-/* 반응형 스타일 */
+/* Responsive styles */
+@media (max-width: 1200px) {
+  .feature-section {
+    gap: 4rem;
+    padding: 6rem 2rem;
+  }
+}
+
+@media (max-width: 1024px) {
+  .feature-section,
+  .feature-section:nth-child(odd),
+  .feature-section:nth-child(even) {
+    flex-direction: column;
+    gap: 3rem;
+    padding: 5rem 2rem;
+  }
+
+  .feature-content {
+    text-align: center;
+  }
+
+  .feature-description {
+    max-width: 100%;
+  }
+
+  .tech-tags {
+    justify-content: center;
+  }
+
+  .feature-heading {
+    font-size: 2rem;
+  }
+
+  .device-frame {
+    max-width: 100%;
+  }
+}
+
 @media (max-width: 900px) {
   .navbar-container {
     flex-direction: column;
     gap: 1rem;
     padding: 0 1rem;
   }
-  
+
   .nav-center {
     position: relative;
     left: 0;
@@ -1047,35 +1577,18 @@ export default {
     margin-bottom: 1rem;
     order: -1;
   }
-  
+
   .nav-group {
     gap: 1.5rem;
     flex-wrap: wrap;
     justify-content: center;
   }
-  
+
   .travel-title {
     font-size: 4.5rem;
   }
-  
-  .korean-subtitle {
-    font-size: 1.3rem;
-  }
-}
 
-@media (max-width: 768px) {
-  .feature-card, .feature-card.reverse {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    padding: 1.5rem;
-  }
-  
-  .feature-icon {
-    margin-bottom: 1rem;
-  }
-  
-  .feature-title {
+  .korean-subtitle {
     font-size: 1.3rem;
   }
 }
@@ -1087,9 +1600,22 @@ export default {
     max-width: 300px;
     margin: 2rem auto 0;
   }
-  
+
   .travel-title {
     font-size: 2.5rem;
+  }
+
+  .feature-heading {
+    font-size: 1.8rem;
+  }
+
+  .mockup-process {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .process-arrow {
+    transform: rotate(90deg);
   }
 }
 </style>
