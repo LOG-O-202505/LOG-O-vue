@@ -208,7 +208,7 @@
       <p>© 2025 LOG:O - 당신의 여행을 기록하다</p>
     </footer>
 
-    <!-- 장소 상세 모달 -->
+    <!-- 장소 상세 모달 - 수정된 레이아웃 -->
     <div v-if="showDetailModal" class="modal-overlay" @click="closeDetailModal">
       <div class="place-detail-modal" @click.stop>
         <div class="modal-header">
@@ -235,53 +235,74 @@
             </button>
           </div>
         </div>
-
+                
         <div class="modal-content">
-          <div class="detail-left-section">
+          <!-- 이미지와 지도 섹션 (수평 레이아웃) -->
+          <div class="visual-section">
             <div class="detail-image-container">
               <img :src="`data:image/jpeg;base64,${selectedDetail.image_data}`" :alt="selectedDetail.image_name"
                 class="detail-image">
             </div>
-
-            <!-- 지도 영역 추가 -->
+                
+            <!-- 지도 영역 -->
             <div class="detail-map-container">
               <div id="detailMap" class="detail-map"></div>
             </div>
           </div>
-
-          <div class="detail-info">
-            <div class="detail-section">
-              <h4>위치 정보</h4>
-              <p>{{ selectedDetail.image_location }}</p>
+          
+          <!-- 태그 섹션 -->
+          <div class="detail-section" v-if="selectedDetail.image_tags && selectedDetail.image_tags.length > 0">
+            <h4>태그</h4>
+            <div class="tag-list">
+              <span v-for="(tag, index) in selectedDetail.image_tags" :key="index" class="tag">{{ tag }}</span>
             </div>
+          </div>
 
-            <div class="detail-section" v-if="selectedDetail.image_description">
-              <h4>설명</h4>
-              <p>{{ selectedDetail.image_description }}</p>
-            </div>
-
-            <div class="detail-section" v-if="selectedDetail.image_tags && selectedDetail.image_tags.length > 0">
-              <h4>태그</h4>
-              <div class="tag-list">
-                <span v-for="(tag, index) in selectedDetail.image_tags" :key="index" class="tag">{{ tag }}</span>
+          <!-- 설명 섹션 -->
+          <div class="detail-section" v-if="selectedDetail.image_description">
+            <h4>설명</h4>
+            <p class="detail-description">{{ selectedDetail.image_description }}</p>
+          </div>
+          
+          <!-- 특성 분석 섹션 -->
+          <div class="detail-section">
+            <h4>특성 분석</h4>
+            <div class="detail-dimensions">
+              <div v-for="(value, dimension) in dimensionResults" :key="dimension" class="dimension-item">
+                <span class="dimension-name">{{ getDimensionHeader(dimension) }}</span>
+                <div class="dimension-bar-small">
+                  <div class="dimension-fill" :style="{ width: `${value * 100}%` }"></div>
+                </div>
+                <span class="dimension-value">{{ value.toFixed(1) }}</span>
               </div>
             </div>
-
-            <div class="detail-section">
-              <h4>특성 분석</h4>
-              <div class="detail-dimensions">
-                <div v-for="(value, dimension) in dimensionResults" :key="dimension" class="dimension-item">
-                  <span class="dimension-name">{{ getDimensionHeader(dimension) }}</span>
-                  <div class="dimension-bar-small">
-                    <div class="dimension-fill" :style="{ width: `${value * 100}%` }"></div>
+          </div>
+          
+          <!-- 리뷰 섹션 (더미 데이터로 추가) -->
+          <div class="detail-section" v-if="selectedDetail.reviews && selectedDetail.reviews.length > 0">
+            <h4>방문자 리뷰 ({{ selectedDetail.reviews.length }})</h4>
+            <div class="reviews-container">
+              <div v-for="(review, index) in selectedDetail.reviews" :key="index" class="review-item">
+                <div class="review-header">
+                  <div class="reviewer-info">
+                    <div class="reviewer-name">{{ review.userName }}</div>
+                    <div class="review-date">{{ formatReviewDate(review.date) }}</div>
                   </div>
-                  <span class="dimension-value">{{ value.toFixed(1) }}</span>
+                  <div class="review-rating">
+                    <span v-for="star in 5" :key="star" 
+                      :class="{'star-filled': star <= review.rating, 'star-empty': star > review.rating}">
+                      ★
+                    </span>
+                  </div>
+                </div>
+                <div class="review-content">
+                  {{ review.comment }}
                 </div>
               </div>
             </div>
           </div>
         </div>
-
+    
         <div class="modal-footer">
           <button class="cancel-btn" @click="closeDetailModal">닫기</button>
         </div>
@@ -382,6 +403,38 @@ export default {
       return dimensionTranslations[dimension] || dimension;
     };
 
+    // 더미 리뷰 데이터
+    const dummyReviews = [
+      {
+        userName: "여행자김",
+        rating: 5,
+        date: "2025-03-15T09:30:00",
+        comment: "정말 아름다운 장소였습니다. 사진으로 보는 것보다 실제로 보면 훨씬 더 멋있어요. 특히 일몰 때 분위기가 환상적이었습니다."
+      },
+      {
+        userName: "배낭여행러",
+        rating: 4,
+        date: "2025-02-20T14:45:00",
+        comment: "전체적으로 좋은 경험이었습니다. 다만 주변에 음식점이 많지 않아서 식사 계획은 미리 세우는 것이 좋을 것 같아요."
+      },
+      {
+        userName: "사진작가이준",
+        rating: 5,
+        date: "2025-01-05T10:15:00",
+        comment: "사진 찍기에 최고의 장소입니다. 맑은 날 방문하시면 환상적인 풍경 사진을 얻을 수 있어요. 개인적으로는 아침 일찍 방문하는 것을 추천합니다."
+      }
+    ];
+
+    // 리뷰 날짜 포맷팅
+    const formatReviewDate = (dateString) => {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    };
+
     // 상태 메시지 및 클래스
     const statusMessage = computed(() => actionStatus.value.message || '');
     const statusClass = computed(() => {
@@ -473,11 +526,15 @@ export default {
 
     // 상세 모달 열기
     const openDetailModal = (result) => {
-      selectedDetail.value = {
+      // 리뷰 데이터 추가
+      const detailWithReviews = {
         _id: result._id,
         _score: result._score,
-        ...result._source
+        ...result._source,
+        reviews: dummyReviews
       };
+      
+      selectedDetail.value = detailWithReviews;
       showDetailModal.value = true;
 
       // 모달이 열린 후 지도 초기화를 위해 nextTick 사용
@@ -709,7 +766,7 @@ export default {
         showActionStatus("이미지를 먼저 분석해주세요.", "error");
         return;
       }
-
+      
       try {
         showActionStatus("유사한 이미지 검색 중...", "pending");
 
@@ -735,7 +792,7 @@ export default {
         console.error("검색 오류:", error);
       }
     };
-
+    
     // 상태 메시지 표시 함수
     const showActionStatus = (message, type) => {
       actionStatus.value = { message, type };
@@ -780,7 +837,8 @@ export default {
       closeDetailModal,
       isInWishlist,
       toggleWishlist,
-      initDetailMap
+      initDetailMap,
+      formatReviewDate
     };
   }
 };
@@ -1248,14 +1306,33 @@ export default {
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
 }
 
+.result-image-container {
+  height: 180px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.result-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.result-card:hover .result-image {
+  transform: scale(1.1);
+}
+
+/* 등수 아이콘 스타일 수정 - 중앙 정렬 개선 */
 .result-rank {
   position: absolute;
   top: 10px;
   right: 10px;
   display: flex;
   align-items: center;
+  justify-content: center; /* 컨텐츠 중앙 정렬 추가 */
   gap: 5px;
-  padding: 3px 10px 3px 6px;
+  padding: 3px 10px; /* 패딩 균일하게 조정 */
   background: linear-gradient(135deg, #0d6efd, #0a58ca);
   color: white;
   border-radius: 12px;
@@ -1265,9 +1342,20 @@ export default {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
 }
 
+/* with-heart 클래스 유지 */
 .result-rank.with-heart {
   padding-left: 10px;
   gap: 7px;
+}
+
+/* rank-number 클래스 수정 - 숫자 위치 중앙 정렬 */
+.rank-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 14px;
+  text-align: center;
+  line-height: 1; /* 줄 간격 조정으로 수직 정렬 개선 */
 }
 
 .heart-indicator {
@@ -1292,38 +1380,13 @@ export default {
   fill: #ff6b6b;
 }
 
-.rank-number {
-  min-width: 14px;
-  text-align: center;
-}
-
-.result-card:nth-child(1) .result-rank {
-  background: linear-gradient(135deg, #ffca2c, #ffab00);
-}
-
-.result-card:nth-child(2) .result-rank {
-  background: linear-gradient(135deg, #e0e0e0, #b0b0b0);
-}
-
-.result-card:nth-child(3) .result-rank {
-  background: linear-gradient(135deg, #d98936, #b0732f);
-}
-
-.result-image-container {
-  height: 180px;
-  width: 100%;
-  overflow: hidden;
-}
-
-.result-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.5s ease;
-}
-
-.result-card:hover .result-image {
-  transform: scale(1.1);
+@keyframes heartbeat {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
 }
 
 .result-info {
@@ -1360,6 +1423,7 @@ export default {
   gap: 0.5rem;
   font-size: 0.8rem;
   color: #6c757d;
+  margin-bottom: 0.5rem;
 }
 
 .similarity-bar {
@@ -1499,7 +1563,7 @@ export default {
   -webkit-box-orient: vertical;
 }
 
-/* 모달 오버레이 및 공통 모달 스타일 */
+/* 모달 오버레이 및 공통 모달 스타일 - 새로운 레이아웃 적용 */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -1518,8 +1582,8 @@ export default {
 .place-detail-modal {
   background-color: white;
   border-radius: 8px;
-  width: 90%;
-  max-width: 900px;
+  width: 95%;
+  max-width: 1500px;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
@@ -1528,22 +1592,36 @@ export default {
 }
 
 .modal-header {
+  display: flex;
   padding: 1.25rem 1.5rem;
   border-bottom: 1px solid #e2e8f0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   position: sticky;
   top: 0;
   background-color: white;
-  z-index: 1;
+  z-index: 10;
 }
 
-.modal-header h3 {
+.modal-title-location {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.modal-title-location h3 {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
   color: #2d3748;
+}
+
+.modal-location {
+  margin-left: 1.5rem;
+  color: #718096;
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
 }
 
 .modal-actions {
@@ -1593,136 +1671,182 @@ export default {
   animation: heartbeat 1s ease-in-out;
 }
 
-@keyframes heartbeat {
-
-  0%,
-  100% {
-    transform: scale(1);
-  }
-
-  50% {
-    transform: scale(1.2);
-  }
-}
-
+/* 모달 콘텐츠 영역 - 새로운 레이아웃 */
 .modal-content {
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  overflow-y: auto;
 }
 
-@media (min-width: 768px) {
-  .modal-content {
-    flex-direction: row;
-  }
-}
-
-.detail-left-section {
-  flex: 1;
-  max-width: 100%;
-}
-
-@media (min-width: 768px) {
-  .detail-left-section {
-    max-width: 50%;
-  }
-}
-
-.detail-image-container {
-  max-width: 100%;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-  margin-bottom: 1rem;
-}
-
-.detail-map-container {
-  max-width: 100%;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-  margin-top: 1rem;
-}
-
-.detail-map {
-  width: 100%;
-  height: 300px;
-  /* 충분한 높이 확보 */
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.detail-info {
-  flex: 1;
+/* 이미지와 지도를 수평으로 나란히 배치 */
+.visual-section {
   display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
+  gap: 20px;
+  margin-bottom: 1.5rem;
 }
 
+.detail-image-container, .detail-map-container {
+  flex: 1;
+  height: 400px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.detail-image, .detail-map {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 각 섹션 스타일 */
 .detail-section {
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-radius: 8px;
+  background-color: #f8fafc;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .detail-section:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
+  margin-bottom: 0;
 }
 
 .detail-section h4 {
-  font-size: 1rem;
+  font-size: 1.2rem;
   font-weight: 600;
-  color: #4a5568;
-  margin: 0 0 0.75rem 0;
+  color: #2d3748;
+  margin: 0 0 1rem 0;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 0.5rem;
 }
 
+/* 태그 리스트 */
 .tag-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
 
 .tag {
   background-color: #ebf5ff;
   color: #3182ce;
-  font-size: 0.8rem;
-  padding: 0.25rem 0.75rem;
+  font-size: 0.9rem;
+  padding: 0.35rem 0.85rem;
   border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
+.tag:hover {
+  background-color: #3182ce;
+  color: white;
+}
+
+/* 설명 텍스트 */
+.detail-description {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #4a5568;
+  margin: 0;
+}
+
+/* 특성 분석 */
 .detail-dimensions {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .dimension-item {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
+}
+
+.dimension-name {
+  width: 140px;
+  font-size: 0.95rem;
+  color: #4a5568;
 }
 
 .dimension-bar-small {
   flex: 1;
-  height: 8px;
+  height: 10px;
   background-color: #e2e8f0;
-  border-radius: 4px;
+  border-radius: 5px;
   overflow: hidden;
 }
 
 .dimension-fill {
   height: 100%;
   background: linear-gradient(90deg, #3182ce, #63b3ed);
-  border-radius: 4px;
+  border-radius: 5px;
 }
 
 .dimension-value {
-  width: 30px;
-  font-size: 0.85rem;
+  width: 40px;
+  font-size: 0.9rem;
   font-weight: 600;
   color: #4a5568;
   text-align: right;
+}
+
+/* 리뷰 섹션 */
+.reviews-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.review-item {
+  padding: 1.25rem;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.reviewer-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.reviewer-name {
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 1rem;
+}
+
+.review-date {
+  font-size: 0.85rem;
+  color: #718096;
+}
+
+.review-rating {
+  color: #a0aec0;
+  font-size: 1.25rem;
+}
+
+.star-filled {
+  color: #f6ad55;
+}
+
+.star-empty {
+  color: #e2e8f0;
+}
+
+.review-content {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #4a5568;
 }
 
 .modal-footer {
@@ -1744,9 +1868,6 @@ export default {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
-}
-
-.cancel-btn {
   background-color: #fff;
   color: #4a5568;
   border: 1px solid #e2e8f0;
@@ -1756,194 +1877,128 @@ export default {
   background-color: #f7fafc;
 }
 
-.detail-image {
-  width: 100%;
-  height: 300px;
-  object-fit: cover;
-  border-radius: 8px;
+.result-card:nth-child(1) .result-rank {
+  background: linear-gradient(135deg, #ffca2c, #ffab00);
 }
 
-/* 반응형 스타일 */
-@media (max-width: 900px) {
+.result-card:nth-child(2) .result-rank {
+  background: linear-gradient(135deg, #e0e0e0, #b0b0b0);
+}
+
+.result-card:nth-child(3) .result-rank {
+  background: linear-gradient(135deg, #d98936, #b0732f);
+}
+
+/* 반응형 조정 */
+@media (max-width: 1100px) {
+  .visual-section {
+    flex-direction: column;
+  }
+  
+  .detail-image-container, 
+  .detail-map-container {
+    width: 100%;
+    height: 350px;
+  }
+  
+  .dimension-name {
+    width: 120px;
+  }
+}
+
+@media (max-width: 768px) {
+  .modal-title-location {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .modal-location {
+    margin: 0.25rem 0 0 0;
+  }
+  
+  .review-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .dimension-name {
+    width: 100px;
+    font-size: 0.85rem;
+  }
+}
+
+/* 반응형 디자인 */
+@media (max-width: 1024px) {
   .top-section {
     grid-template-columns: 1fr;
     gap: 1.5rem;
   }
-
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .form-actions {
-    grid-column: span 1;
-  }
-
-  .results-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  
+  .map-container {
+    margin-top: 1rem;
   }
 }
 
-@media (max-width: 600px) {
-  .content-wrapper {
-    padding: 1.5rem 1rem;
+@media (max-width: 768px) {
+  .form-row {
+    flex-direction: column;
+    gap: 0;
   }
-
-  .results-grid {
-    grid-template-columns: 1fr;
+  
+  .budget-summary {
+    flex-direction: column;
+  }
+  
+  .schedule-item, .expense-item {
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+  }
+  
+  .time-column, .activity-column, .location-column,
+  .expense-category, .expense-description, .expense-amount {
+    width: 100%;
+  }
+  
+  .action-column {
+    width: 100%;
+    justify-content: flex-end;
   }
 }
 
-/* 모달 전체 크기 조정 */
-.place-detail-modal {
-  max-width: 1200px;
-  /* 모달 전체 너비 크게 증가 */
-  width: 95%;
-  max-height: 85vh;
-  /* 화면 높이의 85%로 제한 */
+@media (max-width: 480px) {
+  .dimension-item {
+    flex-wrap: wrap;
+  }
+  
+  .dimension-name {
+    width: 100%;
+    margin-bottom: 0.25rem;
+  }
+  
+  .dimension-value {
+    width: 40px;
+  }
 }
 
-/* 모달 헤더 레이아웃 개선 - 제목과 위치 정보 표시를 위한 레이아웃 */
-.modal-header {
-  display: flex;
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
-  position: sticky;
-  top: 0;
-  background-color: white;
-  z-index: 10;
-}
-
-/* 제목과 위치 정보 컨테이너 */
-.modal-title-location {
-  display: flex;
-  align-items: center;
-  flex: 1;
-}
-
-/* 모달 제목 */
-.modal-title-location h3 {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #2d3748;
-}
-
-/* 위치 정보 스타일 */
-.modal-location {
-  margin-left: 1.5rem;
-  color: #718096;
-  font-size: 1rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 300px;
-}
-
-/* 모달 콘텐츠 영역 개선 */
-.modal-content {
-  padding: 1.5rem;
+.no-results {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-}
-
-/* 왼쪽 섹션 (이미지+지도) 개선 */
-.detail-left-section {
-  display: flex;
-  flex-direction: column;
-  height: auto;
-  gap: 15px;
-  /* 사진과 지도 사이 간격 추가 */
   align-items: center;
-  /* 중앙 정렬 */
+  justify-content: center;
+  padding: 2rem;
+  color: #a0aec0;
+  text-align: center;
 }
 
-/* 이미지 컨테이너 - 1:1 비율로 설정 */
-.detail-image-container {
-  width: 350px;
-  /* 고정 너비 */
-  height: 350px;
-  /* 고정 높이 - 너비와 동일하게 설정 */
-  overflow: hidden;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  aspect-ratio: 1/1;
-  /* 1:1 비율 강제 */
+.no-results p {
+  margin: 0.5rem 0;
+  font-size: 1.1rem;
 }
 
-/* 이미지 */
-.detail-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* 지도 컨테이너 - 1:1 비율로 설정 */
-.detail-map-container {
-  width: 350px;
-  /* 이미지와 동일한 너비 */
-  height: 350px;
-  /* 이미지와 동일한 높이 */
-  position: relative;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  aspect-ratio: 1/1;
-  /* 1:1 비율 강제 */
-}
-
-/* 지도 요소 */
-.detail-map {
-  width: 100%;
-  height: 100%;
-}
-
-/* 오른쪽 텍스트 영역 너비 증가 */
-@media (min-width: 768px) {
-  .modal-content {
-    flex-direction: row;
-    align-items: flex-start;
-    gap: 1.5rem;
-  }
-
-  .detail-left-section {
-    width: 35%;
-    /* 전체 너비의 35%로 줄임 */
-    flex-shrink: 0;
-  }
-
-  .detail-info {
-    flex: 1;
-    overflow-y: auto;
-    /* 내용이 많을 경우 스크롤 */
-    max-height: 750px;
-    /* 최대 높이 증가 */
-  }
-
-  /* 위치 정보 섹션 숨기기 (이미 헤더에 표시) */
-  .detail-section:first-child {
-    display: none;
-  }
-
-  /* 작은 화면에서 이미지/지도 크기 조정 */
-  @media (max-width: 1100px) {
-
-    .detail-image-container,
-    .detail-map-container {
-      width: 300px;
-      /* 작은 화면에서는 더 작게 */
-      height: 300px;
-    }
-  }
-
-  /* 더 작은 화면에서 이미지/지도 크기 조정 */
-  @media (max-width: 900px) {
-
-    .detail-image-container,
-    .detail-map-container {
-      width: 250px;
-      height: 250px;
-    }
-  }
+.no-results .hint {
+  font-size: 0.9rem;
+  color: #cbd5e0;
 }
 </style>

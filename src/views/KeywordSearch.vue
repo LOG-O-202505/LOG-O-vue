@@ -150,7 +150,7 @@
       <p>© 2025 LOG:O - 당신의 여행을 기록하다</p>
     </footer>
 
-    <!-- 장소 상세 모달 -->
+    <!-- 장소 상세 모달 - 수정된 레이아웃 -->
     <div v-if="showDetailModal" class="modal-overlay" @click="closeDetailModal">
       <div class="place-detail-modal" @click.stop>
         <div class="modal-header">
@@ -179,45 +179,66 @@
         </div>
                 
         <div class="modal-content">
-          <div class="detail-left-section">
+          <!-- 이미지와 지도 섹션 (수평 레이아웃) -->
+          <div class="visual-section">
             <div class="detail-image-container">
               <img :src="`data:image/jpeg;base64,${selectedDetail.image_data}`" :alt="selectedDetail.image_name"
                 class="detail-image">
             </div>
                 
-            <!-- 지도 영역 추가 -->
+            <!-- 지도 영역 -->
             <div class="detail-map-container">
               <div id="detailMap" class="detail-map"></div>
             </div>
           </div>
-              
-          <div class="detail-info">
-            <div class="detail-section">
-              <h4>위치 정보</h4>
-              <p>{{ selectedDetail.image_location }}</p>
+          
+          <!-- 태그 섹션 -->
+          <div class="detail-section" v-if="selectedDetail.image_tags && selectedDetail.image_tags.length > 0">
+            <h4>태그</h4>
+            <div class="tag-list">
+              <span v-for="(tag, index) in selectedDetail.image_tags" :key="index" class="tag" @click="applyKeyword(tag)">{{ tag }}</span>
             </div>
+          </div>
 
-            <div class="detail-section" v-if="selectedDetail.image_description">
-              <h4>설명</h4>
-              <p>{{ selectedDetail.image_description }}</p>
-            </div>
-
-            <div class="detail-section" v-if="selectedDetail.image_tags && selectedDetail.image_tags.length > 0">
-              <h4>태그</h4>
-              <div class="tag-list">
-                <span v-for="(tag, index) in selectedDetail.image_tags" :key="index" class="tag" @click="applyKeyword(tag)">{{ tag }}</span>
+          <!-- 설명 섹션 -->
+          <div class="detail-section" v-if="selectedDetail.image_description">
+            <h4>설명</h4>
+            <p class="detail-description">{{ selectedDetail.image_description }}</p>
+          </div>
+          
+          <!-- 특성 분석 섹션 -->
+          <div class="detail-section" v-if="selectedDetail.dimensions">
+            <h4>특성 분석</h4>
+            <div class="detail-dimensions">
+              <div v-for="(value, dimension) in selectedDetail.dimensions" :key="dimension" class="dimension-item">
+                <span class="dimension-name">{{ getDimensionHeader(dimension) }}</span>
+                <div class="dimension-bar-small">
+                  <div class="dimension-fill" :style="{ width: `${value * 100}%` }"></div>
+                </div>
+                <span class="dimension-value">{{ value.toFixed(1) }}</span>
               </div>
             </div>
-            
-            <div class="detail-section" v-if="selectedDetail.dimensions">
-              <h4>특성 분석</h4>
-              <div class="detail-dimensions">
-                <div v-for="(value, dimension) in selectedDetail.dimensions" :key="dimension" class="dimension-item">
-                  <span class="dimension-name">{{ getDimensionHeader(dimension) }}</span>
-                  <div class="dimension-bar-small">
-                    <div class="dimension-fill" :style="{ width: `${value * 100}%` }"></div>
+          </div>
+          
+          <!-- 리뷰 섹션 (더미 데이터로 추가) -->
+          <div class="detail-section" v-if="selectedDetail.reviews && selectedDetail.reviews.length > 0">
+            <h4>방문자 리뷰 ({{ selectedDetail.reviews.length }})</h4>
+            <div class="reviews-container">
+              <div v-for="(review, index) in selectedDetail.reviews" :key="index" class="review-item">
+                <div class="review-header">
+                  <div class="reviewer-info">
+                    <div class="reviewer-name">{{ review.userName }}</div>
+                    <div class="review-date">{{ formatReviewDate(review.date) }}</div>
                   </div>
-                  <span class="dimension-value">{{ value.toFixed(1) }}</span>
+                  <div class="review-rating">
+                    <span v-for="star in 5" :key="star" 
+                      :class="{'star-filled': star <= review.rating, 'star-empty': star > review.rating}">
+                      ★
+                    </span>
+                  </div>
+                </div>
+                <div class="review-content">
+                  {{ review.comment }}
                 </div>
               </div>
             </div>
@@ -260,6 +281,28 @@ export default {
     const selectedDetail = ref({});
     const wishlistItems = ref([]);
     
+    // 더미 리뷰 데이터
+    const dummyReviews = [
+      {
+        userName: "여행자김",
+        rating: 5,
+        date: "2025-03-15T09:30:00",
+        comment: "정말 아름다운 장소였습니다. 사진으로 보는 것보다 실제로 보면 훨씬 더 멋있어요. 특히 일몰 때 분위기가 환상적이었습니다."
+      },
+      {
+        userName: "배낭여행러",
+        rating: 4,
+        date: "2025-02-20T14:45:00",
+        comment: "전체적으로 좋은 경험이었습니다. 다만 주변에 음식점이 많지 않아서 식사 계획은 미리 세우는 것이 좋을 것 같아요."
+      },
+      {
+        userName: "사진작가이준",
+        rating: 5,
+        date: "2025-01-05T10:15:00",
+        comment: "사진 찍기에 최고의 장소입니다. 맑은 날 방문하시면 환상적인 풍경 사진을 얻을 수 있어요. 개인적으로는 아침 일찍 방문하는 것을 추천합니다."
+      }
+    ];
+    
     // 차원 영어-한글 매핑
     const dimensionTranslations = {
       "natural_elements": "자연 요소",
@@ -278,6 +321,16 @@ export default {
     // 차원 헤더 생성
     const getDimensionHeader = (dimension) => {
       return dimensionTranslations[dimension] || dimension;
+    };
+    
+    // 리뷰 날짜 포맷팅
+    const formatReviewDate = (dateString) => {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
     };
     
     // 검색 결과를 유사도 순으로 정렬
@@ -472,11 +525,15 @@ export default {
     
     // 상세 모달 열기
     const openDetailModal = (result) => {
-      selectedDetail.value = {
+      // 기존 데이터에 더미 리뷰 추가
+      const detailWithReviews = {
         _id: result._id,
         _score: result._score,
-        ...result._source
+        ...result._source,
+        reviews: dummyReviews  // 더미 리뷰 데이터 추가
       };
+      
+      selectedDetail.value = detailWithReviews;
       showDetailModal.value = true;
       
       // 모달이 열린 후 지도 초기화
@@ -574,7 +631,8 @@ export default {
       wishlistItems,
       initDetailMap,
       sortedSearchResults,
-      getDimensionHeader
+      getDimensionHeader,
+      formatReviewDate
     };
   }
 };
@@ -840,14 +898,16 @@ export default {
   transform: scale(1.1);
 }
 
+/* 등수 아이콘 스타일 수정 - 중앙 정렬 개선 */
 .result-rank {
   position: absolute;
   top: 10px;
   right: 10px;
   display: flex;
   align-items: center;
+  justify-content: center; /* 컨텐츠 중앙 정렬 추가 */
   gap: 5px;
-  padding: 3px 10px 3px 6px;
+  padding: 3px 10px; /* 패딩 균일하게 조정 */
   background: linear-gradient(135deg, #0d6efd, #0a58ca);
   color: white;
   border-radius: 12px;
@@ -857,9 +917,20 @@ export default {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
 }
 
+/* with-heart 클래스 유지 */
 .result-rank.with-heart {
   padding-left: 10px;
   gap: 7px;
+}
+
+/* rank-number 클래스 수정 - 숫자 위치 중앙 정렬 */
+.rank-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 14px;
+  text-align: center;
+  line-height: 1; /* 줄 간격 조정으로 수직 정렬 개선 */
 }
 
 .heart-indicator {
@@ -1089,9 +1160,9 @@ export default {
 .place-detail-modal {
   background-color: white;
   border-radius: 8px;
-  width: 90%;
-  max-width: 1200px;
-  max-height: 85vh;
+  width: 95%;
+  max-width: 1500px;
+  max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   display: flex;
@@ -1178,111 +1249,69 @@ export default {
   animation: heartbeat 1s ease-in-out;
 }
 
+/* 모달 콘텐츠 영역 - 새로운 레이아웃 */
 .modal-content {
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
-@media (min-width: 768px) {
-  .modal-content {
-    flex-direction: row;
-    align-items: flex-start;
-    gap: 1.5rem;
-  }
-}
-
-.detail-left-section {
+/* 이미지와 지도를 수평으로 나란히 배치 */
+.visual-section {
   display: flex;
-  flex-direction: column;
-  height: auto;
-  gap: 15px;
-  align-items: center;
+  gap: 20px;
+  margin-bottom: 1.5rem;
 }
 
-@media (min-width: 768px) {
-  .detail-left-section {
-    width: 35%;
-    flex-shrink: 0;
-  }
-
-  .detail-info {
-    flex: 1;
-    overflow-y: auto;
-    max-height: 750px;
-  }
-
-  .detail-section:first-child {
-    display: none;
-  }
-}
-
-.detail-image-container {
-  width: 350px;
-  height: 350px;
-  overflow: hidden;
+.detail-image-container, .detail-map-container {
+  flex: 1;
+  height: 400px;
   border-radius: 8px;
+  overflow: hidden;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  aspect-ratio: 1/1;
 }
 
-.detail-image {
+.detail-image, .detail-map {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.detail-map-container {
-  width: 350px;
-  height: 350px;
-  position: relative;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  aspect-ratio: 1/1;
-}
-
-.detail-map {
-  width: 100%;
-  height: 100%;
-}
-
-.detail-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
+/* 각 섹션 스타일 */
 .detail-section {
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-radius: 8px;
+  background-color: #f8fafc;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .detail-section:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
+  margin-bottom: 0;
 }
 
 .detail-section h4 {
-  font-size: 1rem;
+  font-size: 1.2rem;
   font-weight: 600;
-  color: #4a5568;
-  margin: 0 0 0.75rem 0;
+  color: #2d3748;
+  margin: 0 0 1rem 0;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 0.5rem;
 }
 
+/* 태그 리스트 */
 .tag-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
 
 .tag {
   background-color: #ebf5ff;
   color: #3182ce;
-  font-size: 0.8rem;
-  padding: 0.25rem 0.75rem;
+  font-size: 0.9rem;
+  padding: 0.35rem 0.85rem;
   border-radius: 9999px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -1291,6 +1320,111 @@ export default {
 .tag:hover {
   background-color: #3182ce;
   color: white;
+}
+
+/* 설명 텍스트 */
+.detail-description {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #4a5568;
+  margin: 0;
+}
+
+/* 특성 분석 */
+.detail-dimensions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.dimension-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.dimension-name {
+  width: 140px;
+  font-size: 0.95rem;
+  color: #4a5568;
+}
+
+.dimension-bar-small {
+  flex: 1;
+  height: 10px;
+  background-color: #e2e8f0;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.dimension-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3182ce, #63b3ed);
+  border-radius: 5px;
+}
+
+.dimension-value {
+  width: 40px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #4a5568;
+  text-align: right;
+}
+
+/* 리뷰 섹션 */
+.reviews-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.review-item {
+  padding: 1.25rem;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.reviewer-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.reviewer-name {
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 1rem;
+}
+
+.review-date {
+  font-size: 0.85rem;
+  color: #718096;
+}
+
+.review-rating {
+  color: #a0aec0;
+  font-size: 1.25rem;
+}
+
+.star-filled {
+  color: #f6ad55;
+}
+
+.star-empty {
+  color: #e2e8f0;
+}
+
+.review-content {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #4a5568;
 }
 
 .modal-footer {
@@ -1319,22 +1453,6 @@ export default {
 
 .cancel-btn:hover {
   background-color: #f7fafc;
-}
-
-@media (max-width: 1100px) {
-  .detail-image-container,
-  .detail-map-container {
-    width: 300px;
-    height: 300px;
-  }
-}
-
-@media (max-width: 900px) {
-  .detail-image-container,
-  .detail-map-container {
-    width: 250px;
-    height: 250px;
-  }
 }
 
 /* 결과 카드의 이미지 설명 스타일 */
@@ -1377,37 +1495,57 @@ export default {
   background: linear-gradient(135deg, #d98936, #b0732f);
 }
 
-.detail-dimensions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+/* 반응형 조정 */
+@media (max-width: 1100px) {
+  .visual-section {
+    flex-direction: column;
+  }
+  
+  .detail-image-container, 
+  .detail-map-container {
+    width: 100%;
+    height: 350px;
+  }
+  
+  .dimension-name {
+    width: 120px;
+  }
 }
 
-.dimension-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
+@media (max-width: 768px) {
+  .modal-title-location {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .modal-location {
+    margin: 0.25rem 0 0 0;
+  }
+  
+  .review-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .dimension-name {
+    width: 100px;
+    font-size: 0.85rem;
+  }
 }
 
-.dimension-bar-small {
-  flex: 1;
-  height: 8px;
-  background-color: #e2e8f0;
-  border-radius: 4px;
-  overflow: hidden;
+@media (max-width: 480px) {
+  .dimension-item {
+    flex-wrap: wrap;
+  }
+  
+  .dimension-name {
+    width: 100%;
+    margin-bottom: 0.25rem;
+  }
+  
+  .dimension-value {
+    width: 40px;
+  }
 }
-
-.dimension-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #3182ce, #63b3ed);
-  border-radius: 4px;
-}
-
-.dimension-value {
-  width: 30px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #4a5568;
-  text-align: right;
-}
-</style> 
+</style>
