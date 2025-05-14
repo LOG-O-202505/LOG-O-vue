@@ -159,7 +159,15 @@
             <div v-else class="results-grid">
               <div v-for="(result, index) in sortedSearchResults" :key="result._id" class="result-card"
                 @click="openDetailModal(result)">
-                <div class="result-rank">{{ index + 1 }}</div>
+                <div class="result-rank" :class="{ 'with-heart': isInWishlist(result._id) }">
+                  <span v-if="isInWishlist(result._id)" class="heart-indicator active">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                    </svg>
+                  </span>
+                  <span class="rank-number">{{ index + 1 }}</span>
+                </div>
                 <div class="result-image-container">
                   <img :src="`data:image/jpeg;base64,${result._source.image_data}`" :alt="result._source.image_name"
                     class="result-image">
@@ -419,8 +427,18 @@ export default {
       // 위시리스트 복원
       const savedWishlist = localStorage.getItem('logo_wishlist');
       if (savedWishlist) {
-        const wishlistIds = JSON.parse(savedWishlist);
-        console.log('저장된 위시리스트 ID:', wishlistIds);
+        try {
+          const wishlistIds = JSON.parse(savedWishlist);
+          console.log('저장된 위시리스트 ID:', wishlistIds);
+          
+          // 위시리스트 ID만 있는 경우 기본 객체로 변환하여 wishlistItems에 저장
+          wishlistItems.value = wishlistIds.map(id => ({
+            _id: id,
+            _source: {} // 기본 빈 객체 (검색 결과에서 매칭될 때 실제 데이터가 채워질 수 있음)
+          }));
+        } catch (error) {
+          console.error('위시리스트 데이터 로드 오류:', error);
+        }
       }
 
       // 카카오 맵 API 로드
@@ -641,7 +659,7 @@ export default {
           const meaningAnalysisStartTime = performance.now();
 
           const analysisRequestBody = {
-            model: 'ko_2', // config.MODEL_NAME에서 가져오거나 적절한 모델 사용
+            model: 'ko_2  ', // config.MODEL_NAME에서 가져오거나 적절한 모델 사용
             prompt: imageDescription, // 이전 단계에서 얻은 설명을 프롬프트로 사용
             stream: false
           };
@@ -1367,18 +1385,49 @@ export default {
   position: absolute;
   top: 10px;
   right: 10px;
-  width: 24px;
-  height: 24px;
-  background: linear-gradient(135deg, #0d6efd, #0a58ca);
-  color: white;
-  border-radius: 50%;
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 5px;
+  padding: 3px 10px 3px 6px;
+  background: linear-gradient(135deg, #0d6efd, #0a58ca);
+  color: white;
+  border-radius: 12px;
   font-size: 0.8rem;
   font-weight: 600;
   z-index: 1;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+.result-rank.with-heart {
+  padding-left: 10px;
+  gap: 7px;
+}
+
+.heart-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.6);
+  transition: all 0.3s ease;
+}
+
+.heart-indicator.active {
+  color: #ff6b6b;
+  animation: heartbeat 1s ease-in-out;
+}
+
+.heart-indicator svg {
+  fill: transparent;
+  transition: fill 0.3s ease;
+}
+
+.heart-indicator.active svg {
+  fill: #ff6b6b;
+}
+
+.rank-number {
+  min-width: 14px;
+  text-align: center;
 }
 
 .result-card:nth-child(1) .result-rank {

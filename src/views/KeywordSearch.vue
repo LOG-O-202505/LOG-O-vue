@@ -79,10 +79,20 @@
             
             <div v-else class="results-grid">
               <div 
-                v-for="result in searchResults" 
+                v-for="(result, index) in sortedSearchResults" 
                 :key="result._id"
                 class="result-card"
+                @click="openDetailModal(result)"
               >
+                <div class="result-rank" :class="{ 'with-heart': isInWishlist(result._id) }">
+                  <span v-if="isInWishlist(result._id)" class="heart-indicator active">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                    </svg>
+                  </span>
+                  <span class="rank-number">{{ index + 1 }}</span>
+                </div>
                 <div class="result-image-container">
                   <img :src="`data:image/jpeg;base64,${result._source.image_data}`" :alt="result._source.image_name" class="result-image">
                 </div>
@@ -95,17 +105,30 @@
                     </svg>
                     {{ result._source.image_location }}
                   </div>
-                  <div class="result-tags" v-if="result._source.image_tags && result._source.image_tags.length > 0">
+                  <div class="result-similarity">
+                    <span>유사도:</span>
+                    <div class="similarity-bar">
+                      <div class="similarity-fill"
+                        :style="{ width: `${Math.round(result._score * 100) / 100 * 100}%` }"></div>
+                    </div>
+                    <span class="similarity-value">{{ (Math.round(result._score * 100) / 100).toFixed(2) }}</span>
+                  </div>
+                  <div v-if="result._source.image_tags && result._source.image_tags.length > 0" class="result-tags">
                     <div class="tags-container">
                       <span 
-                        v-for="(tag, tagIndex) in result._source.image_tags" 
+                        v-for="(tag, tagIndex) in result._source.image_tags.slice(0, 3)" 
                         :key="tagIndex"
                         class="result-tag"
-                        @click="applyKeyword(tag)"
+                        @click.stop="applyKeyword(tag)"
                       >
                         #{{ tag }}
                       </span>
                     </div>
+                  </div>
+                  <!-- 이미지 설명 추가 -->
+                  <div v-if="result._source.image_description" class="result-description">
+                    <div class="description-title">설명:</div>
+                    <p class="description-text">{{ result._source.image_description }}</p>
                   </div>
                 </div>
               </div>
@@ -126,13 +149,94 @@
     <footer class="footer">
       <p>© 2025 LOG:O - 당신의 여행을 기록하다</p>
     </footer>
+
+    <!-- 장소 상세 모달 -->
+    <div v-if="showDetailModal" class="modal-overlay" @click="closeDetailModal">
+      <div class="place-detail-modal" @click.stop>
+        <div class="modal-header">
+          <div class="modal-title-location">
+            <h3>{{ selectedDetail.image_name }}</h3>
+            <div class="modal-location">{{ selectedDetail.image_location }}</div>
+          </div>
+          <div class="modal-actions">
+            <button class="heart-btn" :class="{ 'active': isInWishlist(selectedDetail._id) }"
+              @click="toggleWishlist(selectedDetail)" title="여행 계획에 추가">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path
+                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
+                </path>
+              </svg>
+            </button>
+            <button class="close-btn" @click="closeDetailModal">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+                
+        <div class="modal-content">
+          <div class="detail-left-section">
+            <div class="detail-image-container">
+              <img :src="`data:image/jpeg;base64,${selectedDetail.image_data}`" :alt="selectedDetail.image_name"
+                class="detail-image">
+            </div>
+                
+            <!-- 지도 영역 추가 -->
+            <div class="detail-map-container">
+              <div id="detailMap" class="detail-map"></div>
+            </div>
+          </div>
+              
+          <div class="detail-info">
+            <div class="detail-section">
+              <h4>위치 정보</h4>
+              <p>{{ selectedDetail.image_location }}</p>
+            </div>
+
+            <div class="detail-section" v-if="selectedDetail.image_description">
+              <h4>설명</h4>
+              <p>{{ selectedDetail.image_description }}</p>
+            </div>
+
+            <div class="detail-section" v-if="selectedDetail.image_tags && selectedDetail.image_tags.length > 0">
+              <h4>태그</h4>
+              <div class="tag-list">
+                <span v-for="(tag, index) in selectedDetail.image_tags" :key="index" class="tag" @click="applyKeyword(tag)">{{ tag }}</span>
+              </div>
+            </div>
+            
+            <div class="detail-section" v-if="selectedDetail.dimensions">
+              <h4>특성 분석</h4>
+              <div class="detail-dimensions">
+                <div v-for="(value, dimension) in selectedDetail.dimensions" :key="dimension" class="dimension-item">
+                  <span class="dimension-name">{{ dimension }}</span>
+                  <div class="dimension-bar-small">
+                    <div class="dimension-fill" :style="{ width: `${value * 100}%` }"></div>
+                  </div>
+                  <span class="dimension-value">{{ value.toFixed(1) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+    
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="closeDetailModal">닫기</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import Header from "@/components/Header.vue";
 import { searchImagesByKeyword } from "@/services/api";
+import config from "@/config.js";
 
 export default {
   name: "KeywordSearch",
@@ -152,6 +256,72 @@ export default {
     const resultsPerPage = ref(12);
     const totalResults = ref(0);
     const actionStatus = ref({ message: "", type: "" });
+    const showDetailModal = ref(false);
+    const selectedDetail = ref({});
+    const wishlistItems = ref([]);
+    
+    // 검색 결과를 유사도 순으로 정렬
+    const sortedSearchResults = computed(() => {
+      return [...searchResults.value].sort((a, b) => b._score - a._score);
+    });
+    
+    // 컴포넌트 마운트 시 실행
+    onMounted(async () => {
+      console.log("KeywordSearch 컴포넌트 마운트");
+      
+      // 위시리스트 복원
+      const savedWishlist = localStorage.getItem('logo_wishlist');
+      if (savedWishlist) {
+        try {
+          const wishlistIds = JSON.parse(savedWishlist);
+          console.log('저장된 위시리스트 ID:', wishlistIds);
+          
+          // 위시리스트 ID만 있는 경우 기본 객체로 변환하여 wishlistItems에 저장
+          wishlistItems.value = wishlistIds.map(id => ({
+            _id: id,
+            _source: {} // 기본 빈 객체 (검색 결과에서 매칭될 때 실제 데이터가 채워질 수 있음)
+          }));
+        } catch (error) {
+          console.error('위시리스트 데이터 로드 오류:', error);
+        }
+      }
+      
+      // 카카오 맵 API 로드
+      try {
+        await loadKakaoMapsScript();
+        console.log("카카오 맵 API 준비 완료");
+      } catch (error) {
+        console.error("카카오 맵 API 로드 실패:", error);
+      }
+    });
+    
+    // 카카오 맵 API 로드 함수
+    const loadKakaoMapsScript = () => {
+      return new Promise((resolve, reject) => {
+        // 이미 로드된 경우
+        if (window.kakao && window.kakao.maps) {
+          console.log("카카오 맵 API가 이미 로드되어 있습니다");
+          resolve();
+          return;
+        }
+
+        console.log("카카오 맵 API 로드 시작...");
+        const script = document.createElement('script');
+        script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${config.KAKAO_MAPS_API_KEY}&autoload=false`;
+        script.onload = () => {
+          window.kakao.maps.load(() => {
+            console.log("카카오 맵 API 로드 완료!");
+            resolve();
+          });
+        };
+        script.onerror = (error) => {
+          console.error("카카오 맵 API 로드 실패:", error);
+          reject(error);
+        };
+
+        document.head.appendChild(script);
+      });
+    };
     
     // 더 많은 결과 있는지 확인
     const hasMoreResults = computed(() => {
@@ -168,6 +338,26 @@ export default {
       }
       return '';
     });
+    
+    // 위시리스트 관리 함수
+    const isInWishlist = (id) => {
+      return wishlistItems.value.some(item => item._id === id);
+    };
+
+    const toggleWishlist = (item) => {
+      if (isInWishlist(item._id)) {
+        // 위시리스트에서 제거
+        wishlistItems.value = wishlistItems.value.filter(i => i._id !== item._id);
+        showActionStatus(`${item.image_name}이(가) 위시리스트에서 제거되었습니다.`, "success");
+      } else {
+        // 위시리스트에 추가
+        wishlistItems.value.push(item);
+        showActionStatus(`${item.image_name}이(가) 위시리스트에 추가되었습니다.`, "success");
+      }
+
+      // 로컬 스토리지에 저장
+      localStorage.setItem('logo_wishlist', JSON.stringify(wishlistItems.value.map(i => i._id)));
+    };
     
     // 키워드 검색 실행
     const performSearch = async () => {
@@ -259,6 +449,88 @@ export default {
       }, 3000);
     };
     
+    // 상세 모달 열기
+    const openDetailModal = (result) => {
+      selectedDetail.value = {
+        _id: result._id,
+        _score: result._score,
+        ...result._source
+      };
+      showDetailModal.value = true;
+      
+      // 모달이 열린 후 지도 초기화
+      setTimeout(() => {
+        initDetailMap();
+      }, 300);
+    };
+    
+    // 상세 모달의 지도 초기화
+    const initDetailMap = async () => {
+      try {
+        // API가 로드되지 않았다면 로드
+        if (!window.kakao || !window.kakao.maps) {
+          console.log('카카오 맵 API 로드 필요');
+          await loadKakaoMapsScript();
+        }
+
+        const mapContainer = document.getElementById('detailMap');
+        if (!mapContainer) {
+          console.error('지도 컨테이너를 찾을 수 없습니다');
+          return;
+        }
+
+        // 선택한 장소의 위치 정보가 있으면 사용, 없으면 기본값
+        let lat = 37.501212; // 기본값: 역삼 멀티캠퍼스
+        let lng = 127.039508;
+
+        // selectedDetail에서 위치 정보 추출 시도
+        if (selectedDetail.value && selectedDetail.value.geoLocation &&
+          selectedDetail.value.geoLocation.coordinates) {
+          lat = selectedDetail.value.geoLocation.coordinates.latitude || lat;
+          lng = selectedDetail.value.geoLocation.coordinates.longitude || lng;
+        }
+
+        // 지도 옵션
+        const mapOption = {
+          center: new kakao.maps.LatLng(lat, lng),
+          level: 3
+        };
+
+        // 지도 생성
+        const map = new kakao.maps.Map(mapContainer, mapOption);
+
+        // 마커 생성
+        const markerPosition = new kakao.maps.LatLng(lat, lng);
+        const marker = new kakao.maps.Marker({
+          position: markerPosition
+        });
+
+        // 마커를 지도에 표시
+        marker.setMap(map);
+
+        // 인포윈도우 생성
+        const infowindow = new kakao.maps.InfoWindow({
+          content: `<div style="padding:5px;font-size:12px;">${selectedDetail.value.image_name || '선택한 위치'}</div>`
+        });
+
+        // 인포윈도우 표시
+        infowindow.open(map, marker);
+
+        // 지도 컨트롤 추가
+        const zoomControl = new kakao.maps.ZoomControl();
+        map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
+
+        console.log('카카오 지도 초기화 완료:', lat, lng);
+      } catch (error) {
+        console.error('카카오 지도 초기화 오류:', error);
+      }
+    };
+    
+    // 상세 모달 닫기
+    const closeDetailModal = () => {
+      showDetailModal.value = false;
+    };
+    
     return {
       searchKeyword,
       lastSearchKeyword,
@@ -271,7 +543,16 @@ export default {
       statusClass,
       performSearch,
       loadMoreResults,
-      applyKeyword
+      applyKeyword,
+      openDetailModal,
+      isInWishlist,
+      showDetailModal,
+      selectedDetail,
+      toggleWishlist,
+      closeDetailModal,
+      wishlistItems,
+      initDetailMap,
+      sortedSearchResults
     };
   }
 };
@@ -504,24 +785,26 @@ export default {
 }
 
 .result-card {
+  position: relative;
   background-color: white;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  cursor: pointer;
   display: flex;
   flex-direction: column;
 }
 
 .result-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
 }
 
 .result-image-container {
   height: 180px;
+  width: 100%;
   overflow: hidden;
-  position: relative;
 }
 
 .result-image {
@@ -532,7 +815,60 @@ export default {
 }
 
 .result-card:hover .result-image {
-  transform: scale(1.05);
+  transform: scale(1.1);
+}
+
+.result-rank {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px 3px 6px;
+  background: linear-gradient(135deg, #0d6efd, #0a58ca);
+  color: white;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  z-index: 1;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+.result-rank.with-heart {
+  padding-left: 10px;
+  gap: 7px;
+}
+
+.heart-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.6);
+  transition: all 0.3s ease;
+}
+
+.heart-indicator.active {
+  color: #ff6b6b;
+  animation: heartbeat 1s ease-in-out;
+}
+
+.heart-indicator svg {
+  fill: transparent;
+  transition: fill 0.3s ease;
+}
+
+.heart-indicator.active svg {
+  fill: #ff6b6b;
+}
+
+@keyframes heartbeat {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
 }
 
 .result-info {
@@ -564,6 +900,37 @@ export default {
 .result-location svg {
   flex-shrink: 0;
   color: #6c757d;
+}
+
+.result-similarity {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin-bottom: 0.5rem;
+}
+
+.similarity-bar {
+  flex-grow: 1;
+  height: 6px;
+  background-color: #e9ecef;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.similarity-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0d6efd, #4dabf7);
+  border-radius: 3px;
+  transition: width 1s ease;
+}
+
+.similarity-value {
+  color: #333;
+  font-weight: 600;
+  min-width: 30px;
+  text-align: right;
 }
 
 .result-tags {
@@ -679,5 +1046,346 @@ export default {
   .search-tag-title {
     margin-bottom: 0.5rem;
   }
-} 
+}
+
+/* 모달 오버레이 및 공통 모달 스타일 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  overflow-y: auto;
+  padding: 2rem 0;
+}
+
+.place-detail-modal {
+  background-color: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 1200px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  background-color: white;
+  z-index: 10;
+}
+
+.modal-title-location {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.modal-title-location h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.modal-location {
+  margin-left: 1.5rem;
+  color: #718096;
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
+}
+
+.modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #718096;
+  cursor: pointer;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background-color: #f7fafc;
+  color: #4a5568;
+}
+
+.heart-btn {
+  background: none;
+  border: none;
+  color: #cbd5e0;
+  cursor: pointer;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.heart-btn:hover {
+  color: #f56565;
+  transform: scale(1.1);
+}
+
+.heart-btn.active {
+  color: #f56565;
+  animation: heartbeat 1s ease-in-out;
+}
+
+.modal-content {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .modal-content {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 1.5rem;
+  }
+}
+
+.detail-left-section {
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  gap: 15px;
+  align-items: center;
+}
+
+@media (min-width: 768px) {
+  .detail-left-section {
+    width: 35%;
+    flex-shrink: 0;
+  }
+
+  .detail-info {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 750px;
+  }
+
+  .detail-section:first-child {
+    display: none;
+  }
+}
+
+.detail-image-container {
+  width: 350px;
+  height: 350px;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  aspect-ratio: 1/1;
+}
+
+.detail-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.detail-map-container {
+  width: 350px;
+  height: 350px;
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  aspect-ratio: 1/1;
+}
+
+.detail-map {
+  width: 100%;
+  height: 100%;
+}
+
+.detail-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.detail-section {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.detail-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.detail-section h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #4a5568;
+  margin: 0 0 0.75rem 0;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tag {
+  background-color: #ebf5ff;
+  color: #3182ce;
+  font-size: 0.8rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tag:hover {
+  background-color: #3182ce;
+  color: white;
+}
+
+.modal-footer {
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  position: sticky;
+  bottom: 0;
+  background-color: white;
+  z-index: 1;
+}
+
+.cancel-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: #fff;
+  color: #4a5568;
+  border: 1px solid #e2e8f0;
+}
+
+.cancel-btn:hover {
+  background-color: #f7fafc;
+}
+
+@media (max-width: 1100px) {
+  .detail-image-container,
+  .detail-map-container {
+    width: 300px;
+    height: 300px;
+  }
+}
+
+@media (max-width: 900px) {
+  .detail-image-container,
+  .detail-map-container {
+    width: 250px;
+    height: 250px;
+  }
+}
+
+/* 결과 카드의 이미지 설명 스타일 */
+.result-description {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.description-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 0.25rem;
+}
+
+.description-text {
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin: 0;
+  line-height: 1.4;
+  max-height: 4.2em;
+  /* 3줄로 제한 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.result-card:nth-child(1) .result-rank {
+  background: linear-gradient(135deg, #ffca2c, #ffab00);
+}
+
+.result-card:nth-child(2) .result-rank {
+  background: linear-gradient(135deg, #e0e0e0, #b0b0b0);
+}
+
+.result-card:nth-child(3) .result-rank {
+  background: linear-gradient(135deg, #d98936, #b0732f);
+}
+
+.detail-dimensions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dimension-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.dimension-bar-small {
+  flex: 1;
+  height: 8px;
+  background-color: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.dimension-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3182ce, #63b3ed);
+  border-radius: 4px;
+}
+
+.dimension-value {
+  width: 30px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #4a5568;
+  text-align: right;
+}
 </style> 

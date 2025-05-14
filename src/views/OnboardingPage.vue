@@ -82,139 +82,123 @@
       </div>
     </main>
     
-    <!-- "어떻게 작동하나요" 섹션 - 배경 불투명도 개선 -->
-    <section class="how-it-works" id="how-it-works">
+    <!-- 서비스 기능 소개 섹션 -->
+    <section class="features-section" id="features">
       <div class="section-content">
-        <h2 class="section-title">어떻게 작동하나요?</h2>
-        <div class="steps-container">
-          <div class="step-item">
-            <div class="step-number">1</div>
-            <div class="step-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </div>
-            <h3 class="step-title">이미지 업로드</h3>
-            <p class="step-description">당신이 원하는 여행 분위기의 사진을 업로드하세요. 자연, 도시, 해변 등 어떤 이미지든 가능합니다.</p>
-          </div>
-          
-          <div class="step-item">
-            <div class="step-number">2</div>
-            <div class="step-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-              </svg>
-            </div>
-            <h3 class="step-title">AI 분석</h3>
-            <p class="step-description">우리의 AI가 이미지를 분석하여 풍경, 분위기, 활동성 등 10가지 차원으로 이미지의 특성을 파악합니다.</p>
-          </div>
-          
-          <div class="step-item">
-            <div class="step-number">3</div>
-            <div class="step-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-              </svg>
-            </div>
-            <h3 class="step-title">맞춤 여행지 추천</h3>
-            <p class="step-description">분석 결과를 바탕으로 당신의 취향과 가장 유사한 여행지를 추천해드립니다. 새로운 여행을 발견하세요!</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 인기 여행지 섹션 -->
-    <section class="popular-destinations">
-      <div class="section-content">
-        <h2 class="section-title">인기 여행지</h2>
-        <p class="section-description">당신의 다음 여정은 어디로 향할까요? 지금 인기 있는 여행지를 둘러보세요!</p>
+        <h2 class="section-title">LOG:O와 함께하는 여행 경험</h2>
+        <p class="section-description">여행의 모든 단계를 더 스마트하고 즐겁게 만들어드립니다</p>
         
-        <div class="destinations-preview">
-          <div class="destination-card">
-            <div class="destination-image" :style="{ backgroundImage: `url(${destinationImages.jeju})` }"></div>
-            <span class="destination-name">제주도</span>
-            <div class="destination-overlay">
-              <p class="destination-description">푸른 바다와 아름다운 자연이 어우러진 천혜의 섬</p>
-              <a href="#" class="destination-link">더보기</a>
-            </div>
-            <!-- 위치 정보 추가 -->
-            <div class="destination-location">
-              <span class="location-icon-small">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                  <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-              </span>
-              <span>제주시, 제주도</span>
-            </div>
-          </div>
-          
-          <div class="destination-card">
-            <div class="destination-image" :style="{ backgroundImage: `url(${destinationImages.busan})` }"></div>
-            <span class="destination-name">부산</span>
-            <div class="destination-overlay">
-              <p class="destination-description">해변과 산이 어우러진 한국 제2의 도시</p>
-              <a href="#" class="destination-link">더보기</a>
-            </div>
-            <!-- 위치 정보 추가 -->
-            <div class="destination-location">
-              <span class="location-icon-small">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                  <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-              </span>
-              <span>해운대구, 부산시</span>
-            </div>
-          </div>
-          
-          <div class="destination-card">
-            <div class="destination-image" :style="{ backgroundImage: `url(${destinationImages.gyeongju})` }"></div>
-            <span class="destination-name">경주</span>
-            <div class="destination-overlay">
-              <p class="destination-description">천년의 역사를 간직한 한국의 고대 수도</p>
-              <a href="#" class="destination-link">더보기</a>
-            </div>
-            <!-- 위치 정보 추가 -->
-            <div class="destination-location">
-              <span class="location-icon-small">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                  <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-              </span>
-              <span>경주시, 경상북도</span>
-            </div>
-          </div>
-          
-          <div class="destination-card">
-            <div class="destination-image" :style="{ backgroundImage: `url(${destinationImages.gangneung})` }"></div>
-            <span class="destination-name">서울</span>
-            <div class="destination-overlay">
-              <p class="destination-description">전통과 현대가 공존하는 역동적인 도시</p>
-              <a href="#" class="destination-link">더보기</a>
-            </div>
-            <!-- 위치 정보 추가 -->
-            <div class="destination-location">
-              <span class="location-icon-small">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                  <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-              </span>
-              <span>종로구, 서울시</span>
-            </div>
-          </div>
-        </div>
-        
-        <div class="view-all-container">
-          <router-link to="/llamasearch" class="view-all-button">
-            모든 여행지 보기
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M5 12h13M12 5l7 7-7 7"/>
+        <!-- 기능 1: 핫플레이스 -->
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
             </svg>
-          </router-link>
+          </div>
+          <div class="feature-content">
+            <h3 class="feature-title">한눈에 핫플레이스 조회</h3>
+            <p class="feature-description">
+              전국 각지의 인기 여행지를 한눈에 살펴보세요. 다양한 카테고리와 지역별 필터링으로 원하는 핫플레이스를 쉽고 빠르게 찾아볼 수 있습니다.
+            </p>
+            <router-link to="/lookAround" class="feature-link">
+              핫플레이스 살펴보기
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </router-link>
+          </div>
+        </div>
+        
+        <!-- 기능 2: AI 이미지 기반 여행지 추천 -->
+        <div class="feature-card reverse">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+          </div>
+          <div class="feature-content">
+            <h3 class="feature-title">AI 이미지 기반 여행지 추천</h3>
+            <p class="feature-description">
+              원하는 분위기의 이미지를 업로드하면 Llama와 Llava AI가 이미지를 분석하여 유사한 분위기의 여행지를 추천해드립니다. 당신의 취향에 딱 맞는 새로운 여행지를 발견하세요.
+            </p>
+            <router-link to="/LogoSearch" class="feature-link">
+              이미지로 여행지 찾기
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </router-link>
+          </div>
+        </div>
+        
+        <!-- 기능 3: ElasticSearch 기반 검색 -->
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </div>
+          <div class="feature-content">
+            <h3 class="feature-title">스마트한 여행지 검색</h3>
+            <p class="feature-description">
+              딱딱한 검색은 이제 그만! ElasticSearch를 활용한 직관적이고 자연스러운 검색으로 원하는 여행지를 쉽게 찾아보세요. 키워드와 태그를 기반으로 쉽고 빠르게 검색합니다.
+            </p>
+            <router-link to="/keyword" class="feature-link">
+              키워드로 검색하기
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </router-link>
+          </div>
+        </div>
+        
+        <!-- 기능 4: 일정 및 소비 관리 -->
+        <div class="feature-card reverse">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </div>
+          <div class="feature-content">
+            <h3 class="feature-title">스마트한 일정 및 소비 관리</h3>
+            <p class="feature-description">
+              일정관리를 한눈에! 소비 관리도 AI를 이용해서 결제 내역이나 영수증을 업로드하면 자동으로 지출 내역이 관리됩니다. 여행 계획부터 예산 관리까지 모두 한곳에서 해결하세요.
+            </p>
+            <router-link to="/plan" class="feature-link">
+              여행 계획 세우기
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </router-link>
+          </div>
+        </div>
+        
+        <!-- 기능 5: 나만의 여행 기록 -->
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+          </div>
+          <div class="feature-content">
+            <h3 class="feature-title">당신의 여행을 한눈에</h3>
+            <p class="feature-description">
+              나만의 여행 취향 분석과 실제 사진 기반 여행 인증을 통해 수집 욕구를 불러일으키는 전국 각지의 지도 모형 채우기! 당신의 여행 기록을 시각적으로 확인하고 공유하세요.
+            </p>
+            <router-link to="/mytravel" class="feature-link">
+              나의 여행 기록 보기
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </router-link>
+          </div>
         </div>
       </div>
     </section>
@@ -285,14 +269,6 @@ export default {
     
     // 자동 전환 타이머
     let autoChangeTimer = null;
-    
-    // 임시 이미지 URL로 대체
-    const destinationImages = {
-      jeju: 'https://images.unsplash.com/photo-1592352922996-7d259a3b7be6?q=80&w=500',
-      busan: 'https://images.unsplash.com/photo-1544466248-1309137d4860?q=80&w=500',
-      gyeongju: 'https://images.unsplash.com/photo-1584632211968-74ddf41eb4b4?q=80&w=500', 
-      gangneung: 'https://images.unsplash.com/photo-1574131898859-cf684a244065?q=80&w=500'
-    };
     
     // 비디오 로드 실패 시 처리하는 함수
     const handleVideoLoadError = () => {
@@ -460,7 +436,7 @@ export default {
       window.addEventListener('scroll', handleScroll);
       
       // 섹션 요소들 가져오기
-      const sections = document.querySelectorAll('.onboarding-content, .how-it-works, .popular-destinations, .onboarding-footer');
+      const sections = document.querySelectorAll('.onboarding-content, .features-section, .onboarding-footer');
       let currentSectionIndex = 0;
       
       // 개선된 스크롤 이벤트 핸들러 (1개 섹션씩만 이동)
@@ -596,8 +572,7 @@ export default {
       changeVideo,
       moveToNextVideo,
       handleVideoLoaded,
-      handleVideoError,
-      destinationImages
+      handleVideoError
     };
   }
 }
@@ -1005,6 +980,17 @@ export default {
   border-radius: 2px;
 }
 
+.section-description {
+  text-align: center;
+  max-width: 700px;
+  margin: 0 auto 3rem;
+  color: #666;
+  font-size: 1.1rem;
+  line-height: 1.8;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-weight: 300;
+}
+
 .steps-container {
   display: flex;
   justify-content: space-around;
@@ -1067,180 +1053,6 @@ export default {
   line-height: 1.6;
   font-family: 'Noto Sans KR', sans-serif;
   font-weight: 400;
-}
-
-/* 인기 여행지 섹션 */
-.popular-destinations {
-  min-height: 100vh;
-  position: relative;
-  z-index: 10;
-  scroll-snap-align: start;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  background-color: rgba(245, 245, 245, 0.92);
-}
-
-.section-description {
-  text-align: center;
-  max-width: 700px;
-  margin: 0 auto 3rem;
-  color: #666;
-  font-size: 1.1rem;
-  line-height: 1.8;
-  font-family: 'Noto Sans KR', sans-serif;
-  font-weight: 300;
-}
-
-/* 데스티네이션 미리보기 */
-.destinations-preview {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 1.5rem;
-  margin: 2rem auto 3rem;
-}
-
-.destination-card {
-  flex: 1;
-  max-width: 280px;
-  min-width: 250px;
-  height: 350px;
-  border-radius: 1rem;
-  overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-  position: relative;
-  cursor: pointer;
-  transform: translateY(40px);
-  opacity: 0;
-  transition: all 0.6s ease;
-}
-
-.destination-card.visible {
-  transform: translateY(0);
-  opacity: 1;
-}
-
-.destination-card:hover {
-  transform: translateY(-10px);
-}
-
-.destination-image {
-  height: 100%;
-  background-size: cover;
-  background-position: center;
-  transition: all 0.5s ease;
-}
-
-.destination-card:hover .destination-image {
-  transform: scale(1.1);
-}
-
-.destination-name {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  padding: 1.2rem;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
-  color: white;
-  font-family: 'Noto Sans KR', sans-serif;
-  font-weight: 700;
-  font-size: 1.3rem;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-  z-index: 2;
-}
-
-.destination-overlay {
-  position: absolute;
-  bottom: -100%;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
-  color: white;
-  padding: 2rem 1.5rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 1rem;
-  transition: all 0.4s ease;
-  z-index: 1;
-}
-
-.destination-card:hover .destination-overlay {
-  bottom: 0;
-}
-
-.destination-description {
-  font-size: 0.95rem;
-  line-height: 1.5;
-  margin: 0;
-  font-family: 'Noto Sans KR', sans-serif;
-}
-
-.destination-link {
-  color: #ffd166;
-  text-decoration: none;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: all 0.3s ease;
-}
-
-.destination-link:hover {
-  color: white;
-}
-
-.view-all-container {
-  text-align: center;
-  margin-top: 3rem;
-}
-
-.view-all-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background-color: #48b0e4;
-  color: white;
-  text-decoration: none;
-  padding: 1rem 2rem;
-  border-radius: 30px;
-  font-weight: 700;
-  font-size: 1rem;
-  transition: all 0.3s ease;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-  font-family: 'Noto Sans KR', sans-serif;
-}
-
-.view-all-button:hover {
-  background-color: #3283ad;
-  transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(72, 176, 228, 0.3);
-}
-
-/* 카드 위치 정보 */
-.destination-location {
-  position: absolute;
-  bottom: 10px;
-  right: 10px;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  background-color: rgba(0, 0, 0, 0.6);
-  padding: 0.3rem 0.7rem;
-  border-radius: 20px;
-  font-size: 0.7rem;
-  color: white;
-  z-index: 3;
-}
-
-.location-icon-small {
-  display: flex;
-  align-items: center;
-  color: #ffd166;
 }
 
 /* 푸터 */
@@ -1321,16 +1133,6 @@ export default {
     font-size: 1.3rem;
   }
   
-  .destinations-preview {
-    flex-wrap: wrap;
-    gap: 1rem;
-  }
-  
-  .destination-card {
-    flex: 0 0 calc(50% - 1rem);
-    max-width: none;
-  }
-  
   .steps-container {
     flex-direction: column;
     align-items: center;
@@ -1354,12 +1156,114 @@ export default {
     font-size: 2.5rem;
   }
   
-  .destination-card {
-    flex: 0 0 100%;
-  }
-  
   .step-item {
     max-width: 100%;
+  }
+}
+
+/* 서비스 기능 소개 섹션 스타일 */
+.features-section {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  scroll-snap-align: start;
+  position: relative;
+  z-index: 10;
+  padding: 4rem 2rem;
+  color: #333;
+  background-color: rgba(250, 250, 250, 0.95);
+  box-shadow: 0 0 50px 20px rgba(0, 0, 0, 0.1);
+}
+
+.feature-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 2rem;
+  margin-bottom: 4rem;
+  padding: 2rem;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
+}
+
+.feature-card.reverse {
+  flex-direction: row-reverse;
+  background-color: rgba(240, 247, 255, 0.7);
+}
+
+.feature-icon {
+  width: 80px;
+  height: 80px;
+  min-width: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(72, 176, 228, 0.1);
+  border-radius: 50%;
+  color: #48b0e4;
+  margin-top: 0.5rem;
+}
+
+.feature-content {
+  flex: 1;
+}
+
+.feature-title {
+  margin: 0 0 1rem 0;
+  font-size: 1.5rem;
+  color: #2d3748;
+  font-weight: 700;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.feature-description {
+  margin: 0 0 1.5rem 0;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #4a5568;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.feature-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #48b0e4;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.feature-link:hover {
+  color: #3283ad;
+  gap: 0.8rem;
+}
+
+@media (max-width: 768px) {
+  .feature-card, .feature-card.reverse {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1.5rem;
+  }
+  
+  .feature-icon {
+    margin-bottom: 1rem;
+  }
+  
+  .feature-title {
+    font-size: 1.3rem;
   }
 }
 </style>

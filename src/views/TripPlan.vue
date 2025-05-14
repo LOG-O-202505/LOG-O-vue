@@ -2466,7 +2466,7 @@ export default {
         console.log('목적지와의 거리:', distanceFromTarget.value.toFixed(3), 'km');
         console.log('거리 검증 결과:', distanceFromTarget.value <= 2 ? '성공 (2km 이내)' : '실패 (2km 초과)');
 
-        if (distanceFromTarget.value > 2) {
+        if (distanceFromTarget.value > 1) {
           verificationResult.value = {
             success: false,
             message: `사진 촬영 위치가 목적지와 ${formatDistance(distanceFromTarget.value)} 떨어져 있습니다.`
@@ -2598,15 +2598,69 @@ export default {
         const blob = await response.blob();
         const imageFile = new File([blob], `verification-${Date.now()}.jpg`, { type: 'image/jpeg' });
 
-        console.log('이미지 분석 시작...');
+        console.log('1. 이미지 분석 시작 (light_2 모델 - 영문 설명 추출)...');
         
-        // 이미지 분석 (analyzeImage2 사용)
+        // 1. 이미지 분석 (analyzeImage2 사용 - light_2 모델로 영문 설명 추출)
         const analysisResult = await analyzeImage2(imageFile);
-        console.log('이미지 분석 결과:', analysisResult);
+        console.log('1. light_2 모델 응답:', analysisResult);
         
-        // 특성 벡터 생성
-        const featuresVector = createFeaturesVector(analysisResult);
-        console.log('생성된 특성 벡터:', featuresVector);
+        if (!analysisResult || !analysisResult.description) {
+          throw new Error('이미지 분석 실패: 영문 설명을 얻을 수 없습니다.');
+        }
+
+        // 2. ko_2 모델을 이용하여 10차원 벡터 추출 (기존 로직 - createFeaturesVector 함수 사용)
+        console.log('2. ko_2 모델을 이용한 10차원 벡터 추출 시작...');
+        const featuresVector = await createFeaturesVector(analysisResult);
+        console.log('2. 생성된 10차원 특성 벡터:', featuresVector);
+
+        if (!featuresVector || !featuresVector.length) {
+          throw new Error('10차원 벡터 생성 실패: 벡터 데이터를 얻을 수 없습니다.');
+        }
+        
+        // 3. ko_3 모델을 이용하여 한글 설명과 키워드 추출
+        console.log('3. ko_3 모델을 이용한 한글 설명과 키워드 추출 시작...');
+        const ko3Response = await fetch('http://localhost:11434/api/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'ko_3',
+            prompt: analysisResult.description || '이미지 설명이 없습니다.',
+            stream: false
+          })
+        });
+        
+        let koreanDescription = '';
+        let extractedKeywords = [];
+        let ko3Data = null;
+        
+        if (ko3Response.ok) {
+          ko3Data = await ko3Response.json();
+          console.log('3. ko_3 모델 전체 응답:', ko3Data);
+          
+          if (ko3Data && ko3Data.response) {
+            try {
+              // JSON 형태의 응답 파싱
+              const jsonString = ko3Data.response.trim();
+              const parsedData = JSON.parse(jsonString);
+              console.log('3. 파싱된 ko_3 데이터:', parsedData);
+              
+              if (parsedData.description) {
+                koreanDescription = parsedData.description;
+              }
+              
+              if (parsedData.keywords && Array.isArray(parsedData.keywords)) {
+                extractedKeywords = parsedData.keywords;
+              }
+            } catch (e) {
+              console.error('ko_3 응답 파싱 오류:', e);
+              // 파싱 오류 발생 시 계속 진행, 태그만 추가되지 않음
+            }
+          }
+        } else {
+          console.error('ko_3 모델 호출 실패:', ko3Response.statusText);
+        }
         
         // 고유 ID 생성
         const imageId = `trip-verification-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
@@ -2651,16 +2705,33 @@ export default {
           locationText = item.location || verifyingItemInfo.value.location || '장소 정보 없음';
         }
         
-        // 태그 생성 (장소 정보 포함)
-        const tags = [item.activity, '방문인증', `별점:${reviewRating.value}`, '여행기록'];
+        // 태그 생성 (장소 정보와 추출된 키워드 포함)
+        const baseTags = [
+          item.activity, 
+          '방문인증', 
+          `별점:${reviewRating.value}`, 
+          '여행기록'
+        ];
         
-        // 설명에 리뷰 포함
-        const description = reviewText.value || '방문 인증 사진';
+        // extractedKeywords가 존재하면 태그에 추가
+        const tags = extractedKeywords.length > 0 
+          ? [...baseTags, ...extractedKeywords]
+          : baseTags;
+        
+        // 설명에 한글 설명 사용 (없으면 리뷰 텍스트 사용)
+        const description = koreanDescription || reviewText.value || '방문 인증 사진';
+        
+        console.log('4. Elasticsearch에 저장할 데이터:');
+        console.log('- 이미지 ID:', imageId);
+        console.log('- 위치:', locationText);
+        console.log('- 태그:', tags);
+        console.log('- 설명:', description);
+        console.log('- 10차원 벡터:', featuresVector);
         
         // Elasticsearch에 저장
         await saveToElasticsearch(
           imageId,
-          item.activity, // activity를 이미지 이름으로 사용 (방문 인증 텍스트 제거)
+          item.activity, // activity를 이미지 이름으로 사용
           locationText,
           tags,
           description,
@@ -2688,8 +2759,8 @@ export default {
       } catch (error) {
         console.error('인증 저장 오류:', error);
         
-        // 오류 메시지 표시
-        successMessage.value = '방문은 인증되었으나 이미지 저장 중 오류가 발생했습니다';
+        // 오류 메시지 표시 - 다시 시도 요청
+        successMessage.value = '이미지 저장 중 오류가 발생했습니다. 다시 시도해주세요.';
         showSuccessBanner.value = true;
         setTimeout(() => {
           showSuccessBanner.value = false;

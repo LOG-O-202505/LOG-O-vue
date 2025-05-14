@@ -230,7 +230,7 @@ export const analyzeImage2 = async (imageFile, signal) => {
     console.log("10차원 분석 API 호출 시작...");
     
     const analysisRequestBody = {
-      model: 'ko_2', // config.MODEL_NAME에서 가져오거나 적절한 모델 사용
+      model: 'ko_3', // config.MODEL_NAME에서 가져오거나 적절한 모델 사용
       prompt: imageDescription, // 이전 단계에서 얻은 설명을 프롬프트로 사용
       stream: false
     };
