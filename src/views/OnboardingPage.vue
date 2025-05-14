@@ -89,7 +89,7 @@
         <p class="section-description">여행의 모든 단계를 더 스마트하고 즐겁게 만들어드립니다</p>
         
         <!-- 기능 1: 핫플레이스 -->
-        <div class="feature-card">
+        <div class="feature-card" ref="featureCard1">
           <div class="feature-icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
@@ -111,7 +111,7 @@
         </div>
         
         <!-- 기능 2: AI 이미지 기반 여행지 추천 -->
-        <div class="feature-card reverse">
+        <div class="feature-card reverse" ref="featureCard2">
           <div class="feature-icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -134,7 +134,7 @@
         </div>
         
         <!-- 기능 3: ElasticSearch 기반 검색 -->
-        <div class="feature-card">
+        <div class="feature-card" ref="featureCard3">
           <div class="feature-icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11" cy="11" r="8"></circle>
@@ -156,7 +156,7 @@
         </div>
         
         <!-- 기능 4: 일정 및 소비 관리 -->
-        <div class="feature-card reverse">
+        <div class="feature-card reverse" ref="featureCard4">
           <div class="feature-icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -180,7 +180,7 @@
         </div>
         
         <!-- 기능 5: 나만의 여행 기록 -->
-        <div class="feature-card">
+        <div class="feature-card" ref="featureCard5">
           <div class="feature-icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
@@ -266,6 +266,13 @@ export default {
     const currentVideoSrc = computed(() => videoNames[currentVideoIndex.value]);
     const currentLocation = computed(() => videoLocations[videoNames[currentVideoIndex.value]] || '위치 정보 없음');
     const backgroundVideo = ref(null);
+    
+    // 기능 카드 요소 참조
+    const featureCard1 = ref(null);
+    const featureCard2 = ref(null);
+    const featureCard3 = ref(null);
+    const featureCard4 = ref(null);
+    const featureCard5 = ref(null);
     
     // 자동 전환 타이머
     let autoChangeTimer = null;
@@ -394,9 +401,32 @@ export default {
       moveToNextVideo();
     };
     
-    // 스크롤 이벤트 상태 관리 변수
-    let isInScrollTransition = false;
-    let lastScrollTimestamp = 0;
+    // Intersection Observer를 사용하여 요소가 화면에 나타날 때 애니메이션 적용
+    const setupIntersectionObserver = () => {
+      const options = {
+        root: null, // viewport를 root로 사용
+        rootMargin: '0px',
+        threshold: 0.1 // 10% 이상 보일 때 콜백 실행
+      };
+      
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            // 이미 표시된 요소는 관찰 중단
+            observer.unobserve(entry.target);
+          }
+        });
+      }, options);
+      
+      // 기능 카드 요소들 관찰 시작
+      const featureCards = [featureCard1.value, featureCard2.value, featureCard3.value, featureCard4.value, featureCard5.value];
+      featureCards.forEach(card => {
+        if (card) {
+          observer.observe(card);
+        }
+      });
+    };
     
     onMounted(() => {
       // 비디오 경로 검증
@@ -416,7 +446,7 @@ export default {
       setupAutoChangeTimer();
       
       // 페이지 로드 시 애니메이션 효과
-      document.querySelectorAll('.travel-title, .korean-subtitle, .cta-button, .destination-card').forEach((el, index) => {
+      document.querySelectorAll('.travel-title, .korean-subtitle, .cta-button').forEach((el, index) => {
         setTimeout(() => {
           el.classList.add('visible');
         }, 300 + (index * 200));
@@ -435,119 +465,12 @@ export default {
       
       window.addEventListener('scroll', handleScroll);
       
-      // 섹션 요소들 가져오기
-      const sections = document.querySelectorAll('.onboarding-content, .features-section, .onboarding-footer');
-      let currentSectionIndex = 0;
-      
-      // 개선된 스크롤 이벤트 핸들러 (1개 섹션씩만 이동)
-      const wheelHandler = (e) => {
-        e.preventDefault();
-        
-        // 현재 시간 확인
-        const now = Date.now();
-        
-        // 스크롤 중이거나 마지막 스크롤로부터 500ms가 지나지 않았으면 무시
-        if (isInScrollTransition || now - lastScrollTimestamp < 500) {
-          return;
-        }
-        
-        // 스크롤 방향 결정 (1: 아래로, -1: 위로)
-        const direction = Math.sign(e.deltaY);
-        
-        // 새 섹션 인덱스 계산 (범위 제한)
-        const newIndex = Math.max(0, Math.min(sections.length - 1, currentSectionIndex + direction));
-        
-        // 인덱스가 변경된 경우에만 스크롤
-        if (newIndex !== currentSectionIndex) {
-          isInScrollTransition = true;
-          lastScrollTimestamp = now;
-          currentSectionIndex = newIndex;
-          
-          // 해당 섹션으로 스크롤
-          sections[currentSectionIndex].scrollIntoView({ behavior: 'smooth' });
-          
-          // 스크롤 애니메이션 완료 후 플래그 초기화 (1초 후)
-          setTimeout(() => {
-            isInScrollTransition = false;
-          }, 1000);
-        }
-      };
-      
-      // 휠 이벤트 리스너 추가 - { passive: false }가 중요함!
-      window.addEventListener('wheel', wheelHandler, { passive: false });
-      
-      // touchmove 이벤트도 추가하여 모바일 대응
-      let touchStartY = 0;
-      
-      window.addEventListener('touchstart', (e) => {
-        touchStartY = e.touches[0].clientY;
-      }, { passive: false });
-      
-      window.addEventListener('touchmove', (e) => {
-        if (isInScrollTransition) {
-          e.preventDefault();
-          return;
-        }
-        
-        const touchY = e.touches[0].clientY;
-        const diff = touchStartY - touchY;
-        
-        // 충분한 스와이프 거리가 있을 때만 처리
-        if (Math.abs(diff) > 50) {
-          const now = Date.now();
-          
-          if (now - lastScrollTimestamp > 500) {
-            const direction = diff > 0 ? 1 : -1;
-            const newIndex = Math.max(0, Math.min(sections.length - 1, currentSectionIndex + direction));
-            
-            if (newIndex !== currentSectionIndex) {
-              isInScrollTransition = true;
-              lastScrollTimestamp = now;
-              currentSectionIndex = newIndex;
-              
-              sections[currentSectionIndex].scrollIntoView({ behavior: 'smooth' });
-              
-              setTimeout(() => {
-                isInScrollTransition = false;
-              }, 1000);
-            }
-          }
-          
-          e.preventDefault();
-          touchStartY = touchY;
-        }
-      }, { passive: false });
-      
-      // 스크롤 애니메이션 처리
-      const scrollFadeElements = document.querySelectorAll('.step-item, .section-title');
-      scrollFadeElements.forEach(el => {
-        el.classList.add('scroll-fade');
-      });
-      
-      const checkScroll = () => {
-        scrollFadeElements.forEach(el => {
-          const elementTop = el.getBoundingClientRect().top;
-          const elementVisible = 150;
-          
-          if (elementTop < window.innerHeight - elementVisible) {
-            el.classList.add('visible');
-          }
-        });
-      };
-      
-      // 초기 체크
-      checkScroll();
-      
-      // 스크롤 시 체크
-      window.addEventListener('scroll', checkScroll);
+      // 인터섹션 옵저버 설정 (요소가 화면에 나타날 때 애니메이션)
+      setupIntersectionObserver();
       
       // 컴포넌트 언마운트 시 이벤트 리스너와 타이머 제거
       onBeforeUnmount(() => {
-        window.removeEventListener('scroll', checkScroll);
         window.removeEventListener('scroll', handleScroll);
-        window.removeEventListener('wheel', wheelHandler, { passive: false });
-        window.removeEventListener('touchstart', () => {}, { passive: false });
-        window.removeEventListener('touchmove', () => {}, { passive: false });
         
         // 자동 전환 타이머 정리
         if (autoChangeTimer) {
@@ -572,7 +495,12 @@ export default {
       changeVideo,
       moveToNextVideo,
       handleVideoLoaded,
-      handleVideoError
+      handleVideoError,
+      featureCard1,
+      featureCard2,
+      featureCard3,
+      featureCard4,
+      featureCard5
     };
   }
 }
@@ -587,7 +515,6 @@ export default {
   font-family: 'Cormorant Garamond', serif;
   color: white;
   overflow-x: hidden;
-  scroll-snap-type: y mandatory; /* 스크롤 스냅 추가 */
 }
 
 /* 비디오 배경 스타일 */
@@ -752,7 +679,6 @@ export default {
   text-align: center;
   position: relative;
   z-index: 5;
-  scroll-snap-align: start; /* 스크롤 스냅 */
 }
 
 .hero-section {
@@ -937,18 +863,17 @@ export default {
   }
 }
 
-/* "어떻게 작동하나요" 섹션 - 수정된 스타일 */
-.how-it-works {
+/* 서비스 기능 소개 섹션 스타일 */
+.features-section {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  scroll-snap-align: start;
   position: relative;
   z-index: 10;
-  padding: 2rem;
+  padding: 8rem 2rem;
   color: #333;
-  background-color: rgba(255, 255, 255, 0.92);
+  background-color: rgba(250, 250, 250, 0.95);
   box-shadow: 0 0 50px 20px rgba(0, 0, 0, 0.1);
 }
 
@@ -991,203 +916,25 @@ export default {
   font-weight: 300;
 }
 
-.steps-container {
-  display: flex;
-  justify-content: space-around;
-  flex-wrap: wrap;
-  gap: 2rem;
-}
-
-.step-item {
-  flex: 1;
-  min-width: 250px;
-  text-align: center;
-  padding: 2rem;
-  border-radius: 1rem;
-  background-color: white;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.step-item:hover {
-  transform: translateY(-10px);
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
-}
-
-.step-number {
-  position: absolute;
-  top: -15px;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: #48b0e4;
-  color: white;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  box-shadow: 0 5px 15px rgba(72, 176, 228, 0.3);
-}
-
-.step-icon {
-  width: 70px;
-  height: 70px;
-  margin: 0 auto 1.5rem;
-  color: #48b0e4;
-}
-
-.step-title {
-  font-size: 1.3rem;
-  margin-bottom: 1rem;
-  color: #333;
-  font-family: 'Noto Sans KR', sans-serif;
-  font-weight: 700;
-}
-
-.step-description {
-  font-size: 0.95rem;
-  color: #666;
-  line-height: 1.6;
-  font-family: 'Noto Sans KR', sans-serif;
-  font-weight: 400;
-}
-
-/* 푸터 */
-.onboarding-footer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 2rem;
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(10px);
-  position: relative;
-  z-index: 5;
-  scroll-snap-align: start;
-  min-height: 50vh;
-  justify-content: center;
-}
-
-.social-links {
-  display: flex;
-  gap: 1.5rem;
-}
-
-.social-link {
-  color: white;
-  transition: all 0.3s ease;
-}
-
-.social-link:hover {
-  transform: translateY(-3px);
-  color: #48b0e4;
-}
-
-.copyright {
-  font-size: 0.9rem;
-  opacity: 0.7;
-}
-
-/* 애니메이션 클래스 */
-.scroll-fade {
-  opacity: 0;
-  transform: translateY(30px);
-  transition: all 0.8s ease-out;
-}
-
-.scroll-fade.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* 반응형 스타일 */
-@media (max-width: 900px) {
-  .navbar-container {
-    flex-direction: column;
-    gap: 1rem;
-    padding: 0 1rem;
-  }
-  
-  .nav-center {
-    position: relative;
-    left: 0;
-    transform: none;
-    margin-bottom: 1rem;
-    order: -1;
-  }
-  
-  .nav-group {
-    gap: 1.5rem;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-  
-  .travel-title {
-    font-size: 4.5rem;
-  }
-  
-  .korean-subtitle {
-    font-size: 1.3rem;
-  }
-  
-  .steps-container {
-    flex-direction: column;
-    align-items: center;
-    gap: 3rem;
-  }
-  
-  .step-item {
-    max-width: 100%;
-  }
-}
-
-@media (max-width: 600px) {
-  .cta-container {
-    flex-direction: column;
-    width: 100%;
-    max-width: 300px;
-    margin: 2rem auto 0;
-  }
-  
-  .travel-title {
-    font-size: 2.5rem;
-  }
-  
-  .step-item {
-    max-width: 100%;
-  }
-}
-
-/* 서비스 기능 소개 섹션 스타일 */
-.features-section {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  scroll-snap-align: start;
-  position: relative;
-  z-index: 10;
-  padding: 4rem 2rem;
-  color: #333;
-  background-color: rgba(250, 250, 250, 0.95);
-  box-shadow: 0 0 50px 20px rgba(0, 0, 0, 0.1);
-}
-
 .feature-card {
   display: flex;
   align-items: flex-start;
   gap: 2rem;
-  margin-bottom: 4rem;
+  margin-bottom: 6rem;
   padding: 2rem;
   background-color: white;
   border-radius: 12px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
+  transition: all 0.8s ease;
   position: relative;
   overflow: hidden;
+  opacity: 0;
+  transform: translateY(50px);
+}
+
+.feature-card.visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .feature-card:hover {
@@ -1250,6 +997,72 @@ export default {
   gap: 0.8rem;
 }
 
+/* 푸터 */
+.onboarding-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 4rem 2rem;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  position: relative;
+  z-index: 5;
+  min-height: 30vh;
+  justify-content: center;
+}
+
+.social-links {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.social-link {
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.social-link:hover {
+  transform: translateY(-3px);
+  color: #48b0e4;
+}
+
+.copyright {
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+/* 반응형 스타일 */
+@media (max-width: 900px) {
+  .navbar-container {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 0 1rem;
+  }
+  
+  .nav-center {
+    position: relative;
+    left: 0;
+    transform: none;
+    margin-bottom: 1rem;
+    order: -1;
+  }
+  
+  .nav-group {
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .travel-title {
+    font-size: 4.5rem;
+  }
+  
+  .korean-subtitle {
+    font-size: 1.3rem;
+  }
+}
+
 @media (max-width: 768px) {
   .feature-card, .feature-card.reverse {
     flex-direction: column;
@@ -1264,6 +1077,19 @@ export default {
   
   .feature-title {
     font-size: 1.3rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .cta-container {
+    flex-direction: column;
+    width: 100%;
+    max-width: 300px;
+    margin: 2rem auto 0;
+  }
+  
+  .travel-title {
+    font-size: 2.5rem;
   }
 }
 </style>
