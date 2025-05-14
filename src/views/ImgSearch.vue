@@ -279,7 +279,11 @@
   
   <script>
   // api.js에서 이미지 압축 함수 가져오기
-  import { fileToBase64, analyzeImage } from '@/services/api';
+  import { 
+    fileToBase64, 
+    imageToEngDescription, 
+    EngDescriptionToVector 
+  } from '@/services/api';
   // eslint-disable-next-line
   import config from '@/config.js';
   import Header from "@/components/Header.vue";
@@ -490,26 +494,30 @@
           console.log("이미지 압축 완료, Base64 길이:", base64Image.length);
           
           // ===== 왼쪽 패널: api.js의 analyzeImage 함수 사용 (LogoSearch 방식) =====
-          console.log("===== 왼쪽 패널: api.js의 analyzeImage 함수 사용 =====");
+          console.log("===== 왼쪽 패널: api.js의 imageToEngDescription과 EngDescriptionToVector 함수 사용 =====");
           this.loadingMessage = 'api.js 함수로 이미지 분석 중...';
           this.step1StartTime = performance.now();
           
-          // api.js의 analyzeImage 함수 호출
+          // 1단계: 이미지 → 영어 설명 (light_2 모델)
           const abortController = new AbortController();
-          const apiResult = await analyzeImage(this.imageFile, abortController.signal);
+          const engDescription = await imageToEngDescription(this.imageFile, abortController.signal);
           
           this.step1EndTime = performance.now();
           this.step1Time = (this.step1EndTime - this.step1StartTime) / 1000;
+          console.log("영어 설명 추출 완료:", engDescription);
           
-          // 분석 결과 저장
-          this.description = JSON.stringify(apiResult);
-          console.log("API 함수 사용 분석 결과:", apiResult);
-          
-          // 10차원 분석 결과 저장 (api.js에서 이미 분석된 결과 사용)
+          // 2단계: 영어 설명 → 10차원 벡터 (ko_2 모델)
           this.step2StartTime = performance.now();
-          this.analyzedData = apiResult; // 이미 차원 분석이 포함되어 있음
+          const apiResult = await EngDescriptionToVector(engDescription, abortController.signal);
           this.step2EndTime = performance.now();
           this.step2Time = (this.step2EndTime - this.step2StartTime) / 1000;
+          
+          // 분석 결과 저장
+          this.description = engDescription;
+          console.log("API 함수 사용 분석 결과:", apiResult);
+          
+          // 10차원 분석 결과 저장
+          this.analyzedData = apiResult;
           
           // 총 처리 시간 계산
           const endTime = performance.now();

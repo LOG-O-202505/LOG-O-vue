@@ -5,19 +5,31 @@
     
     <!-- Progress indicators -->
     <div class="progress-steps">
-      <div class="step" :class="{ 'active': currentPhase === 'imageAnalysis', 'completed': currentPhase === 'meaningAnalysis' || currentPhase === 'search' || currentPhase === 'completed' }">
+      <!-- 단계 1: AI 이미지 분석 -->
+      <div class="step" :class="{ 'active': currentPhase === 'imageAnalysis', 'completed': isPhaseCompleted('imageAnalysis') }">
         <div class="step-circle">1</div>
         <div class="step-label">AI 이미지 분석</div>
         <div v-if="imageAnalysisDuration" class="step-time">{{ imageAnalysisDuration }}초</div>
       </div>
-      <div class="step" :class="{ 'active': currentPhase === 'meaningAnalysis', 'completed': currentPhase === 'search' || currentPhase === 'completed' }">
+      
+      <!-- 단계 2: AI 의미 분석 -->
+      <div class="step" :class="{ 'active': currentPhase === 'meaningAnalysis', 'completed': isPhaseCompleted('meaningAnalysis') }">
         <div class="step-circle">2</div>
         <div class="step-label">AI 의미 분석</div>
         <div v-if="meaningAnalysisDuration" class="step-time">{{ meaningAnalysisDuration }}초</div>
       </div>
-      <div class="step" :class="{ 'active': currentPhase === 'search', 'completed': currentPhase === 'completed' }">
+      
+      <!-- 단계 3: AI 키워드 추출 (TripPlan에서만 사용) -->
+      <div v-if="showExtendedPhases" class="step" :class="{ 'active': currentPhase === 'keywordExtraction', 'completed': isPhaseCompleted('keywordExtraction') }">
         <div class="step-circle">3</div>
-        <div class="step-label">벡터 검색</div>
+        <div class="step-label">AI 키워드 추출</div>
+        <div v-if="keywordExtractionDuration" class="step-time">{{ keywordExtractionDuration }}초</div>
+      </div>
+      
+      <!-- 마지막 단계: 벡터 검색/저장 -->
+      <div class="step" :class="{ 'active': currentPhase === 'search' || currentPhase === 'vectorSaving', 'completed': currentPhase === 'completed' }">
+        <div class="step-circle">{{ showExtendedPhases ? '4' : '3' }}</div>
+        <div class="step-label">{{ showExtendedPhases ? '벡터 저장' : '벡터 검색' }}</div>
         <div v-if="searchDuration" class="step-time">{{ searchDuration }}초</div>
       </div>
     </div>
@@ -31,7 +43,7 @@ export default {
     currentPhase: {
       type: String,
       default: 'imageAnalysis',
-      validator: (value) => ['imageAnalysis', 'meaningAnalysis', 'search', 'completed'].includes(value)
+      validator: (value) => ['imageAnalysis', 'meaningAnalysis', 'keywordExtraction', 'search', 'vectorSaving', 'completed'].includes(value)
     },
     imageAnalysisDuration: {
       type: Number,
@@ -41,9 +53,17 @@ export default {
       type: Number,
       default: null
     },
+    keywordExtractionDuration: {
+      type: Number,
+      default: null
+    },
     searchDuration: {
       type: Number,
       default: null
+    },
+    showExtendedPhases: {
+      type: Boolean,
+      default: false
     }
   },
   computed: {
@@ -52,10 +72,22 @@ export default {
         return 'AI가 이미지를 분석 중입니다';
       } else if (this.currentPhase === 'meaningAnalysis') {
         return '이미지의 의미를 분석 중입니다';
+      } else if (this.currentPhase === 'keywordExtraction') {
+        return '이미지 키워드를 추출 중입니다';
       } else if (this.currentPhase === 'search') {
         return '유사한 이미지 검색 중입니다';
+      } else if (this.currentPhase === 'vectorSaving') {
+        return '분석 결과를 저장 중입니다';
       }
       return '처리 중입니다';
+    },
+    isPhaseCompleted() {
+      return (phase) => {
+        const phases = ['imageAnalysis', 'meaningAnalysis', 'keywordExtraction', 'search', 'vectorSaving', 'completed'];
+        const currentIndex = phases.indexOf(this.currentPhase);
+        const phaseIndex = phases.indexOf(phase);
+        return phaseIndex < currentIndex || this.currentPhase === 'completed';
+      };
     }
   }
 }

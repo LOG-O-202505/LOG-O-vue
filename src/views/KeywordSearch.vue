@@ -213,7 +213,7 @@
               <h4>특성 분석</h4>
               <div class="detail-dimensions">
                 <div v-for="(value, dimension) in selectedDetail.dimensions" :key="dimension" class="dimension-item">
-                  <span class="dimension-name">{{ dimension }}</span>
+                  <span class="dimension-name">{{ getDimensionHeader(dimension) }}</span>
                   <div class="dimension-bar-small">
                     <div class="dimension-fill" :style="{ width: `${value * 100}%` }"></div>
                   </div>
@@ -259,6 +259,26 @@ export default {
     const showDetailModal = ref(false);
     const selectedDetail = ref({});
     const wishlistItems = ref([]);
+    
+    // 차원 영어-한글 매핑
+    const dimensionTranslations = {
+      "natural_elements": "자연 요소",
+      "urban_character": "도시 특성",
+      "water_features": "수경 요소",
+      "seasonal_appeal": "계절적 매력",
+      "relaxation_potential": "휴식 잠재력",
+      "romantic_atmosphere": "로맨틱한 분위기",
+      "activity_opportunities": "활동 기회",
+      "historical_cultural_value": "역사/문화적 가치",
+      "food_experience": "식도락 경험",
+      "shopping_potential": "쇼핑 잠재력"
+    };
+
+    
+    // 차원 헤더 생성
+    const getDimensionHeader = (dimension) => {
+      return dimensionTranslations[dimension] || dimension;
+    };
     
     // 검색 결과를 유사도 순으로 정렬
     const sortedSearchResults = computed(() => {
@@ -375,6 +395,7 @@ export default {
         
         // 키워드로 검색 실행
         const response = await searchImagesByKeyword(searchKeyword.value, resultsPerPage.value, 0);
+        console.log(response);
         
         // 결과 저장
         searchResults.value = response.hits;
@@ -552,7 +573,8 @@ export default {
       closeDetailModal,
       wishlistItems,
       initDetailMap,
-      sortedSearchResults
+      sortedSearchResults,
+      getDimensionHeader
     };
   }
 };

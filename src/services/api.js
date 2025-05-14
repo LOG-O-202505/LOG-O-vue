@@ -96,91 +96,14 @@ export const fileToBase64 = (file) => {
 };
 
 /**
- * 이미지 분석 API 호출 함수
- * @param {File} imageFile - 분석할 이미지 파일
+ * 이미지를 영어 설명으로 변환하는 함수 (light_2 모델 사용)
+ * @param {File} imageFile - 처리할 이미지 파일
  * @param {AbortSignal} signal - 요청 취소를 위한 AbortSignal
- * @returns {Promise<Object>} - 분석 결과
+ * @returns {Promise<string>} - 영어 설명 텍스트
  */
-export const analyzeImage = async (imageFile, signal) => {
+export const imageToEngDescription = async (imageFile, signal) => {
   try {
-    console.log('분석 시작:', imageFile ? imageFile.name : 'No file');
-    
-    // 이미지 파일 타입 확인
-    if (!imageFile.type.startsWith('image/')) {
-      throw new Error('유효한 이미지 파일이 아닙니다.');
-    }
-    
-    console.log('이미지 파일 타입:', imageFile.type);
-    console.log('이미지 파일 크기:', (imageFile.size / 1024).toFixed(2), 'KB');
-    
-    // 이미지에서 위치 정보 추출
-    // const geoLocationData = await extractGeoLocationData(imageFile);
-    
-    // 이미지를 Base64로 변환 (크기 조정됨)
-    const base64Image = await fileToBase64(imageFile);
-    console.log('이미지 변환 완료: Base64');
-    
-    // config에서 모델 이름 사용
-    const MODEL_NAME = config.MODEL_NAME;
-    console.log('사용 모델:', MODEL_NAME);
-    
-    // config에서 Ollama API URL 사용
-    console.log('API 주소:', `${config.OLLAMA_API}/api/generate`);
-    
-    // Ollama API 요청
-    const response = await fetch(`${config.OLLAMA_API}/api/generate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: MODEL_NAME,
-        prompt: "Analyze this travel image and provide ratings for all dimensions.",
-        images: [base64Image.split(',')[1]], // Remove data:image/jpeg;base64, part
-        stream: false
-      }),
-      signal: signal
-    });
-    
-    console.log('API 응답 상태:', response.status, response.statusText);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('API 응답 에러 내용:', errorText);
-      throw new Error(`API 요청 실패: ${response.status} ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    console.log('API 응답 수신:', data ? '성공' : '실패');
-    
-    // 응답 파싱
-    const analysisResult = parseAnalysisResponse(data.response);
-    
-    // 위치 정보와 분석 결과 통합
-    return {
-      ...analysisResult,
-      // geoLocation: geoLocationData, // 위치 정보 포함
-      // suggestedName: geoLocationData?.suggestedName || '', // 제안된 이미지 이름
-      // googleMapsUrl: geoLocationData?.googleMapsUrl || '' // 구글 지도 URL
-    };
-    
-  } catch (error) {
-    console.error('API 호출 오류 타입:', error.name);
-    console.error('API 호출 오류 메시지:', error.message);
-    console.error('API 호출 오류 스택:', error.stack);
-    throw error;
-  }
-};
-
-/**
- * 2단계 이미지 분석 API 호출 함수
- * @param {File} imageFile - 분석할 이미지 파일
- * @param {AbortSignal} signal - 요청 취소를 위한 AbortSignal
- * @returns {Promise<Object>} - 분석 결과
- */
-export const analyzeImage2 = async (imageFile, signal) => {
-  try {
-    console.log('2단계 이미지 분석 시작:', imageFile ? imageFile.name : 'No file');
+    console.log('영어 설명 추출 시작:', imageFile ? imageFile.name : 'No file');
     
     // 이미지 파일 타입 확인
     if (!imageFile.type.startsWith('image/')) {
@@ -194,25 +117,32 @@ export const analyzeImage2 = async (imageFile, signal) => {
     const base64Image = await fileToBase64(imageFile);
     console.log('이미지 변환 완료: Base64');
     
-    // 1단계: 영문 설명 생성
+    // 영문 설명 생성
     console.log("이미지 설명 생성 API 호출 시작...");
     
     // Ollama API 형식으로 요청 구성
     const descriptionRequestBody = {
-      model: 'light_2', // config.MODEL_NAME에서 가져오거나 적절한 모델 사용
+      model: 'light_2', // 영어 설명 생성 모델
       prompt: 'Describe this travel destination in detail according to your instructions.',
       images: [base64Image.split(',')[1]], // Base64 이미지 데이터만 추출
       stream: false // 스트리밍 비활성화
     };
     
-    const descriptionResponse = await fetch(`http://localhost:11434/api/generate`, {
+    // 기본 fetch 옵션
+    const fetchOptions = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(descriptionRequestBody),
-      signal: signal
-    });
+      body: JSON.stringify(descriptionRequestBody)
+    };
+    
+    // signal이 유효한 AbortSignal인 경우에만 추가
+    if (signal instanceof AbortSignal) {
+      fetchOptions.signal = signal;
+    }
+    
+    const descriptionResponse = await fetch(`http://localhost:11434/api/generate`, fetchOptions);
     
     if (!descriptionResponse.ok) {
       console.error("API 응답 상태:", descriptionResponse.status, descriptionResponse.statusText);
@@ -226,23 +156,47 @@ export const analyzeImage2 = async (imageFile, signal) => {
     const imageDescription = descriptionData.response || "이미지 설명을 얻을 수 없습니다.";
     console.log("이미지 설명 생성 완료:", imageDescription);
     
-    // 2단계: 10차원 분석
+    return imageDescription;
+    
+  } catch (error) {
+    console.error('영어 설명 추출 오류 타입:', error.name);
+    console.error('영어 설명 추출 오류 메시지:', error.message);
+    console.error('영어 설명 추출 오류 스택:', error.stack);
+    throw error;
+  }
+};
+
+/**
+ * 영어 설명을 10차원 벡터로 변환하는 함수 (ko_2 모델 사용)
+ * @param {string} engDescription - 영어 설명 텍스트
+ * @param {AbortSignal} signal - 요청 취소를 위한 AbortSignal
+ * @returns {Promise<Object>} - 10차원 벡터 및 메타데이터
+ */
+export const EngDescriptionToVector = async (engDescription, signal) => {
+  try {
     console.log("10차원 분석 API 호출 시작...");
     
     const analysisRequestBody = {
-      model: 'ko_3', // config.MODEL_NAME에서 가져오거나 적절한 모델 사용
-      prompt: imageDescription, // 이전 단계에서 얻은 설명을 프롬프트로 사용
+      model: 'ko_2', // 10차원 분석 모델
+      prompt: engDescription, // 이전 단계에서 얻은 설명을 프롬프트로 사용
       stream: false
     };
     
-    const analysisResponse = await fetch(`http://localhost:11434/api/generate`, {
+    // 기본 fetch 옵션
+    const analysisFetchOptions = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(analysisRequestBody),
-      signal: signal
-    });
+      body: JSON.stringify(analysisRequestBody)
+    };
+    
+    // signal이 유효한 AbortSignal인 경우에만 추가
+    if (signal instanceof AbortSignal) {
+      analysisFetchOptions.signal = signal;
+    }
+    
+    const analysisResponse = await fetch(`http://localhost:11434/api/generate`, analysisFetchOptions);
     
     if (!analysisResponse.ok) {
       console.error("API 응답 상태:", analysisResponse.status, analysisResponse.statusText);
@@ -330,7 +284,34 @@ export const analyzeImage2 = async (imageFile, signal) => {
     }
     
     // 추가 메타데이터 설정
-    result.imageDescription = imageDescription;
+    result.imageDescription = engDescription;
+    
+    console.log("최종 분석 결과:", result);
+    return result;
+    
+  } catch (error) {
+    console.error('10차원 분석 오류 타입:', error.name);
+    console.error('10차원 분석 오류 메시지:', error.message);
+    console.error('10차원 분석 오류 스택:', error.stack);
+    throw error;
+  }
+};
+
+/**
+ * 2단계 이미지 분석 API 호출 함수 - 기존 함수를 새 함수들로 구현
+ * @param {File} imageFile - 분석할 이미지 파일
+ * @param {AbortSignal} signal - 요청 취소를 위한 AbortSignal
+ * @returns {Promise<Object>} - 분석 결과
+ */
+export const analyzeImage2 = async (imageFile, signal) => {
+  try {
+    console.log('2단계 이미지 분석 시작:', imageFile ? imageFile.name : 'No file');
+    
+    // 1단계: 이미지를 영어 설명으로 변환
+    const engDescription = await imageToEngDescription(imageFile, signal);
+    
+    // 2단계: 영어 설명을 10차원 벡터로 변환
+    const result = await EngDescriptionToVector(engDescription, signal);
     
     // 이미지에서 위치 정보 추출
     const geoLocationData = await extractGeoLocationData(imageFile);
@@ -342,7 +323,7 @@ export const analyzeImage2 = async (imageFile, signal) => {
       result.googleMapsUrl = geoLocationData.googleMapsUrl || '';
     }
     
-    console.log("최종 분석 결과:", result);
+    console.log("최종 통합 분석 결과:", result);
     return result;
     
   } catch (error) {
@@ -350,128 +331,6 @@ export const analyzeImage2 = async (imageFile, signal) => {
     console.error('API 호출 오류 메시지:', error.message);
     console.error('API 호출 오류 스택:', error.stack);
     throw error;
-  }
-};
-
-/**
- * 응답 문자열에서 JSON 부분을 파싱하는 함수 (수정됨)
- * @param {string} responseText - 분석 응답 텍스트
- * @returns {Object} - 파싱된 결과 객체
- */
-const parseAnalysisResponse = (responseText) => {
-  try {
-    // 디버깅을 위한 로그
-    console.log("응답 파싱 시작...");
-    console.log("응답 문자열 일부:", responseText.substring(0, 100) + "...");
-    
-    // 이스케이프된 문자열 처리
-    const unescapedResponseText = responseText.replace(/\\/g, '');
-    
-    // 기본 테스트 데이터 (파싱 실패시 사용)
-    const defaultData = {
-      "Natural Elements": 0.7,
-      "Urban Character": 0.3,
-      "Water Features": 0.5,
-      "Seasonal Appeal": 0.8,
-      "Relaxation Potential": 0.9,
-      "Romantic Atmosphere": 0.6,
-      "Activity Opportunities": 0.4,
-      "Historical/Cultural Value": 0.7,
-      "Food Experience": 0.2,
-      "Shopping Potential": 0.1
-    };
-    
-    // JSON 추출 시도 - 간소화된 방식
-    let jsonData = {};
-    
-    try {
-      // 중괄호로 감싸진 부분 추출 시도
-      const match = unescapedResponseText.match(/\{[\s\S]*\}/);
-      if (match) {
-        jsonData = JSON.parse(match[0]);
-        console.log("JSON 파싱 성공");
-      } else {
-        console.warn("JSON 형식 감지 실패, 기본값 사용");
-        return defaultData;
-      }
-    } catch (parseError) {
-      console.error("JSON 파싱 오류:", parseError);
-      return defaultData;
-    }
-    
-    // 차원 검증 및 정규화
-    const expectedDimensions = [
-      "Natural Elements",
-      "Urban Character",
-      "Water Features",
-      "Seasonal Appeal",
-      "Relaxation Potential",
-      "Romantic Atmosphere",
-      "Activity Opportunities",
-      "Historical/Cultural Value",
-      "Food Experience",
-      "Shopping Potential"
-    ];
-    
-    // 차원 데이터만 추출하여 정규화된 결과 생성
-    const normalizedDimensions = {};
-    
-    // 필요한 차원이 있는지 확인
-    let missingDimensions = false;
-    for (const dim of expectedDimensions) {
-      if (!(dim in jsonData)) {
-        console.warn(`누락된 차원: ${dim}`);
-        normalizedDimensions[dim] = 0.5; // 기본값
-        missingDimensions = true;
-      } else {
-        // 값 정규화 (0-1 범위, 0.1 단위)
-        let value = parseFloat(jsonData[dim]);
-        
-        // NaN이면 기본값 사용
-        if (isNaN(value)) {
-          value = 0.5;
-        }
-        
-        // 1.0 이상은 1.0으로 제한
-        if (value > 1.0) {
-          value = 1.0;
-        }
-        
-        // 음수는 0으로 제한
-        if (value < 0) {
-          value = 0.0;
-        }
-        
-        // 0.1 단위로 반올림
-        normalizedDimensions[dim] = Math.round(value * 10) / 10;
-      }
-    }
-    
-    // 차원이 누락된 경우 경고
-    if (missingDimensions) {
-      console.warn("일부 차원이 누락되어 기본값을 사용했습니다");
-    }
-    
-    // 파싱된 차원 데이터만 사용하여 정규화된 결과 반환
-    // 다른 메타데이터(geoLocation 등)는 호출 함수에서 추가
-    
-    console.log("최종 파싱 결과:", normalizedDimensions);
-    return normalizedDimensions;
-  } catch (error) {
-    console.error("응답 파싱 오류:", error);
-    // 오류 발생 시 기본값 반환
-    return {
-      "Natural Elements": 0.7,
-      "Urban Character": 0.3,
-      "Water Features": 0.5,
-      "Seasonal Appeal": 0.8,
-      "Relaxation Potential": 0.9,
-      "Romantic Atmosphere": 0.6,
-      "Activity Opportunities": 0.4,
-      "Historical/Cultural Value": 0.7,
-      "Food Experience": 0.2,
-      "Shopping Potential": 0.1
-    };
   }
 };
 
@@ -791,6 +650,7 @@ export const searchImagesByKeyword = async (keyword, size = 10, from = 0) => {
           "image_id", 
           "image_name", 
           "image_location", 
+          "image_description", 
           "location", 
           "image_tags", 
           "image_data", 

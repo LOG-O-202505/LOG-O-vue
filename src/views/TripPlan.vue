@@ -608,11 +608,7 @@
                   </div>
                 </div>
                 
-                <!-- 로딩 인디케이터를 여기로 이동 (콘텐츠와 버튼 사이) -->
-                <div v-if="isVerifying" class="verification-loading-section">
-                  <div class="spinner"></div>
-                  <p>{{ loadingMessage }}</p>
-                </div>
+                <!-- 로딩 인디케이터 제거 -->
                 
                 <div class="preview-actions">
                   <button @click="verifyPhoto" class="btn primary-btn" :disabled="isVerifying || !photoMetadata">
@@ -632,16 +628,6 @@
           </div>
 
           <div class="review-content">
-            <div class="verified-place-info">
-              <div class="verified-badge">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                </svg>
-                <span>{{ formatPhotoDate(photoMetadata.dateTime) }}에 방문 확인됨</span>
-              </div>
-            </div>
 
             <div class="rating-container">
               <label>별점 평가:</label>
@@ -658,10 +644,16 @@
               <textarea id="review-text" v-model="reviewText" placeholder="이 장소에 대한 후기를 작성해주세요..." rows="6"></textarea>
             </div>
             
-            <!-- 로딩 인디케이터를 여기로 이동 (콘텐츠와 버튼 사이) -->
+            <!-- 로딩 인디케이터 스타일 수정 -->
             <div v-if="isVerifying" class="verification-loading-section">
-              <div class="spinner"></div>
-              <p>{{ loadingMessage }}</p>
+              <LoadingSpinner 
+                :current-phase="loadingPhase"
+                :image-analysis-duration="imageAnalysisDuration"
+                :meaning-analysis-duration="meaningAnalysisDuration"
+                :keyword-extraction-duration="keywordExtractionDuration"
+                :search-duration="searchDuration"
+                :show-extended-phases="true"
+              />
             </div>
 
             <div class="form-actions">
@@ -678,11 +670,13 @@
 
 <script>
 import Header from '@/components/Header.vue';
+import LoadingSpinner from '@/components/LoadingSpinner.vue';
 import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import config from '@/config';
 import EXIF from 'exif-js';
-import { 
-  analyzeImage2, 
+import {
+  imageToEngDescription,
+  EngDescriptionToVector,
   saveToElasticsearch, 
   createFeaturesVector,
   reverseGeocode
@@ -691,7 +685,8 @@ import {
 export default {
   name: 'TripPlan',
   components: {
-    Header
+    Header,
+    LoadingSpinner
   },
   setup() {
     // 카카오 맵 관련 변수
@@ -2105,6 +2100,13 @@ export default {
       location: '',
       coords: null
     });
+    
+    // 로딩 스피너 관련 상태
+    const loadingPhase = ref('imageAnalysis'); // 현재 로딩 단계
+    const imageAnalysisDuration = ref(null); // 이미지 분석 소요 시간
+    const meaningAnalysisDuration = ref(null); // 의미 분석 소요 시간
+    const keywordExtractionDuration = ref(null); // 키워드 추출 소요 시간
+    const searchDuration = ref(null); // 저장 소요 시간
 
     // 방문 인증 모달 닫기
     const closeVerificationModal = () => {
@@ -2571,54 +2573,68 @@ export default {
 
       try {
         // 인증 사진 저장 및 분석 프로세스 시작
-        loadingMessage.value = "이미지 분석 및 저장 중...";
         isVerifying.value = true; // 모달은 닫지 않고 로딩 상태 활성화
+        loadingPhase.value = 'imageAnalysis'; // 초기 단계: 이미지 분석
+        
+        // 성능 측정 초기화
+        imageAnalysisDuration.value = null;
+        meaningAnalysisDuration.value = null;
+        keywordExtractionDuration.value = null;
+        searchDuration.value = null;
 
-        // 현재 날짜/시간 기록
-        const verifiedAt = new Date().toISOString();
-
-        // 인증 정보 저장
+        // 인증할 아이템 참조를 미리 가져옴
         const item = tripDays.value[verifyingDay.value].items[verifyingItem.value];
-        item.verified = true;
-        item.verifiedAt = verifiedAt;
-        item.verificationPhoto = verificationPhotoPreview.value;
-        item.photoMetadata = photoMetadata.value;
-
-        // 별점 및 리뷰 저장
-        item.rating = reviewRating.value;
-        item.review = reviewText.value;
-
-        console.log(`${item.activity} 방문이 인증되었습니다.`);
-        console.log('인증 시간:', new Date(verifiedAt).toLocaleString('ko-KR'));
-        console.log('별점:', reviewRating.value);
-        console.log('후기:', reviewText.value);
+        if (!item) {
+          throw new Error('인증할 아이템을 찾을 수 없습니다.');
+        }
 
         // Base64 이미지를 File 객체로 변환
         const response = await fetch(verificationPhotoPreview.value);
         const blob = await response.blob();
         const imageFile = new File([blob], `verification-${Date.now()}.jpg`, { type: 'image/jpeg' });
 
+        // 요청 취소를 위한 AbortController 생성
+        const abortController = new AbortController();
+        
+        // 1단계: 이미지 → 영어 설명 (light_2 모델)
         console.log('1. 이미지 분석 시작 (light_2 모델 - 영문 설명 추출)...');
+        const imageAnalysisStartTime = performance.now();
+        const engDescription = await imageToEngDescription(imageFile, abortController.signal);
+        const imageAnalysisEndTime = performance.now();
+        imageAnalysisDuration.value = Number(((imageAnalysisEndTime - imageAnalysisStartTime) / 1000).toFixed(1));
         
-        // 1. 이미지 분석 (analyzeImage2 사용 - light_2 모델로 영문 설명 추출)
-        const analysisResult = await analyzeImage2(imageFile);
-        console.log('1. light_2 모델 응답:', analysisResult);
+        if (!engDescription) {
+          throw new Error('이미지 분석 실패: 영어 설명을 얻을 수 없습니다.');
+        }
         
-        if (!analysisResult || !analysisResult.description) {
-          throw new Error('이미지 분석 실패: 영문 설명을 얻을 수 없습니다.');
+        // 단계 업데이트: 의미 분석
+        loadingPhase.value = 'meaningAnalysis';
+        
+        // 2단계: 영어 설명 → 10차원 벡터 (ko_2 모델)
+        console.log('2. 10차원 특성 벡터 추출 시작...');
+        const meaningAnalysisStartTime = performance.now();
+        const analysisResult = await EngDescriptionToVector(engDescription, abortController.signal);
+        const meaningAnalysisEndTime = performance.now();
+        meaningAnalysisDuration.value = Number(((meaningAnalysisEndTime - meaningAnalysisStartTime) / 1000).toFixed(1));
+
+        if (!analysisResult) {
+          throw new Error('이미지 분석 실패: 특성 벡터 결과를 얻을 수 없습니다.');
         }
 
-        // 2. ko_2 모델을 이용하여 10차원 벡터 추출 (기존 로직 - createFeaturesVector 함수 사용)
-        console.log('2. ko_2 모델을 이용한 10차원 벡터 추출 시작...');
-        const featuresVector = await createFeaturesVector(analysisResult);
+        // 특성 벡터 생성
+        const featuresVector = createFeaturesVector(analysisResult);
         console.log('2. 생성된 10차원 특성 벡터:', featuresVector);
 
         if (!featuresVector || !featuresVector.length) {
           throw new Error('10차원 벡터 생성 실패: 벡터 데이터를 얻을 수 없습니다.');
         }
         
+        // 단계 업데이트: 키워드 추출
+        loadingPhase.value = 'keywordExtraction';
+        
         // 3. ko_3 모델을 이용하여 한글 설명과 키워드 추출
         console.log('3. ko_3 모델을 이용한 한글 설명과 키워드 추출 시작...');
+        const keywordExtractionStartTime = performance.now();
         const ko3Response = await fetch('http://localhost:11434/api/generate', {
           method: 'POST',
           headers: {
@@ -2626,41 +2642,51 @@ export default {
           },
           body: JSON.stringify({
             model: 'ko_3',
-            prompt: analysisResult.description || '이미지 설명이 없습니다.',
+            prompt: engDescription || '이미지 설명이 없습니다.',
             stream: false
-          })
+          }),
+          signal: abortController.signal
         });
+        
+        if (!ko3Response.ok) {
+          throw new Error(`키워드 추출 실패: ${ko3Response.status} ${ko3Response.statusText}`);
+        }
         
         let koreanDescription = '';
         let extractedKeywords = [];
         let ko3Data = null;
         
-        if (ko3Response.ok) {
-          ko3Data = await ko3Response.json();
-          console.log('3. ko_3 모델 전체 응답:', ko3Data);
-          
-          if (ko3Data && ko3Data.response) {
-            try {
-              // JSON 형태의 응답 파싱
-              const jsonString = ko3Data.response.trim();
-              const parsedData = JSON.parse(jsonString);
-              console.log('3. 파싱된 ko_3 데이터:', parsedData);
-              
-              if (parsedData.description) {
-                koreanDescription = parsedData.description;
-              }
-              
-              if (parsedData.keywords && Array.isArray(parsedData.keywords)) {
-                extractedKeywords = parsedData.keywords;
-              }
-            } catch (e) {
-              console.error('ko_3 응답 파싱 오류:', e);
-              // 파싱 오류 발생 시 계속 진행, 태그만 추가되지 않음
-            }
-          }
-        } else {
-          console.error('ko_3 모델 호출 실패:', ko3Response.statusText);
+        ko3Data = await ko3Response.json();
+        console.log('3. ko_3 모델 전체 응답:', ko3Data);
+        
+        if (!ko3Data || !ko3Data.response) {
+          throw new Error('키워드 추출 실패: 응답에서 데이터를 찾을 수 없습니다.');
         }
+        
+        try {
+          // JSON 형태의 응답 파싱
+          const jsonString = ko3Data.response.trim();
+          const parsedData = JSON.parse(jsonString);
+          console.log('3. 파싱된 ko_3 데이터:', parsedData);
+          
+          if (parsedData.description) {
+            koreanDescription = parsedData.description;
+          }
+          
+          if (parsedData.keywords && Array.isArray(parsedData.keywords)) {
+            extractedKeywords = parsedData.keywords;
+          }
+        } catch (e) {
+          console.error('ko_3 응답 파싱 오류:', e);
+          throw new Error('키워드 추출 실패: 응답 데이터 파싱 오류');
+        }
+        
+        const keywordExtractionEndTime = performance.now();
+        keywordExtractionDuration.value = Number(((keywordExtractionEndTime - keywordExtractionStartTime) / 1000).toFixed(1));
+        console.log('3. 키워드 추출 완료:', extractedKeywords);
+        
+        // 단계 업데이트: 벡터 저장
+        loadingPhase.value = 'vectorSaving';
         
         // 고유 ID 생성
         const imageId = `trip-verification-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
@@ -2697,6 +2723,7 @@ export default {
             }
           } catch (geoError) {
             console.error('역지오코딩 오류:', geoError);
+            throw new Error('위치 정보 가져오기 실패: ' + geoError.message);
           }
         }
         
@@ -2708,9 +2735,6 @@ export default {
         // 태그 생성 (장소 정보와 추출된 키워드 포함)
         const baseTags = [
           item.activity, 
-          '방문인증', 
-          `별점:${reviewRating.value}`, 
-          '여행기록'
         ];
         
         // extractedKeywords가 존재하면 태그에 추가
@@ -2728,8 +2752,11 @@ export default {
         console.log('- 설명:', description);
         console.log('- 10차원 벡터:', featuresVector);
         
+        // Elasticsearch에 저장 시작 시간
+        const saveStartTime = performance.now();
+        
         // Elasticsearch에 저장
-        await saveToElasticsearch(
+        const esResponse = await saveToElasticsearch(
           imageId,
           item.activity, // activity를 이미지 이름으로 사용
           locationText,
@@ -2741,7 +2768,31 @@ export default {
           locationInfo // 지오코딩으로 얻은 구조화된 위치 정보
         );
         
-        console.log('Elasticsearch에 저장 완료:', imageId);
+        if (!esResponse || !esResponse._id) {
+          throw new Error('Elasticsearch 저장 실패');
+        }
+        
+        // Elasticsearch에 저장 완료 시간 및 소요 시간 저장
+        const saveEndTime = performance.now();
+        searchDuration.value = Number(((saveEndTime - saveStartTime) / 1000).toFixed(1));
+        console.log('4. Elasticsearch에 저장 완료:', imageId);
+        
+        // 작업 완료 상태로 업데이트
+        loadingPhase.value = 'completed';
+        
+        // 모든 데이터 처리가 성공적으로 완료되면 방문 정보 저장
+        // 여기서는 item 변수를 다시 참조하지 않고 이미 위에서 가져온 item을 사용
+        
+        // 인증 정보 저장
+        const verifiedAt = new Date().toISOString();
+        item.verified = true;
+        item.verifiedAt = verifiedAt;
+        item.verificationPhoto = verificationPhotoPreview.value;
+        item.photoMetadata = photoMetadata.value;
+
+        // 별점 및 리뷰 저장
+        item.rating = reviewRating.value;
+        item.review = reviewText.value;
         
         // 성공 메시지 표시
         successMessage.value = '방문이 인증되었고 사진이 저장되었습니다!';
@@ -2757,21 +2808,22 @@ export default {
         }, 1000);
         
       } catch (error) {
-        console.error('인증 저장 오류:', error);
+        console.error('인증 처리 오류:', error);
+        
+        // 오류 단계 표시
+        loadingPhase.value = 'error';
         
         // 오류 메시지 표시 - 다시 시도 요청
-        successMessage.value = '이미지 저장 중 오류가 발생했습니다. 다시 시도해주세요.';
+        successMessage.value = `처리 오류: ${error.message || '알 수 없는 오류가 발생했습니다.'}`;
         showSuccessBanner.value = true;
         setTimeout(() => {
           showSuccessBanner.value = false;
-        }, 3000);
+        }, 5000);
+        
+        // 방문 인증 데이터를 저장하지 않음 (중요: 데이터가 정상적으로 처리되지 않으면 저장하지 않음)
       } finally {
         // 로딩 상태 종료
         isVerifying.value = false;
-        
-        // 별점과 후기 초기화
-        reviewRating.value = 0;
-        reviewText.value = '';
       }
     };
 
@@ -2882,7 +2934,12 @@ export default {
       reviewRating,
       reviewText,
       completeVerification,
-      successMessage
+      successMessage,
+      loadingPhase,
+      imageAnalysisDuration,
+      meaningAnalysisDuration,
+      keywordExtractionDuration,
+      searchDuration
     };
   }
 };
@@ -4523,14 +4580,14 @@ textarea {
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid #e2e8f0;
-  max-height: 500px; /* 사진 크기 증가 */
+  max-height: 350px; /* 사진 크기 축소 */
   display: flex;
   justify-content: center;
 }
 
 .photo-preview {
   max-width: 100%;
-  max-height: 500px; /* 사진 크기 증가 */
+  max-height: 350px; /* 사진 크기 축소 */
   object-fit: contain;
 }
 
@@ -4730,13 +4787,13 @@ textarea {
 }
 
 .verification-loading-section .spinner {
-  width: 30px;
-  height: 30px;
-  border: 3px solid #e2e8f0;
+  width: 24px;
+  height: 24px;
+  border: 2px solid #e2e8f0;
   border-top-color: #4299e1;
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 @keyframes spin {
@@ -4745,10 +4802,11 @@ textarea {
 }
 
 .verification-loading-section p {
-  font-size: 0.9rem;
+  font-size: 0.75rem;
   color: #2d3748;
   font-weight: 500;
   text-align: center;
   margin: 5px 0;
+  white-space: nowrap; /* 텍스트 줄바꿈 방지 */
 }
 </style>
