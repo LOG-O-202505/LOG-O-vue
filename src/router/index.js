@@ -6,7 +6,7 @@ import KeywordSearch from '../views/KeywordSearch.vue'
 import MyTravel from '../views/MyTravel.vue'
 import TripPlan from '../views/TripPlan.vue'
 import ImgSearch from '../views/ImgSearch.vue'
-
+import Login from '../components/LoginModal.vue'
 const routes = [
   {
     path: '/',
@@ -42,6 +42,11 @@ const routes = [
     path: '/imgsearch',
     name: 'ImgSearch',
     component: ImgSearch
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: Login
   }
 ]
 
