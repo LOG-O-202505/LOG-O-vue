@@ -26,7 +26,7 @@
         </div>
 
         <div class="nav-group">
-          <a href="/imgsearch" class="nav-item">IMG SEARCH</a>
+          <LoginModal />
           <a href="/plan" class="nav-item">PLANNER</a>
           <a href="/mytravel" class="nav-item">MY JOURNEY</a>
         </div>
@@ -383,6 +383,8 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, reactive, computed, watch, nextTick } from 'vue'
+// LoginModal 컴포넌트 임포트
+import LoginModal from '../components/LoginModal.vue';
 
 // Video related state and refs
 const isVideoAvailable = ref(true)

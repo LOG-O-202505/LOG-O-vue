@@ -1,8 +1,8 @@
 <template>
   <div class="login-modal-container">
-    <!-- 로그인 버튼 -->
-    <button @click="openModal" class="gradient-button">
-      로그인
+    <!-- 로그인 버튼 - 네비게이션 바에 맞게 스타일 조정 -->
+    <button @click="openModal" class="nav-login-button">
+      LOGIN
     </button>
 
     <!-- 성공 토스트 메시지 -->
@@ -55,11 +55,21 @@
           </button>
 
           <div class="login-form-container">
-            <div class="text-center">
+            <div class="text-center" :class="{ 'header-margin': true, 'header-margin-large': showLogoLogin }">
               <h2 class="header-text">당신만의 여행을 기록해보세요 : )</h2>
             </div>
 
-            <div v-show="!showLogoLogin" class="social-buttons">
+            <div 
+              ref="socialButtonsRef"
+              class="social-buttons"
+              :style="{
+                height: socialButtonsHeight,
+                opacity: showLogoLogin ? 0 : 1,
+                marginBottom: showLogoLogin ? 0 : undefined,
+                overflow: 'hidden',
+                transition: 'all 0.5s ease-in-out'
+              }"
+            >
               <!-- 구글 로그인 버튼 -->
               <button class="social-button google-button">
                 <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24">
@@ -107,7 +117,7 @@
               </button>
 
               <!-- LOG:O 로그인 버튼 -->
-              <button class="social-button logo-button" @click="showLogoLogin = true">
+              <button class="social-button logo-button" @click="handleLogoLogin">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <circle cx="10" cy="10" r="8" fill="white" />
                   <path
@@ -119,11 +129,24 @@
               </button>
             </div>
 
-            <div v-show="!showLogoLogin" class="divider">
+            <div 
+              ref="dividerRef"
+              class="divider"
+              :style="{
+                opacity: showLogoLogin ? 0 : 1,
+                height: showLogoLogin ? 0 : 'auto',
+                overflow: 'hidden',
+                marginBottom: showLogoLogin ? 0 : undefined,
+                transition: 'all 0.5s ease-in-out'
+              }"
+            >
               <span>간편하게 가입해보세요 : )</span>
             </div>
 
-            <form @submit.prevent="handleFormSubmit" class="login-form">
+            <form @submit.prevent="handleFormSubmit" class="login-form" :style="{
+              transform: showLogoLogin ? 'translateY(-60px)' : 'translateY(0)',
+              transition: 'transform 0.5s ease-in-out',
+            }">
               <div class="form-group">
                 <label for="email" class="form-label">이메일</label>
                 <input
@@ -137,7 +160,7 @@
                 />
               </div>
 
-              <div v-if="showLogoLogin" class="form-group">
+              <div v-if="showLogoLogin" class="form-group password-field">
                 <label for="password" class="form-label">비밀번호</label>
                 <input
                   id="password"
@@ -153,7 +176,7 @@
                 이메일과 비밀번호를 확인 후 다시 시도해주세요.
               </div>
 
-              <button type="submit" class="submit-button">
+              <button type="submit" :class="['submit-button', { 'gradient-button': showLogoLogin }]">
                 {{ showLogoLogin ? "LOGIN" : "이메일로 시작하기" }}
               </button>
 
@@ -161,7 +184,7 @@
                 v-if="showLogoLogin"
                 type="button"
                 class="back-button"
-                @click="showLogoLogin = false"
+                @click="handleBackToSocial"
               >
                 이전으로
               </button>
@@ -251,6 +274,7 @@ export default {
       showLogoLogin: false,
       loginError: false,
       showSuccessToast: false,
+      socialButtonsHeight: 'auto',
       // 테스트용 사용자 데이터
       testUser: {
         email: 'test@example.com',
@@ -285,6 +309,7 @@ export default {
       this.imageOpacity = 1
       this.showLogoLogin = false
       this.loginError = false
+      this.socialButtonsHeight = 'auto'
     },
     handleFormSubmit() {
       if (this.showLogoLogin) {
@@ -335,6 +360,29 @@ export default {
         this.imageOpacity = Math.max(this.imageOpacity - 0.05, 0.2)
         if (this.imageOpacity <= 0.2) clearInterval(fadeOut)
       }, 30)
+    },
+    handleLogoLogin() {
+      this.showLogoLogin = true
+      this.loginError = false
+      
+      // 소셜 버튼 영역의 높이를 측정하고 애니메이션 적용
+      this.$nextTick(() => {
+        if (this.$refs.socialButtonsRef) {
+          const height = this.$refs.socialButtonsRef.scrollHeight
+          this.socialButtonsHeight = `${height}px`
+          
+          // 애니메이션 시작
+          setTimeout(() => {
+            this.socialButtonsHeight = '0px'
+          }, 50)
+        }
+      })
+    },
+    handleBackToSocial() {
+      this.showLogoLogin = false
+      this.password = ''
+      this.loginError = false
+      this.socialButtonsHeight = 'auto'
     },
     initWaveAnimation() {
       const canvas = this.$refs.waveCanvas
@@ -408,30 +456,38 @@ export default {
   font-family: 'Noto Sans KR', sans-serif;
 }
 
-/* 로그인 버튼 */
-.gradient-button {
-  background: linear-gradient(
-    132deg,
-    #f06292,
-    #9575cd,
-    #4fc3f7,
-    #4db6ac,
-    #81c784,
-    #fff176,
-    #ff8a65,
-    #9575cd,
-    #7986cb,
-    #ef5350,
-    #f06292
-  );
-  background-size: 1000% 1000%;
-  animation: gradient 30s ease infinite;
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
+/* 네비게이션 바 내 로그인 버튼 스타일 조정 */
+.nav-login-button {
+  font-family: 'Playfair Display', serif;
+  background: transparent;
   border: none;
-  cursor: pointer;
+  color: white;
+  font-size: 1.1rem;
   font-weight: 500;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s ease;
+  padding: 0;
+  opacity: 0.9;
+}
+
+.nav-login-button:hover {
+  opacity: 1;
+}
+
+.nav-login-button::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background-color: white;
+  transition: width 0.3s ease;
+}
+
+.nav-login-button:hover::after {
+  width: 100%;
 }
 
 /* 토스트 메시지 */
@@ -557,7 +613,15 @@ export default {
 
 .text-center {
   text-align: center;
-  margin-bottom: 2rem;
+}
+
+/* 헤더 마진 조정 */
+.header-margin {
+  margin-bottom: 3rem; /* 기본 마진 증가 */
+}
+
+.header-margin-large {
+  margin-bottom: 5rem; /* LOG:O 로그인 시 더 큰 마진 */
 }
 
 .header-text {
@@ -667,13 +731,28 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  transition: transform 0.5s ease-in-out;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+}
+
+/* 비밀번호 필드 애니메이션 */
+.password-field {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .form-label {
@@ -723,6 +802,28 @@ export default {
 
 .submit-button:hover {
   background-color: #000000;
+}
+
+/* 그라데이션 버튼 */
+.gradient-button {
+  background: linear-gradient(
+    132deg,
+    #f06292,
+    #9575cd,
+    #4fc3f7,
+    #4db6ac,
+    #81c784,
+    #fff176,
+    #ff8a65,
+    #9575cd,
+    #7986cb,
+    #ef5350,
+    #f06292
+  );
+  background-size: 1000% 1000%;
+  animation: gradient 30s ease infinite;
+  color: white;
+  border: none;
 }
 
 .back-button {

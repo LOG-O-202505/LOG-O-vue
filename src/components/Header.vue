@@ -25,7 +25,8 @@
         </div>
         
         <div class="nav-group">
-          <router-link to="/imgsearch" class="nav-item">LOGIN</router-link>
+          <!-- 로그인 모달 컴포넌트로 교체 -->
+          <LoginModal />
           <router-link to="/plan" class="nav-item">PLANNER</router-link>
           <router-link to="/mytravel" class="nav-item">MY JOURNEY</router-link>
         </div>
@@ -35,8 +36,15 @@
 </template>
 
 <script>
+// LoginModal 컴포넌트 임포트
+import LoginModal from './LoginModal.vue';
+
 export default {
   name: 'AppHeader',
+  // LoginModal 컴포넌트 등록
+  components: {
+    LoginModal
+  },
   props: {
     showHero: {
       type: Boolean,
