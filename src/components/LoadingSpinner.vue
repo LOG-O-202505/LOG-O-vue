@@ -6,31 +6,55 @@
     <!-- Progress indicators -->
     <div class="progress-steps">
       <!-- 단계 1: AI 이미지 분석 -->
-      <div class="step" :class="{ 'active': currentPhase === 'imageAnalysis', 'completed': isPhaseCompleted('imageAnalysis') }">
+      <div class="step" :class="{ 
+        'active': currentPhase === 'imageAnalysis', 
+        'completed': isPhaseCompleted('imageAnalysis'),
+        'timeout': imageAnalysisDuration && parseFloat(imageAnalysisDuration) >= 10
+      }">
         <div class="step-circle">1</div>
         <div class="step-label">AI 이미지 분석</div>
-        <div v-if="imageAnalysisDuration" class="step-time">{{ imageAnalysisDuration }}초</div>
+        <div v-if="imageAnalysisDuration" class="step-time" :class="{'timeout-text': parseFloat(imageAnalysisDuration) >= 10}">
+          {{ formattedDuration(imageAnalysisDuration) }}
+        </div>
       </div>
       
       <!-- 단계 2: AI 의미 분석 -->
-      <div class="step" :class="{ 'active': currentPhase === 'meaningAnalysis', 'completed': isPhaseCompleted('meaningAnalysis') }">
+      <div class="step" :class="{ 
+        'active': currentPhase === 'meaningAnalysis', 
+        'completed': isPhaseCompleted('meaningAnalysis'),
+        'timeout': meaningAnalysisDuration && parseFloat(meaningAnalysisDuration) >= 10
+      }">
         <div class="step-circle">2</div>
         <div class="step-label">AI 의미 분석</div>
-        <div v-if="meaningAnalysisDuration" class="step-time">{{ meaningAnalysisDuration }}초</div>
+        <div v-if="meaningAnalysisDuration" class="step-time" :class="{'timeout-text': parseFloat(meaningAnalysisDuration) >= 10}">
+          {{ formattedDuration(meaningAnalysisDuration) }}
+        </div>
       </div>
       
       <!-- 단계 3: AI 키워드 추출 (TripPlan에서만 사용) -->
-      <div v-if="showExtendedPhases" class="step" :class="{ 'active': currentPhase === 'keywordExtraction', 'completed': isPhaseCompleted('keywordExtraction') }">
+      <div v-if="showExtendedPhases" class="step" :class="{ 
+        'active': currentPhase === 'keywordExtraction', 
+        'completed': isPhaseCompleted('keywordExtraction'),
+        'timeout': keywordExtractionDuration && parseFloat(keywordExtractionDuration) >= 10
+      }">
         <div class="step-circle">3</div>
         <div class="step-label">AI 키워드 추출</div>
-        <div v-if="keywordExtractionDuration" class="step-time">{{ keywordExtractionDuration }}초</div>
+        <div v-if="keywordExtractionDuration" class="step-time" :class="{'timeout-text': parseFloat(keywordExtractionDuration) >= 10}">
+          {{ formattedDuration(keywordExtractionDuration) }}
+        </div>
       </div>
       
       <!-- 마지막 단계: 벡터 검색/저장 -->
-      <div class="step" :class="{ 'active': currentPhase === 'search' || currentPhase === 'vectorSaving', 'completed': currentPhase === 'completed' }">
+      <div class="step" :class="{ 
+        'active': currentPhase === 'search' || currentPhase === 'vectorSaving', 
+        'completed': currentPhase === 'completed',
+        'timeout': searchDuration && parseFloat(searchDuration) >= 10
+      }">
         <div class="step-circle">{{ showExtendedPhases ? '4' : '3' }}</div>
         <div class="step-label">{{ showExtendedPhases ? '벡터 저장' : '벡터 검색' }}</div>
-        <div v-if="searchDuration" class="step-time">{{ searchDuration }}초</div>
+        <div v-if="searchDuration" class="step-time" :class="{'timeout-text': parseFloat(searchDuration) >= 10}">
+          {{ formattedDuration(searchDuration) }}
+        </div>
       </div>
     </div>
   </div>
@@ -46,19 +70,19 @@ export default {
       validator: (value) => ['imageAnalysis', 'meaningAnalysis', 'keywordExtraction', 'search', 'vectorSaving', 'completed'].includes(value)
     },
     imageAnalysisDuration: {
-      type: Number,
+      type: [Number, String],
       default: null
     },
     meaningAnalysisDuration: {
-      type: Number,
+      type: [Number, String],
       default: null
     },
     keywordExtractionDuration: {
-      type: Number,
+      type: [Number, String],
       default: null
     },
     searchDuration: {
-      type: Number,
+      type: [Number, String],
       default: null
     },
     showExtendedPhases: {
@@ -88,13 +112,26 @@ export default {
         const phaseIndex = phases.indexOf(phase);
         return phaseIndex < currentIndex || this.currentPhase === 'completed';
       };
+    },
+    // 시간 형식화 함수
+    formattedDuration() {
+      return (duration) => {
+        if (!duration) return '';
+        
+        // 타임아웃 확인 (10초 이상)
+        const parsedDuration = parseFloat(duration);
+        if (parsedDuration >= 10) {
+          return `${parsedDuration}초 (시간 초과)`;
+        }
+        return `${parsedDuration}초`;
+      };
     }
   }
 }
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
 
 .loading-container {
   width: 100%;
@@ -180,6 +217,10 @@ export default {
   background-color: #007bff; /* 완료된 연결선 (진한 파랑) */
 }
 
+.step.timeout:not(:last-child)::after {
+  background-color: #dc3545; /* 시간초과된 연결선 (빨강) */
+}
+
 .step-circle {
   width: 32px;
   height: 32px;
@@ -206,6 +247,12 @@ export default {
   border-color: #1e7e34;
 }
 
+.step.timeout .step-circle {
+  background-color: #dc3545; /* 시간초과 원 배경 (빨간색) */
+  color: white;
+  border-color: #bd2130;
+}
+
 .step-label {
   font-size: 0.95rem;
   color: #6c757d; /* 기본 라벨 글자색 (회색) */
@@ -220,9 +267,18 @@ export default {
   color: #1e7e34; /* 완료 라벨 글자색 (더 진한 초록) */
 }
 
+.step.timeout .step-label {
+  color: #bd2130; /* 시간초과 라벨 글자색 (더 진한 빨강) */
+}
+
 .step-time {
   font-size: 0.85rem;
   color: #6c757d; /* 시간 표시 글자색 (회색) */
+}
+
+.timeout-text {
+  color: #dc3545; /* 시간초과 텍스트 (빨간색) */
+  font-weight: 500;
 }
 
 @keyframes pulse {

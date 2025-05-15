@@ -4,16 +4,8 @@
     <div class="background-container">
       <div class="overlay"></div>
 
-      <video
-        v-if="isVideoAvailable"
-        ref="backgroundVideoRef"
-        class="background-video"
-        autoplay
-        muted
-        loop
-        playsinline
-        @error="handleVideoError"
-      >
+      <video v-if="isVideoAvailable" ref="backgroundVideoRef" class="background-video" autoplay muted loop playsinline
+        @error="handleVideoError">
         <source :src="`${currentVideoSrc}.webm`" type="video/webm" />
         비디오를 재생할 수 없습니다.
       </video>
@@ -58,7 +50,12 @@
       <!-- Location info -->
       <div class="location-info">
         <span class="location-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="lucide lucide-map-pin">
+            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+            <circle cx="12" cy="10" r="3" />
+          </svg>
         </span>
         <span class="location-text">{{ currentLocation }}</span>
       </div>
@@ -92,20 +89,19 @@
           </div>
           <a href="/lookAround" class="feature-link">
             핫플레이스 살펴보기
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feature-arrow"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              class="feature-arrow">
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" />
+            </svg>
           </a>
         </div>
         <div class="feature-device laptop-mockup">
           <div class="device-frame">
             <div class="mockup-content hotplace-mockup">
               <div class="mockup-map">
-                <img
-                  src="/img/seoul_hotplace.png"
-                  alt="대한민국 핫플레이스 지도"
-                  width="450"
-                  height="300"
-                  class="korea-map"
-                />
+                <img src="/img/seoul_hotplace.png" alt="대한민국 핫플레이스 지도" width="450" height="300" class="korea-map" />
               </div>
               <div class="mockup-caption">대한민국 시도별 핫플레이스 한눈에 보기</div>
             </div>
@@ -121,28 +117,16 @@
               <div class="mockup-title">이미지 기반 AI 여행지 추천</div>
               <div class="mockup-ai-logos">
                 <div class="ai-logo-container">
-                  <img
-                    src="/img/llava-color.png"
-                    alt="Llava 마스코트"
-                    width="100"
-                    height="100"
-                    style="background-color: white;"
-                    class="ai-logo"
-                  />
+                  <img src="/img/llava-color.png" alt="Llava 마스코트" width="100" height="100"
+                    style="background-color: white;" class="ai-logo" />
                   <div class="ai-name">Llava</div>
                 </div>
                 <div class="plus-container">
                   <div class="plus-circle">+</div>
                 </div>
                 <div class="ai-logo-container">
-                  <img
-                    src="/img/ollama.png"
-                    alt="Llama 마스코트"
-                    width="100"
-                    height="100"
-                    style="background-color: white;"
-                    class="ai-logo"
-                  />
+                  <img src="/img/meta.png" alt="Llama 마스코트" width="120" height="100"
+                    style="background-color: white; object-fit: contain;" class="ai-logo" />
                   <div class="ai-name">Llama</div>
                 </div>
               </div>
@@ -169,7 +153,12 @@
           </div>
           <a href="/LogoSearch" class="feature-link">
             이미지로 여행지 찾기
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feature-arrow"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              class="feature-arrow">
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" />
+            </svg>
           </a>
         </div>
       </div>
@@ -194,30 +183,23 @@
           </div>
           <a href="/keyword" class="feature-link">
             키워드로 검색하기
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feature-arrow"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              class="feature-arrow">
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" />
+            </svg>
           </a>
         </div>
         <div class="feature-device laptop-mockup">
           <div class="device-frame">
             <div class="mockup-content search-mockup">
               <div class="mockup-logos">
-                <img
-                  src="/img/elasticsearch.png"
-                  alt="ElasticSearch 로고"
-                  width="80"
-                  height="80"
-                  style="background-color: white;"
-                  class="tech-logo"
-                />
+                <img src="/img/elasticsearch.png" alt="ElasticSearch 로고" width="70" height="70"
+                  style="background-color: white; object-fit: contain;" class="tech-logo" />
                 <span class="plus-icon">+</span>
-                <img
-                  src="/img/ollama.png"
-                  alt="Llama 로고"
-                  width="80"
-                  height="80"
-                  style="background-color: white;"
-                  class="tech-logo"
-                />
+                <img src="/img/meta.png" alt="Llama 로고" width="80" height="80" style="background-color: white;"
+                  class="tech-logo" />
               </div>
               <div class="mockup-search-flow">
                 <div class="flow-item">
@@ -246,26 +228,14 @@
               <div class="mockup-title">영수증 자동 분석</div>
               <div class="mockup-process">
                 <div class="process-item">
-                  <img
-                    src="/img/ocr.png"
-                    alt="OCR 아이콘"
-                    width="100"
-                    height="80"
-                    style="background-color: white;"
-                    class="process-icon"
-                  />
+                  <img src="/img/ocr.png" alt="OCR 아이콘" width="100" height="80" style="background-color: white;"
+                    class="process-icon" />
                   <div class="process-name">OCR 텍스트 추출</div>
                 </div>
                 <div class="process-arrow">→</div>
                 <div class="process-item">
-                  <img
-                    src="/img/ollama.png"
-                    alt="Llama 아이콘"
-                    width="80"
-                    height="80"
-                    style="background-color: white;"
-                    class="process-icon"
-                  />
+                  <img src="/img/meta.png" alt="Llama 아이콘" width="80" height="80" style="background-color: white;"
+                    class="process-icon" />
                   <div class="process-name">Llama 분석</div>
                 </div>
               </div>
@@ -307,7 +277,12 @@
           </div>
           <a href="/plan" class="feature-link">
             여행 계획 세우기
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feature-arrow"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              class="feature-arrow">
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" />
+            </svg>
           </a>
         </div>
       </div>
@@ -333,7 +308,12 @@
           </div>
           <a href="/mytravel" class="feature-link">
             나의 여행 기록 보기
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feature-arrow"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              class="feature-arrow">
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" />
+            </svg>
           </a>
         </div>
         <div class="feature-device laptop-mockup">
@@ -345,13 +325,7 @@
               </div>
               <div class="mockup-images-container">
                 <div class="mockup-image">
-                  <img
-                    src="/img/mypage_map.png"
-                    alt="대한민국 방문 지도"
-                    width="450"
-                    height="200"
-                    class="korea-visited-map"
-                  />
+                  <img src="/img/mypage_map.png" alt="대한민국 방문 지도" width="450" height="200" class="korea-visited-map" />
                 </div>
               </div>
               <div class="mockup-stats">
@@ -378,13 +352,28 @@
     <footer class="onboarding-footer">
       <div class="social-links">
         <a href="#" class="social-link">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-twitter"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="lucide lucide-twitter">
+            <path
+              d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
+          </svg>
         </a>
         <a href="#" class="social-link">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-instagram"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="lucide lucide-instagram">
+            <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+            <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+          </svg>
         </a>
         <a href="#" class="social-link">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-facebook"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="lucide lucide-facebook">
+            <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+          </svg>
         </a>
       </div>
       <p class="copyright">© 2025 LOG:O - 당신의 여행을 기록하다</p>
@@ -707,6 +696,7 @@ body {
   0% {
     transform: scale(1);
   }
+
   100% {
     transform: scale(1.1);
   }
@@ -906,6 +896,7 @@ body {
   0% {
     transform: scale(1);
   }
+
   100% {
     transform: scale(1.2);
   }
@@ -948,9 +939,11 @@ body {
     transform: translateY(0);
     opacity: 1;
   }
+
   70% {
     opacity: 0;
   }
+
   100% {
     transform: translateY(15px);
     opacity: 0;
@@ -997,7 +990,8 @@ body {
   padding: 8rem 2rem;
   max-width: 1400px;
   margin: 0 auto;
-  gap: 8rem; /* Increased spacing between content and device */
+  gap: 8rem;
+  /* Increased spacing between content and device */
   position: relative;
 }
 
@@ -1025,7 +1019,8 @@ body {
 }
 
 .feature-content {
-  flex: 1.2; /* Increased text area */
+  flex: 1.2;
+  /* Increased text area */
   padding: 2rem 0;
   opacity: 0;
   transform: translateY(30px);
@@ -1045,7 +1040,8 @@ body {
   opacity: 0;
   transform: translateY(30px);
   transition: all 0.8s ease-out 0.2s;
-  max-width: 500px; /* Limit the size of device mockups */
+  max-width: 500px;
+  /* Limit the size of device mockups */
 }
 
 .feature-section.visible .feature-device {
@@ -1076,14 +1072,42 @@ body {
   background-color: #4285f4;
 }
 
+@keyframes waveAnimation {
+  0% {
+    background-position: -100% 50%;
+  }
+
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
 .feature-heading {
   font-size: 2.5rem;
   font-weight: 700;
   margin-bottom: 1.5rem;
-  color: #333;
   line-height: 1.2;
   font-family: 'Noto Sans KR', sans-serif;
+  /* 파도 그라데이션 패턴 - 왼쪽에서 오른쪽으로 진행되도록 설정 */
+  background: linear-gradient(270deg,
+      #A0BBE8 0%,
+      #4A90E2 15%,
+      #3D7DD8 25%,
+      #A0BBE8 35%,
+      #A0BBE8 65%,
+      #4A90E2 75%,
+      #3D7DD8 85%,
+      #A0BBE8 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  /* 확실히 왼쪽에서 오른쪽으로 이동하는 애니메이션 */
+  animation: waveAnimation 6s linear infinite;
 }
+
+
 
 .feature-description {
   font-size: 1.1rem;
@@ -1146,7 +1170,8 @@ body {
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.12);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   width: 100%;
-  max-width: 450px; /* Smaller device mockups */
+  max-width: 450px;
+  /* Smaller device mockups */
 }
 
 /* Remove hover effect on device frames */
@@ -1175,7 +1200,8 @@ body {
   border-radius: 20px;
   padding: 20px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-  max-width: 380px; /* Smaller tablet mockups */
+  max-width: 380px;
+  /* Smaller tablet mockups */
 }
 
 .device-screen {
@@ -1501,6 +1527,7 @@ body {
 }
 
 @media (max-width: 1024px) {
+
   .feature-section,
   .feature-section:nth-child(odd),
   .feature-section:nth-child(even) {

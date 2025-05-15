@@ -1,11 +1,18 @@
 <template>
   <div class="logo-search">
-    <!-- 헤더 - 페이지와 함께 스크롤됨 -->
-    <Header :showHero="true" heroImageSrc="https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1470"
-      heroTitle="여행 이미지 분석" heroSubtitle="찾고 있는 분위기의 여행지를 발견하세요" heroHeight="320px" />
+    <!-- Header 컴포넌트 사용 -->
+    <Header 
+      :showHero="showHero" 
+      :heroImageSrc="heroImageSrc"
+      :heroTitle="heroTitle"
+      :heroSubtitle="heroSubtitle"
+      :heroHeight="heroHeight"
+    />
 
     <!-- 컨텐츠 영역 - 히어로 섹션과 겹치지 않게 여백 추가 -->
     <div class="content-wrapper">
+      <!-- 로딩 중일 때 로딩 스피너 표시 -->
+      
       <!-- 상단 두 컬럼 레이아웃: 이미지 업로드 | 분석 차트 -->
       <div class="top-section">
         <!-- 왼쪽: 이미지 업로드 패널 -->
@@ -89,10 +96,16 @@
           </div>
 
           <div class="panel-content" :class="{ 'no-padding': isLoading }">
-            <!-- 로딩 중일 때 - 업데이트된 LoadingSpinner 사용 -->
+            <!-- 로딩 중일 때 - 로딩 스피너 -->
             <div v-if="isLoading" class="loading-state">
-              <LoadingSpinner :current-phase="loadingPhase" :image-analysis-duration="imageAnalysisDuration"
-                :meaning-analysis-duration="meaningAnalysisDuration" :search-duration="searchDuration" />
+              <div class="loading-spinner-container">
+                <LoadingSpinner 
+                  :currentPhase="loadingPhase"
+                  :imageAnalysisDuration="imageAnalysisDuration"
+                  :meaningAnalysisDuration="meaningAnalysisDuration"
+                  :searchDuration="searchDuration"
+                />
+              </div>
             </div>
 
             <!-- 분석 결과가 없을 때 -->
@@ -169,8 +182,9 @@
                   <span class="rank-number">{{ index + 1 }}</span>
                 </div>
                 <div class="result-image-container">
-                  <img :src="`data:image/jpeg;base64,${result._source.image_data}`" :alt="result._source.image_name"
+                  <img v-if="result._source.image_data" :src="`data:image/jpeg;base64,${result._source.image_data}`" :alt="result._source.image_name"
                     class="result-image">
+                  <div v-else class="placeholder-image">이미지 없음</div>
                 </div>
                 <div class="result-info">
                   <h4 class="result-name">{{ result._source.image_name }}</h4>
@@ -186,11 +200,20 @@
                     <span>유사도:</span>
                     <div class="similarity-bar">
                       <div class="similarity-fill"
-                        :style="{ width: `${Math.round(result._score * 100) / 100 * 100}%` }"></div>
+                        :style="{ width: `${formatSimilarityScore(result._score).percentage}%` }"></div>
                     </div>
-                    <span class="similarity-value">{{ (Math.round(result._score * 100) / 100).toFixed(2) }}</span>
+                    <div class="similarity-info">
+                      <span class="similarity-percentage">{{ formatSimilarityScore(result._score).percentage }}%</span>
+                      <span class="similarity-description">{{ formatSimilarityScore(result._score).description }}</span>
+                    </div>
                   </div>
-                  <!-- 이미지 설명 추가 -->
+                  <!-- 키워드 표시 영역 -->
+                  <div v-if="result._source.image_tags && result._source.image_tags.length > 0" class="result-tags">
+                    <span v-for="(tag, tagIndex) in result._source.image_tags.slice(0, 5)" :key="tagIndex" class="result-tag">
+                      {{ tag }}
+                    </span>
+                  </div>
+                  <!-- 이미지 설명 -->
                   <div v-if="result._source.image_description" class="result-description">
                     <div class="description-title">설명:</div>
                     <p class="description-text">{{ result._source.image_description }}</p>
@@ -208,7 +231,7 @@
       <p>© 2025 LOG:O - 당신의 여행을 기록하다</p>
     </footer>
 
-    <!-- 장소 상세 모달 - 수정된 레이아웃 -->
+    <!-- 장소 상세 모달 -->
     <div v-if="showDetailModal" class="modal-overlay" @click="closeDetailModal">
       <div class="place-detail-modal" @click.stop>
         <div class="modal-header">
@@ -240,8 +263,9 @@
           <!-- 이미지와 지도 섹션 (수평 레이아웃) -->
           <div class="visual-section">
             <div class="detail-image-container">
-              <img :src="`data:image/jpeg;base64,${selectedDetail.image_data}`" :alt="selectedDetail.image_name"
+              <img v-if="selectedDetail.image_data" :src="`data:image/jpeg;base64,${selectedDetail.image_data}`" :alt="selectedDetail.image_name"
                 class="detail-image">
+              <div v-else class="placeholder-image">이미지 없음</div>
             </div>
                 
             <!-- 지도 영역 -->
@@ -251,7 +275,7 @@
           </div>
           
           <!-- 태그 섹션 -->
-          <div class="detail-section" v-if="selectedDetail.image_tags && selectedDetail.image_tags.length > 0">
+          <div v-if="selectedDetail.image_tags && selectedDetail.image_tags.length > 0" class="detail-section">
             <h4>태그</h4>
             <div class="tag-list">
               <span v-for="(tag, index) in selectedDetail.image_tags" :key="index" class="tag">{{ tag }}</span>
@@ -259,13 +283,13 @@
           </div>
 
           <!-- 설명 섹션 -->
-          <div class="detail-section" v-if="selectedDetail.image_description">
+          <div v-if="selectedDetail.image_description" class="detail-section">
             <h4>설명</h4>
             <p class="detail-description">{{ selectedDetail.image_description }}</p>
           </div>
           
           <!-- 특성 분석 섹션 -->
-          <div class="detail-section">
+          <div v-if="analysisResult" class="detail-section">
             <h4>특성 분석</h4>
             <div class="detail-dimensions">
               <div v-for="(value, dimension) in dimensionResults" :key="dimension" class="dimension-item">
@@ -279,7 +303,7 @@
           </div>
           
           <!-- 리뷰 섹션 (더미 데이터로 추가) -->
-          <div class="detail-section" v-if="selectedDetail.reviews && selectedDetail.reviews.length > 0">
+          <div v-if="selectedDetail.reviews && selectedDetail.reviews.length > 0" class="detail-section">
             <h4>방문자 리뷰 ({{ selectedDetail.reviews.length }})</h4>
             <div class="reviews-container">
               <div v-for="(review, index) in selectedDetail.reviews" :key="index" class="review-item">
@@ -344,6 +368,14 @@ export default {
     const searchResults = ref([]);
     const abortController = ref(null);
     const actionStatus = ref({ message: "", type: "" });
+    const isScrolled = ref(false);
+    
+    // 추가된 헤더/히어로 섹션 속성
+    const showHero = ref(true);
+    const heroImageSrc = ref('https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1470');
+    const heroTitle = ref('여행 이미지 분석');
+    const heroSubtitle = ref('찾고 있는 분위기의 여행지를 발견하세요');
+    const heroHeight = ref('320px');
 
     // 추가된 API 단계 및 타이밍 상태
     const loadingPhase = ref('analysis');
@@ -351,6 +383,37 @@ export default {
     const meaningAnalysisDuration = ref(null);
     const searchDuration = ref(null);
 
+    // 카카오 지도 관련 변수
+    let kakaoMap = null;
+    
+    // 카카오 지도 API 로드 함수
+    const loadKakaoMapsScript = () => {
+      return new Promise((resolve, reject) => {
+        // 이미 로드된 경우
+        if (window.kakao && window.kakao.maps) {
+          console.log("카카오 맵 API가 이미 로드되어 있습니다");
+          resolve();
+          return;
+        }
+
+        console.log("카카오 맵 API 로드 시작...");
+        const script = document.createElement('script');
+        script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${config.KAKAO_MAPS_API_KEY}&autoload=false`;
+        script.onload = () => {
+          window.kakao.maps.load(() => {
+            console.log("카카오 맵 API 로드 완료!");
+            resolve();
+          });
+        };
+        script.onerror = (error) => {
+          console.error("카카오 맵 API 로드 실패:", error);
+          reject(error);
+        };
+
+        document.head.appendChild(script);
+      });
+    };
+    
     // 분석 결과에서 차원 데이터만 필터링
     const dimensionResults = computed(() => {
       if (!analysisResult.value) return null;
@@ -434,6 +497,68 @@ export default {
         day: 'numeric'
       });
     };
+    
+    // 유사도 점수를 사용자 친화적인 형태로 변환 (0-100% 및 텍스트 설명 추가)
+    const formatSimilarityScore = (score) => {
+      // 0-1 사이의 점수를 0-100% 사이로 변환
+      const percentage = Math.round(score * 100);
+
+      // 점수에 따른 텍스트 설명 추가
+      let description = "";
+      if (percentage >= 90) {
+        description = "매우 높음";
+      } else if (percentage >= 75) {
+        description = "높음";
+      } else if (percentage >= 60) {
+        description = "중상";
+      } else if (percentage >= 40) {
+        description = "중간";
+      } else if (percentage >= 25) {
+        description = "중하";
+      } else {
+        description = "낮음";
+      }
+
+      return {
+        percentage,
+        description,
+      };
+    };
+
+    // 현재 단계에 따른 로딩 메시지
+    const getLoadingMessage = () => {
+      switch (loadingPhase.value) {
+        case "imageAnalysis":
+          return "이미지 분석 중";
+        case "meaningAnalysis":
+          return "의미 분석 중";
+        case "search":
+          return "유사한 여행지 검색 중";
+        case "completed":
+          return "분석 완료";
+        default:
+          return "처리 중";
+      }
+    };
+
+    // 단계 활성화 여부 확인
+    const isPhaseActive = (phase) => {
+      return loadingPhase.value === phase;
+    };
+
+    // 단계 완료 여부 확인
+    const isPhaseCompleted = (phase) => {
+      const phases = ["imageAnalysis", "meaningAnalysis", "search", "completed"];
+      const currentIndex = phases.indexOf(loadingPhase.value);
+      const phaseIndex = phases.indexOf(phase);
+
+      return phaseIndex < currentIndex || loadingPhase.value === "completed";
+    };
+
+    // 스크롤 이벤트 핸들러
+    const handleScroll = () => {
+      isScrolled.value = window.scrollY > 100;
+    };
 
     // 상태 메시지 및 클래스
     const statusMessage = computed(() => actionStatus.value.message || '');
@@ -446,37 +571,12 @@ export default {
       return '';
     });
 
-    // 카카오 맵 API 로드 함수
-    const loadKakaoMapsScript = () => {
-      return new Promise((resolve, reject) => {
-        // 이미 로드된 경우
-        if (window.kakao && window.kakao.maps) {
-          console.log("카카오 맵 API가 이미 로드되어 있습니다");
-          resolve();
-          return;
-        }
-
-        console.log("카카오 맵 API 로드 시작...");
-        const script = document.createElement('script');
-        script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${config.KAKAO_MAPS_API_KEY}&autoload=false`;
-        script.onload = () => {
-          window.kakao.maps.load(() => {
-            console.log("카카오 맵 API 로드 완료!");
-            resolve();
-          });
-        };
-        script.onerror = (error) => {
-          console.error("카카오 맵 API 로드 실패:", error);
-          reject(error);
-        };
-
-        document.head.appendChild(script);
-      });
-    };
-
     // 컴포넌트 마운트 시 실행
     onMounted(async () => {
       console.log("LogoSearch 컴포넌트 마운트");
+      
+      // 스크롤 이벤트 리스너 등록
+      window.addEventListener("scroll", handleScroll);
 
       // 위시리스트 복원
       const savedWishlist = localStorage.getItem('logo_wishlist');
@@ -495,13 +595,26 @@ export default {
         }
       }
 
-      // 카카오 맵 API 로드
+      // 카카오 지도 API 미리 로드
       try {
         await loadKakaoMapsScript();
-        console.log("카카오 맵 API 준비 완료");
+        console.log("카카오 지도 API 준비 완료");
       } catch (error) {
-        console.error("카카오 맵 API 로드 실패:", error);
+        console.error("카카오 지도 API 로드 실패:", error);
       }
+    });
+    
+    // 컴포넌트 언마운트 시 실행 - 이벤트 리스너 제거
+    watch(() => {
+      return () => {
+        // 스크롤 이벤트 리스너 제거
+        window.removeEventListener("scroll", handleScroll);
+        
+        // 진행 중인 API 요청 취소
+        if (abortController.value) {
+          abortController.value.abort();
+        }
+      };
     });
 
     // 이미지 선택 시 자동으로 파일명을 이미지 이름으로 설정
@@ -531,7 +644,8 @@ export default {
         _id: result._id,
         _score: result._score,
         ...result._source,
-        reviews: dummyReviews
+        reviews: dummyReviews,
+        image_data: result._source.image_data || ''
       };
       
       selectedDetail.value = detailWithReviews;
@@ -548,63 +662,75 @@ export default {
 
     // 상세 모달의 지도 초기화
     const initDetailMap = async () => {
+      console.log('지도 초기화 함수 호출됨');
+  
+      const mapContainer = document.getElementById('detailMap');
+      if (!mapContainer) {
+        console.error('지도 컨테이너를 찾을 수 없습니다');
+        return;
+      }
+      
       try {
-        // API가 로드되지 않았다면 로드
+        // 카카오맵 API 로드 확인
         if (!window.kakao || !window.kakao.maps) {
           console.log('카카오 맵 API 로드 필요');
           await loadKakaoMapsScript();
         }
-
-        const mapContainer = document.getElementById('detailMap');
-        if (!mapContainer) {
-          console.error('지도 컨테이너를 찾을 수 없습니다');
-          return;
+        
+        // 선택된 장소의 위치 정보 확인
+        let lat = 37.5665; // 기본값: 서울
+        let lng = 126.9780;
+        
+        if (selectedDetail.value && selectedDetail.value.location_data) {
+          // 위치 데이터가 있는 경우 실제 위치 표시
+          const locationData = selectedDetail.value.location_data;
+          lat = locationData.latitude || lat;
+          lng = locationData.longitude || lng;
         }
-
-        // 선택한 장소의 위치 정보가 있으면 사용, 없으면 기본값
-        let lat = 37.501212; // 기본값: 역삼 멀티캠퍼스
-        let lng = 127.039508;
-
-        // selectedDetail에서 위치 정보 추출 시도
-        if (selectedDetail.value && selectedDetail.value.geoLocation &&
-          selectedDetail.value.geoLocation.coordinates) {
-          lat = selectedDetail.value.geoLocation.coordinates.latitude || lat;
-          lng = selectedDetail.value.geoLocation.coordinates.longitude || lng;
-        }
-
+        
         // 지도 옵션
         const mapOption = {
           center: new kakao.maps.LatLng(lat, lng),
-          level: 3
+          level: 3 // 확대 레벨
         };
-
+        
         // 지도 생성
-        const map = new kakao.maps.Map(mapContainer, mapOption);
-
+        kakaoMap = new kakao.maps.Map(mapContainer, mapOption);
+        
         // 마커 생성
         const markerPosition = new kakao.maps.LatLng(lat, lng);
         const marker = new kakao.maps.Marker({
           position: markerPosition
         });
-
-        // 마커를 지도에 표시
-        marker.setMap(map);
-
-        // 인포윈도우 생성
-        const infowindow = new kakao.maps.InfoWindow({
-          content: `<div style="padding:5px;font-size:12px;">${selectedDetail.value.image_name || '선택한 위치'}</div>`
+        
+        // 마커 지도에 표시
+        marker.setMap(kakaoMap);
+        
+        // 인포윈도우 추가
+        const infoContent = `
+          <div style="padding: 5px; text-align: center;">
+            <span style="font-weight: bold;">${selectedDetail.value.image_name || '여행지'}</span>
+          </div>
+        `;
+        
+        const infoWindow = new kakao.maps.InfoWindow({
+          content: infoContent
         });
-
-        // 인포윈도우 표시
-        infowindow.open(map, marker);
-
-        // 지도 컨트롤 추가
-        const zoomControl = new kakao.maps.ZoomControl();
-        map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
-
-        console.log('카카오 지도 초기화 완료:', lat, lng);
+        
+        // 마커에 마우스 오버 시 인포윈도우 표시
+        kakao.maps.event.addListener(marker, 'mouseover', function() {
+          infoWindow.open(kakaoMap, marker);
+        });
+        
+        // 마커에 마우스 아웃 시 인포윈도우 숨김
+        kakao.maps.event.addListener(marker, 'mouseout', function() {
+          infoWindow.close();
+        });
+        
+        console.log('카카오 지도 초기화 완료');
       } catch (error) {
-        console.error('카카오 지도 초기화 오류:', error);
+        console.error('지도 초기화 오류:', error);
+        mapContainer.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; background-color: #f0f0f0; color: #666; text-align: center; padding: 20px;">지도를 로드할 수 없습니다.</div>';
       }
     };
 
@@ -632,7 +758,6 @@ export default {
       // 로컬 스토리지에 저장
       localStorage.setItem('logo_wishlist', JSON.stringify(wishlistItems.value.map(i => i._id)));
     };
-
 
     // 파일 선택 창 열기
     const triggerFileInput = () => {
@@ -838,120 +963,39 @@ export default {
       isInWishlist,
       toggleWishlist,
       initDetailMap,
-      formatReviewDate
+      formatReviewDate,
+      formatSimilarityScore,
+      isScrolled,
+      showHero,
+      heroImageSrc,
+      heroTitle,
+      heroSubtitle,
+      heroHeight,
+      getLoadingMessage,
+      isPhaseActive,
+      isPhaseCompleted
     };
   }
 };
 </script>
 
-<style scoped>
-/* 분석 결과 표 */
-.analysis-table-container {
-  overflow: auto;
-  border-radius: 8px;
-  height: 100%;
-  min-height: 250px;
-}
+<style>
+/* Base styles */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
 
-.analysis-table {
-  width: 100%;
-  border-collapse: collapse;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
-
-.analysis-table th {
-  background-color: #f8f9fa;
-  /* 밝은 헤더 배경색 */
-  color: #333;
-  /* 어두운 헤더 글자색 */
-  text-align: left;
-  padding: 0.75rem 1rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  border-bottom: 2px solid #dee2e6;
-  /* 헤더 하단 구분선 */
-}
-
-.analysis-table td {
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid #e9ecef;
-  /* 밝은 셀 구분선 */
-  vertical-align: middle;
-  color: #495057;
-  /* 셀 글자색 */
-}
-
-.analysis-table tr:last-child td {
-  border-bottom: none;
-}
-
-.dimension-name {
-  font-weight: 500;
-  width: 20%;
-}
-
-.dimension-score {
-  color: #0d6efd;
-  /* 파란색 계열 유지 또는 변경 */
-  font-weight: 600;
-  text-align: center;
-  width: 10%;
-}
-
-.dimension-bar {
-  padding-right: 1rem;
-  width: 70%;
-  background-color: transparent;
-}
-
-.bar-container {
-  height: 16px;
-  background-color: #e9ecef;
-  /* 밝은 막대 배경색 */
-  border-radius: 8px;
-  overflow: hidden;
-  position: relative;
-  width: 100%;
-}
-
-.bar {
-  height: 100%;
-  background: linear-gradient(90deg, #0d6efd, #6ebcff);
-  border-radius: 8px;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 0;
-  transition: width 1s ease;
-}
-
-/* 취소 버튼 스타일 추가 */
-.btn-cancel-analysis {
-  margin-top: 1.5rem;
-  background-color: #dc3545;
-  /* 부트스트랩 danger 색상 */
-  color: white;
-  padding: 0.6rem 1.2rem;
-  font-size: 0.9rem;
-}
-
-.btn-cancel-analysis:hover {
-  background-color: #c82333;
-  /* 더 어두운 danger 색상 */
-  transform: translateY(-1px);
-}
-
-.btn-cancel-analysis svg {
-  margin-right: 0.4rem;
-}
-
-/* --- src/styles/LogoSearch.css 내용 시작 --- */
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
 
 .logo-search {
-  font-family: 'Noto Sans KR', sans-serif;
   min-height: 100vh;
-  background-color: #f8f9fa;
+  position: relative;
+  font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: #333;
+  overflow-x: hidden;
+  background-color: #f8f9fa;
   display: flex;
   flex-direction: column;
 }
@@ -961,9 +1005,12 @@ export default {
   position: relative;
   padding: 2rem 0.5rem 3rem;
   z-index: 2;
-  max-width: 1600px;
+  max-width: 1400px;
   margin: 0 auto;
   width: 95%;
+  margin-top: 10px; /* 헤더 높이만큼 여백 추가 - 줄임 */
+  flex: 1; /* 남은 공간 모두 차지하도록 */
+  background-color: #f8f9fa;
 }
 
 /* 상단 두 컬럼 레이아웃 */
@@ -972,42 +1019,100 @@ export default {
   grid-template-columns: 400px 1fr;
   gap: 1.5rem;
   margin-bottom: 1.5rem;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.8s ease-out forwards;
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* 중간 및 하단 섹션 */
-.middle-section,
-.bottom-section {
+.middle-section {
   margin-bottom: 1.5rem;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.8s ease-out 0.2s forwards;
 }
 
-/* 패널 공통 스타일 */
+/* 패널 공통 스타일 - OnboardingPage 스타일로 업데이트 */
 .upload-panel,
 .analysis-panel,
 .results-panel,
 .details-panel {
   background-color: white;
-  border-radius: 8px;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
   height: 100%;
   display: flex;
   flex-direction: column;
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.upload-panel:hover,
+.analysis-panel:hover,
+.results-panel:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
 }
 
 .panel-header {
-  padding: 1rem 1.5rem;
-  background-color: white;
+  padding: 1.2rem 1.5rem;
+  background: linear-gradient(to right, #f8f9fa, #ffffff);
   border-bottom: 1px solid #e2e8f0;
+  position: relative;
+}
+
+.panel-header::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(to right, #4285f4, #34a853);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+.upload-panel:hover .panel-header::after,
+.analysis-panel:hover .panel-header::after,
+.results-panel:hover .panel-header::after {
+  transform: scaleX(1);
 }
 
 .panel-title {
-  font-family: 'Playfair Display', 'Noto Sans KR', serif;
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', Times, serif;
   font-size: 1.3rem;
   font-weight: 500;
   margin: 0;
   text-align: center;
   color: #2d3748;
   letter-spacing: 0.5px;
+  position: relative;
+  display: inline-block;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.panel-title::after {
+  content: "";
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(to right, #4285f4, #34a853);
+  transform: scaleX(0.3);
+  transform-origin: center;
+  transition: transform 0.3s ease;
 }
 
 .panel-content {
@@ -1022,10 +1127,10 @@ export default {
   padding: 0;
 }
 
-/* 이미지 업로드 패널 */
+/* 이미지 업로드 패널 - 개선된 디자인 */
 .image-container {
-  background-color: #e9ecef;
-  border-radius: 8px;
+  background-color: #f8f9fa;
+  border-radius: 12px;
   height: 250px;
   display: flex;
   align-items: center;
@@ -1033,6 +1138,30 @@ export default {
   overflow: hidden;
   margin-bottom: 1.5rem;
   border: 2px dashed #ced4da;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.image-container:hover {
+  border-color: #4285f4;
+  background-color: rgba(66, 133, 244, 0.05);
+}
+
+.image-container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(66, 133, 244, 0.1), rgba(52, 168, 83, 0.1));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.image-container:hover::before {
+  opacity: 1;
 }
 
 .upload-placeholder {
@@ -1046,7 +1175,13 @@ export default {
 
 .upload-placeholder svg {
   margin-bottom: 1rem;
-  color: #0d6efd;
+  color: #4285f4;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  transition: transform 0.3s ease;
+}
+
+.image-container:hover .upload-placeholder svg {
+  transform: scale(1.1);
 }
 
 .upload-placeholder p {
@@ -1058,9 +1193,14 @@ export default {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
+  transition: transform 0.5s ease;
 }
 
-/* 버튼 스타일 */
+.image-container:hover .preview-image {
+  transform: scale(1.03);
+}
+
+/* 버튼 스타일 - 개선된 디자인 */
 .button-group {
   display: flex;
   flex-direction: column;
@@ -1074,64 +1214,93 @@ export default {
   gap: 0.5rem;
   padding: 0.75rem 1rem;
   border: none;
-  border-radius: 4px;
-  font-family: 'Noto Sans KR', sans-serif;
+  border-radius: 50px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-weight: 500;
   font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.7s ease;
+}
+
+.btn:hover::before {
+  left: 100%;
 }
 
 .btn svg {
   flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+.btn:hover svg {
+  transform: scale(1.2);
 }
 
 .btn-primary {
-  background-color: #0d6efd;
+  background: linear-gradient(135deg, #4285f4, #34a853);
   color: white;
+  box-shadow: 0 2px 5px rgba(66, 133, 244, 0.3);
 }
 
 .btn-primary:hover {
-  background-color: #0b5ed7;
+  background: linear-gradient(135deg, #3367d6, #2e8b47);
   transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(66, 133, 244, 0.4);
 }
 
 .btn-analyze {
-  background-color: #198754;
+  background: linear-gradient(135deg, #34a853, #4285f4);
   color: white;
+  box-shadow: 0 2px 5px rgba(52, 168, 83, 0.3);
 }
 
 .btn-analyze:hover {
-  background-color: #157347;
+  background: linear-gradient(135deg, #2e8b47, #3367d6);
   transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(52, 168, 83, 0.4);
 }
 
 .btn-secondary {
-  background-color: transparent;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
   border: 1px solid #ced4da;
-  color: #333;
+  color: #495057;
 }
 
 .btn-secondary:hover {
-  background-color: #e9ecef;
+  background: linear-gradient(135deg, #e9ecef, #dee2e6);
+  border-color: #adb5bd;
+  transform: translateY(-1px);
 }
 
-.btn-save {
-  background-color: #198754;
+.btn-danger {
+  background: linear-gradient(135deg, #ea4335, #fbbc05);
   color: white;
-  margin-bottom: 1rem;
+  box-shadow: 0 2px 5px rgba(234, 67, 53, 0.3);
 }
 
-.btn-save:hover {
-  background-color: #157347;
+.btn-danger:hover {
+  background: linear-gradient(135deg, #d33426, #e8ae00);
   transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(234, 67, 53, 0.4);
 }
 
 .hidden-input {
   display: none;
 }
 
-/* 분석 패널 - 로딩 상태 (수정됨) */
+/* 분석 패널 - 로딩 상태 */
 .loading-state {
   display: flex;
   align-items: center;
@@ -1143,43 +1312,32 @@ export default {
   background-color: transparent;
 }
 
+/* 로딩 스피너 스타일 */
+.loading-spinner-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
+  padding: 2rem;
+}
+
+.spinner-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
 .spinner {
   width: 50px;
   height: 50px;
-  border: 3px solid rgba(13, 110, 253, 0.3);
+  border: 3px solid rgba(66, 133, 244, 0.3);
   border-radius: 50%;
-  border-top-color: #0d6efd;
+  border-top-color: #4285f4;
   animation: spin 1s ease-in-out infinite;
-  margin-bottom: 1.5rem;
-}
-
-/* 분석 시간 정보 스타일 */
-.analysis-timing {
-  margin-top: 1.5rem;
-  padding: 1rem;
-  border-radius: 8px;
-  background-color: #f8f9fa;
-  border: 1px solid #e9ecef;
-}
-
-.timing-item {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
-}
-
-.timing-item:last-child {
-  margin-bottom: 0;
-}
-
-.timing-label {
-  font-size: 0.9rem;
-  color: #6c757d;
-}
-
-.timing-value {
-  font-weight: 600;
-  color: #0d6efd;
 }
 
 @keyframes spin {
@@ -1192,6 +1350,7 @@ export default {
   font-size: 1.1rem;
   color: #6c757d;
   margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 .loading-text span {
@@ -1208,18 +1367,143 @@ export default {
 }
 
 @keyframes dots {
-
   0%,
   100% {
     opacity: 0;
   }
-
   50% {
     opacity: 1;
   }
 }
 
-/* 가이드 상태 */
+/* 진행 상태 표시 스타일 */
+.progress-container {
+  display: flex;
+  align-items: center;
+  margin-top: 1rem;
+  width: 100%;
+  max-width: 500px;
+}
+
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  flex: 1;
+}
+
+.step-indicator {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: #e9ecef;
+  color: #6c757d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  transition: all 0.3s ease;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.step-label {
+  font-size: 0.85rem;
+  color: #6c757d;
+  text-align: center;
+  transition: all 0.3s ease;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.step-timing {
+  font-size: 0.75rem;
+  color: #4285f4;
+  margin-top: 0.25rem;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.progress-connector {
+  height: 2px;
+  background-color: #e9ecef;
+  flex-grow: 1;
+  margin: 0 -5px;
+  margin-bottom: 2rem;
+  transition: background-color 0.3s ease;
+}
+
+/* 활성 단계 스타일 */
+.progress-step.active .step-indicator {
+  background-color: #4285f4;
+  color: white;
+  box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.2);
+}
+
+.progress-step.active .step-label {
+  color: #4285f4;
+  font-weight: 600;
+}
+
+/* 완료된 단계 스타일 */
+.progress-step.completed .step-indicator {
+  background-color: #34a853;
+  color: white;
+}
+
+.progress-step.completed .step-label {
+  color: #34a853;
+}
+
+.progress-step.completed + .progress-connector,
+.progress-step.active + .progress-connector {
+  background-color: #4285f4;
+}
+
+.progress-step.completed + .progress-connector {
+  background-color: #34a853;
+}
+
+/* 분석 시간 정보 스타일 - 개선된 디자인 */
+.analysis-timing {
+  margin-top: 1.5rem;
+  padding: 1.2rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f8f9fa, #ffffff);
+  border: 1px solid #e9ecef;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.timing-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px dashed #e9ecef;
+}
+
+.timing-item:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.timing-label {
+  font-size: 0.9rem;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.timing-value {
+  font-weight: 600;
+  color: #4285f4;
+  background: linear-gradient(135deg, #4285f4, #34a853);
+  background-clip: text; /* 표준 속성 추가 */
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* 가이드 상태 - 개선된 디자인 */
 .guide-state {
   display: flex;
   flex-direction: column;
@@ -1228,30 +1512,32 @@ export default {
   text-align: center;
   height: 100%;
   min-height: 250px;
+  padding: 2rem;
+  background: linear-gradient(135deg, rgba(66, 133, 244, 0.03), rgba(52, 168, 83, 0.03));
+  border-radius: 12px;
 }
 
 .guide-icon {
-  color: #0d6efd;
+  color: #4285f4;
   margin-bottom: 1.5rem;
   animation: float 3s ease-in-out infinite;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
 }
 
 @keyframes float {
-
   0%,
   100% {
     transform: translateY(0);
   }
-
   50% {
     transform: translateY(-10px);
   }
 }
 
 .guide-description {
-  font-size: 0.95rem;
+  font-size: 1rem;
   line-height: 1.6;
-  color: #6c757d;
+  color: #495057;
   margin: 0 0 1.5rem 0;
   max-width: 400px;
 }
@@ -1259,254 +1545,98 @@ export default {
 .steps-container {
   display: flex;
   justify-content: center;
-  gap: 1.5rem;
+  gap: 2rem;
+  flex-wrap: wrap;
 }
 
 .step {
   display: flex;
   align-items: center;
-  color: #6c757d;
-  font-size: 0.9rem;
+  color: #495057;
+  font-size: 0.95rem;
+  position: relative;
+}
+
+.step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 12px;
+  right: -1.5rem;
+  width: 1rem;
+  height: 1px;
+  background: linear-gradient(to right, #4285f4, transparent);
 }
 
 .step span {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  background: linear-gradient(135deg, #0d6efd, #0a58ca);
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, #4285f4, #34a853);
   color: white;
   border-radius: 50%;
   margin-right: 0.5rem;
   font-weight: 600;
   font-size: 0.8rem;
+  box-shadow: 0 2px 5px rgba(66, 133, 244, 0.3);
 }
 
-/* 결과 그리드 */
-.results-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 1.5rem;
-  padding: 0.5rem;
-}
-
-.result-card {
-  position: relative;
-  background-color: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-  cursor: pointer;
-}
-
-.result-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
-}
-
-.result-image-container {
-  height: 180px;
-  width: 100%;
-  overflow: hidden;
-}
-
-.result-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.5s ease;
-}
-
-.result-card:hover .result-image {
-  transform: scale(1.1);
-}
-
-/* 등수 아이콘 스타일 수정 - 중앙 정렬 개선 */
-.result-rank {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center; /* 컨텐츠 중앙 정렬 추가 */
-  gap: 5px;
-  padding: 3px 10px; /* 패딩 균일하게 조정 */
-  background: linear-gradient(135deg, #0d6efd, #0a58ca);
-  color: white;
+/* 분석 결과 표 - 개선된 디자인 */
+.analysis-table-container {
+  overflow: auto;
   border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  z-index: 1;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
-}
-
-/* with-heart 클래스 유지 */
-.result-rank.with-heart {
-  padding-left: 10px;
-  gap: 7px;
-}
-
-/* rank-number 클래스 수정 - 숫자 위치 중앙 정렬 */
-.rank-number {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 14px;
-  text-align: center;
-  line-height: 1; /* 줄 간격 조정으로 수직 정렬 개선 */
-}
-
-.heart-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(255, 255, 255, 0.6);
-  transition: all 0.3s ease;
-}
-
-.heart-indicator.active {
-  color: #ff6b6b;
-  animation: heartbeat 1s ease-in-out;
-}
-
-.heart-indicator svg {
-  fill: transparent;
-  transition: fill 0.3s ease;
-}
-
-.heart-indicator.active svg {
-  fill: #ff6b6b;
-}
-
-@keyframes heartbeat {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.2);
-  }
-}
-
-.result-info {
-  padding: 1rem;
-}
-
-.result-name {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #333;
-  margin: 0 0 0.25rem 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.result-location {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.8rem;
-  color: #6c757d;
-  margin-bottom: 0.5rem;
-}
-
-.result-location svg {
-  flex-shrink: 0;
-  color: #6c757d;
-}
-
-.result-similarity {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8rem;
-  color: #6c757d;
-  margin-bottom: 0.5rem;
-}
-
-.similarity-bar {
-  flex-grow: 1;
-  height: 6px;
-  background-color: #e9ecef;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.similarity-fill {
   height: 100%;
-  background: linear-gradient(90deg, #0d6efd, #4dabf7);
-  border-radius: 3px;
-  transition: width 1s ease;
+  min-height: 250px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e9ecef;
 }
 
-.similarity-value {
-  color: #333;
+.analysis-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.analysis-table th {
+  background: linear-gradient(135deg, #f8f9fa, #ffffff);
+  color: #495057;
+  text-align: left;
+  padding: 0.85rem 1.2rem;
+  font-size: 0.95rem;
   font-weight: 600;
-  min-width: 30px;
-  text-align: right;
+  border-bottom: 2px solid #e9ecef;
 }
 
-/* 이미지 정보 입력 */
-.form-grid {
-  display: none;
+.analysis-table td {
+  padding: 0.85rem 1.2rem;
+  border-bottom: 1px solid #e9ecef;
+  vertical-align: middle;
+  color: #495057;
+  transition: background-color 0.2s ease;
 }
 
-.form-group {
-  display: none;
+.analysis-table tr:hover td {
+  background-color: rgba(66, 133, 244, 0.03);
 }
 
-.form-actions {
-  display: none;
-}
-
-.status-message {
-  padding: 0.75rem 1rem;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  margin-top: 1rem;
-  display: inline-block;
-}
-
-.status-success {
-  background-color: #d1e7dd;
-  border: 1px solid #badbcc;
-  color: #0f5132;
-}
-
-.status-error {
-  background-color: #f8d7da;
-  border: 1px solid #f5c2c7;
-  color: #842029;
-}
-
-/* 푸터 */
-.footer {
-  margin-top: auto;
-  background-color: #e9ecef;
-  padding: 1.5rem;
-  text-align: center;
-  border-top: 1px solid #dee2e6;
-}
-
-.footer p {
-  font-size: 0.9rem;
-  color: #333;
-  margin: 0;
+.analysis-table tr:last-child td {
+  border-bottom: none;
 }
 
 .dimension-name {
-  color: #495057;
   font-weight: 500;
   width: 20%;
 }
 
 .dimension-score {
-  color: #0d6efd;
+  color: #4285f4;
   font-weight: 600;
   text-align: center;
   width: 10%;
+  background: linear-gradient(135deg, #4285f4, #34a853);
+  background-clip: text; /* 표준 속성 추가 */
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .dimension-bar {
@@ -1522,20 +1652,261 @@ export default {
   overflow: hidden;
   position: relative;
   width: 100%;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .bar {
   height: 100%;
-  background: linear-gradient(90deg, #0d6efd, #6ebcff);
+  background: linear-gradient(90deg, #4285f4, #34a853);
   border-radius: 8px;
   position: absolute;
   top: 0;
   left: 0;
   width: 0;
-  transition: width 1s ease;
+  transition: width 1s cubic-bezier(0.165, 0.84, 0.44, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-/* 결과 카드의 이미지 설명 스타일 */
+/* 결과 그리드 - 개선된 디자인 */
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.8rem;
+  padding: 0.5rem;
+}
+
+.result-card {
+  position: relative;
+  background-color: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+  cursor: pointer;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.result-card:hover {
+  transform: translateY(-8px) scale(1.01);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+}
+
+.result-image-container {
+  height: 200px;
+  width: 100%;
+  overflow: hidden;
+  background-color: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  position: relative;
+}
+
+.result-image-container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, transparent 70%, rgba(0, 0, 0, 0.5));
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.result-card:hover .result-image-container::before {
+  opacity: 1;
+}
+
+.result-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.result-card:hover .result-image {
+  transform: scale(1.1);
+}
+
+.placeholder-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background-color: #f0f0f0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+/* 등수 아이콘 스타일 - 개선된 디자인 */
+.result-rank {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 3px 10px;
+  background: linear-gradient(135deg, #4285f4, #34a853);
+  color: white;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  z-index: 2;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.result-rank.with-heart {
+  padding-left: 10px;
+  gap: 7px;
+}
+
+.rank-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 14px;
+  text-align: center;
+  line-height: 1;
+}
+
+.heart-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.6);
+  transition: all 0.3s ease;
+}
+
+.heart-indicator.active {
+  color: #ea4335;
+  animation: heartbeat 1s ease-in-out;
+}
+
+.heart-indicator svg {
+  fill: transparent;
+  transition: fill 0.3s ease;
+}
+
+.heart-indicator.active svg {
+  fill: #ea4335;
+}
+
+@keyframes heartbeat {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+.result-info {
+  padding: 1.2rem;
+  position: relative;
+}
+
+.result-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 0.5rem 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.3s ease;
+}
+
+.result-card:hover .result-name {
+  color: #4285f4;
+}
+
+.result-location {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin-bottom: 0.75rem;
+}
+
+.result-location svg {
+  flex-shrink: 0;
+  color: #6c757d;
+}
+
+/* 유사도 표시 개선 */
+.result-similarity {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.similarity-bar {
+  flex-grow: 1;
+  height: 8px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.similarity-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4285f4, #34a853);
+  border-radius: 4px;
+  transition: width 1.2s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.similarity-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.similarity-percentage {
+  font-weight: 600;
+  color: #4285f4;
+}
+
+.similarity-description {
+  color: #6c757d;
+  font-size: 0.8rem;
+}
+
+/* 결과 카드 태그 스타일 */
+.result-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.result-tag {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  background-color: rgba(66, 133, 244, 0.1);
+  color: #4285f4;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.result-tag:hover {
+  background-color: #4285f4;
+  color: white;
+}
+
+/* 결과 설명 스타일 */
 .result-description {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
@@ -1555,7 +1926,6 @@ export default {
   margin: 0;
   line-height: 1.4;
   max-height: 4.2em;
-  /* 3줄로 제한 */
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -1563,32 +1933,82 @@ export default {
   -webkit-box-orient: vertical;
 }
 
-/* 모달 오버레이 및 공통 모달 스타일 - 새로운 레이아웃 적용 */
+/* 푸터 */
+.footer {
+  background: linear-gradient(135deg, #2d3748, #1a202c);
+  padding: 2rem;
+  text-align: center;
+  margin-top: auto;
+  border-top: 1px solid #2d3748;
+}
+
+.footer p {
+  margin: 0;
+  color: white;
+  font-size: 0.95rem;
+  letter-spacing: 0.5px;
+}
+
+.no-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: #a0aec0;
+  text-align: center;
+}
+
+.no-results p {
+  margin: 0.5rem 0;
+  font-size: 1.1rem;
+}
+
+.no-results .hint {
+  font-size: 0.9rem;
+  color: #cbd5e0;
+}
+
+/* 모달 오버레이 및 공통 모달 스타일 */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   overflow-y: auto;
   padding: 2rem 0;
+  backdrop-filter: blur(5px);
 }
 
 .place-detail-modal {
   background-color: white;
-  border-radius: 8px;
+  border-radius: 16px;
   width: 95%;
-  max-width: 1500px;
+  max-width: 1200px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
+  animation: modalFadeIn 0.3s ease-out;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .modal-header {
@@ -1612,6 +2032,7 @@ export default {
   font-size: 1.25rem;
   font-weight: 600;
   color: #2d3748;
+  font-family: Georgia, 'Times New Roman', Times, serif;
 }
 
 .modal-location {
@@ -1662,16 +2083,16 @@ export default {
 }
 
 .heart-btn:hover {
-  color: #f56565;
+  color: #ea4335;
   transform: scale(1.1);
 }
 
 .heart-btn.active {
-  color: #f56565;
+  color: #ea4335;
   animation: heartbeat 1s ease-in-out;
 }
 
-/* 모달 콘텐츠 영역 - 새로운 레이아웃 */
+/* 모달 콘텐츠 영역 */
 .modal-content {
   padding: 1.5rem;
   display: flex;
@@ -1689,7 +2110,7 @@ export default {
 .detail-image-container, .detail-map-container {
   flex: 1;
   height: 400px;
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
@@ -1704,7 +2125,7 @@ export default {
 .detail-section {
   padding: 1.5rem;
   margin-bottom: 1.5rem;
-  border-radius: 8px;
+  border-radius: 12px;
   background-color: #f8fafc;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
@@ -1720,6 +2141,7 @@ export default {
   margin: 0 0 1rem 0;
   border-bottom: 2px solid #e2e8f0;
   padding-bottom: 0.5rem;
+  font-family: Georgia, 'Times New Roman', Times, serif;
 }
 
 /* 태그 리스트 */
@@ -1730,17 +2152,17 @@ export default {
 }
 
 .tag {
-  background-color: #ebf5ff;
-  color: #3182ce;
+  background-color: rgba(66, 133, 244, 0.1);
+  color: #4285f4;
   font-size: 0.9rem;
   padding: 0.35rem 0.85rem;
-  border-radius: 9999px;
+  border-radius: 50px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .tag:hover {
-  background-color: #3182ce;
+  background-color: #4285f4;
   color: white;
 }
 
@@ -1781,7 +2203,7 @@ export default {
 
 .dimension-fill {
   height: 100%;
-  background: linear-gradient(90deg, #3182ce, #63b3ed);
+  background: linear-gradient(90deg, #4285f4, #34a853);
   border-radius: 5px;
 }
 
@@ -1803,7 +2225,7 @@ export default {
 .review-item {
   padding: 1.25rem;
   background-color: white;
-  border-radius: 8px;
+  border-radius: 12px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
@@ -1836,7 +2258,7 @@ export default {
 }
 
 .star-filled {
-  color: #f6ad55;
+  color: #fbbc05;
 }
 
 .star-empty {
@@ -1863,7 +2285,7 @@ export default {
 
 .cancel-btn {
   padding: 0.75rem 1.5rem;
-  border-radius: 6px;
+  border-radius: 50px;
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
@@ -1906,6 +2328,37 @@ export default {
   }
 }
 
+@media (max-width: 900px) {
+  .navbar-container {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 0 1rem;
+  }
+  
+  .nav-center {
+    position: relative;
+    left: 0;
+    transform: none;
+    margin-bottom: 1rem;
+    order: -1;
+  }
+  
+  .nav-group {
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .logo-text {
+    font-size: 1.8rem;
+  }
+  
+  .top-section {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+
 @media (max-width: 768px) {
   .modal-title-location {
     flex-direction: column;
@@ -1926,44 +2379,39 @@ export default {
     width: 100px;
     font-size: 0.85rem;
   }
-}
-
-/* 반응형 디자인 */
-@media (max-width: 1024px) {
-  .top-section {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-  }
   
-  .map-container {
-    margin-top: 1rem;
+  .results-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   }
 }
 
-@media (max-width: 768px) {
-  .form-row {
-    flex-direction: column;
-    gap: 0;
+@media (max-width: 600px) {
+  .navbar {
+    padding: 2rem 0;
   }
   
-  .budget-summary {
-    flex-direction: column;
+  .navbar.scrolled {
+    padding: 1rem 0;
   }
   
-  .schedule-item, .expense-item {
-    flex-direction: column;
-    gap: 0.5rem;
-    padding: 1rem;
+  .nav-group {
+    gap: 1rem;
   }
   
-  .time-column, .activity-column, .location-column,
-  .expense-category, .expense-description, .expense-amount {
-    width: 100%;
+  .nav-item {
+    font-size: 0.9rem;
   }
   
-  .action-column {
-    width: 100%;
-    justify-content: flex-end;
+  .logo-text {
+    font-size: 1.6rem;
+  }
+  
+  .hero-title-internal {
+    font-size: 2.5rem;
+  }
+  
+  .hero-subtitle-internal {
+    font-size: 1rem;
   }
 }
 
@@ -1980,25 +2428,9 @@ export default {
   .dimension-value {
     width: 40px;
   }
-}
-
-.no-results {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  color: #a0aec0;
-  text-align: center;
-}
-
-.no-results p {
-  margin: 0.5rem 0;
-  font-size: 1.1rem;
-}
-
-.no-results .hint {
-  font-size: 0.9rem;
-  color: #cbd5e0;
+  
+  .results-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
