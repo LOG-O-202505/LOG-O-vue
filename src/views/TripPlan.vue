@@ -389,9 +389,9 @@
 
     <!-- 장소 검색 모달 -->
     <div class="modal-overlay" v-if="isPlaceSearchModalOpen" @click="closePlaceSearch">
-      <div class="modals-container">
+      <div class="modals-container" :class="{ 'with-detail': selectedPlace }">
         <!-- 검색 모달 -->
-        <div class="place-search-modal" @click.stop>
+        <div class="place-search-modal" :class="{ 'slide-left': selectedPlace }" @click.stop>
           <div class="modal-header">
             <h3>장소 검색</h3>
             <button class="close-btn" @click="closePlaceSearch">
@@ -418,6 +418,9 @@
                   <div class="spinner"></div>
                   <p>검색 중...</p>
                 </div>
+                <div v-else-if="searchResults.length === 0 && !hasSearched" class="no-results">
+                  <p>검색어를 입력하여 장소를 검색해보세요.</p>
+                </div>
                 <div v-else-if="searchResults.length === 0 && hasSearched" class="no-results">
                   <p>검색 결과가 없습니다.</p>
                 </div>
@@ -443,6 +446,9 @@
                 </div>
               </div>
             </div>
+
+            <!-- 수직 구분선 -->
+            <div class="modal-divider"></div>
 
             <!-- 위시리스트 섹션 -->
             <div class="wishlist-section">
@@ -478,7 +484,7 @@
         </div>
 
         <!-- 장소 상세 정보 모달 (선택 시에만 표시) -->
-        <div v-if="selectedPlace" class="place-detail-modal" @click.stop>
+        <div v-if="selectedPlace" class="place-detail-modal" :class="{ 'slide-in': selectedPlace }" @click.stop>
           <div class="modal-header">
             <h3>장소 추가</h3>
             <button class="close-btn" @click="cancelPlaceDetails">
@@ -510,7 +516,13 @@
 
             <div class="form-group">
               <label for="placeMemo">메모</label>
-              <textarea id="placeMemo" v-model="placeMemo" placeholder="장소에 대한 메모를 입력하세요"></textarea>
+              <textarea 
+                id="placeMemo" 
+                v-model="placeMemo" 
+                placeholder="장소에 대한 메모를 입력하세요"
+                @input="autoResizeTextarea"
+                ref="memoTextarea"
+              ></textarea>
             </div>
 
             <div class="form-actions">
@@ -1341,7 +1353,22 @@ export default {
 
       // 다음 렌더링 주기에서 상세 지도 초기화
       nextTick(() => {
+        // 지도 초기화
         initDetailMap();
+        
+        // 애니메이션을 위한 타이밍 설정
+        requestAnimationFrame(() => {
+          const detailModal = document.querySelector('.place-detail-modal');
+          if (detailModal) {
+            detailModal.classList.add('slide-in');
+          }
+          
+          // 텍스트 영역 높이 초기화
+          if (memoTextarea.value) {
+            memoTextarea.value.style.height = '60px';
+            memoTextarea.value.classList.remove('expanded');
+          }
+        });
       });
     };
 
@@ -1381,10 +1408,10 @@ export default {
           map: detailMap
         });
 
-        // 1초 후 지도 리사이즈 (모달 애니메이션 완료 후)
+        // 애니메이션 완료 후 지도 리사이즈 
         setTimeout(() => {
           detailMap.relayout();
-        }, 100);
+        }, 650);
       } catch (error) {
         console.error("Error initializing detail map:", error);
       }
@@ -1392,7 +1419,16 @@ export default {
 
     // 장소 상세 취소
     const cancelPlaceDetails = () => {
-      selectedPlace.value = null;
+      // Add animation class to trigger reverse animation
+      const detailModal = document.querySelector('.place-detail-modal');
+      if (detailModal) {
+        detailModal.classList.remove('slide-in');
+      }
+      
+      // Delay removing the selectedPlace to allow animation to complete
+      setTimeout(() => {
+        selectedPlace.value = null;
+      }, 600); // Match the animation duration for smooth transition
     };
 
     // 위시리스트에 장소 추가
@@ -2827,6 +2863,25 @@ export default {
       }
     };
 
+    // 텍스트 영역 자동 크기 조절
+    const memoTextarea = ref(null);
+    const autoResizeTextarea = () => {
+      if (!memoTextarea.value) return;
+      
+      // Reset height to calculate based on content
+      memoTextarea.value.style.height = 'auto';
+      
+      // Set height based on scrollHeight (content height)
+      memoTextarea.value.style.height = `${memoTextarea.value.scrollHeight}px`;
+      
+      // Add 'expanded' class if content exceeds max-height
+      if (memoTextarea.value.scrollHeight > 200) {
+        memoTextarea.value.classList.add('expanded');
+      } else {
+        memoTextarea.value.classList.remove('expanded');
+      }
+    };
+
     return {
       tripData,
       tripDays,
@@ -2939,7 +2994,9 @@ export default {
       imageAnalysisDuration,
       meaningAnalysisDuration,
       keywordExtractionDuration,
-      searchDuration
+      searchDuration,
+      memoTextarea,
+      autoResizeTextarea,
     };
   }
 };
@@ -3479,14 +3536,25 @@ textarea {
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  overflow: hidden;
+  backdrop-filter: blur(3px);
+  transition: background-color 0.5s ease;
 }
 
 .modals-container {
   display: flex;
-  gap: 20px;
   align-items: flex-start;
+  justify-content: center;
   max-width: 1400px;
-  width: 100%;
+  width: 90%;
+  position: relative;
+  transition: all 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+  perspective: 1200px;
+}
+
+.modals-container.with-detail {
+  justify-content: space-between;
+  gap: 12px; /* Reduced gap to 60% of original 20px */
 }
 
 .place-search-modal {
@@ -3498,17 +3566,39 @@ textarea {
   flex-direction: column;
   overflow: hidden;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  transition: all 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  transform: translateX(0) scale(1);
+  transform-origin: center;
+  backface-visibility: hidden;
+  will-change: transform, box-shadow;
+}
+
+.place-search-modal.slide-left {
+  transform: translateX(-3%) scale(0.99);
+  box-shadow: 15px 0 25px rgba(0, 0, 0, 0.1);
 }
 
 .place-detail-modal {
   background-color: white;
   border-radius: 12px;
   width: 35%;
-  height: 90vh;
+  height: 90vh; /* Same height as search modal */
   display: flex;
   flex-direction: column;
   overflow: hidden;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  transition: all 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateX(50px);
+  opacity: 0;
+  backface-visibility: hidden;
+  will-change: transform, opacity, box-shadow;
+}
+
+.place-detail-modal.slide-in {
+  transform: translateX(0);
+  opacity: 1;
+  box-shadow: -5px 0 25px rgba(0, 0, 0, 0.15);
 }
 
 .modal-header {
@@ -3528,6 +3618,7 @@ textarea {
 
 .modal-content {
   display: flex;
+  flex-direction: row; /* 좌우 배치를 위한 명시적 설정 */
   flex: 1;
   overflow: hidden;
   height: calc(90vh - 110px);
@@ -3536,19 +3627,27 @@ textarea {
 .detail-content {
   padding: 1.5rem 2rem;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   height: calc(90vh - 110px);
 }
 
+/* 수직 구분선 */
+.modal-divider {
+  width: 1px;
+  background-color: #e2e8f0;
+  margin: 0;
+}
+
 .search-section {
-  flex: 1;
+  flex: 3; /* 검색 섹션에 더 많은 공간 할당 */
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #e2e8f0;
   overflow: hidden;
 }
 
 .wishlist-section {
-  flex: 1;
+  flex: 2; /* 찜 목록에 적절한 공간 할당 */
   padding: 1rem 1.5rem;
   display: flex;
   flex-direction: column;
@@ -3644,6 +3743,11 @@ textarea {
   text-align: center;
   padding: 2rem;
   color: #718096;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: calc(100% - 5rem);
 }
 
 .place-list {
@@ -4808,5 +4912,23 @@ textarea {
   text-align: center;
   margin: 5px 0;
   white-space: nowrap; /* 텍스트 줄바꿈 방지 */
+}
+
+.form-group textarea {
+  width: 100%;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1rem;
+  min-height: 60px;
+  max-height: 200px; /* Maximum height before scrolling */
+  resize: none; /* Remove manual resize handle */
+  overflow-y: hidden; /* Hide scrollbar initially */
+  transition: min-height 0.2s ease;
+}
+
+/* Add scrollbar only when content exceeds max-height */
+.form-group textarea.expanded {
+  overflow-y: auto;
 }
 </style>
