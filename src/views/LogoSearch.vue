@@ -1089,7 +1089,7 @@ export default {
 }
 
 .panel-title {
-  font-family: 'Playfair Display', Georgia, 'Times New Roman', Times, serif;
+  font-family: 'Noto Sans KR', sans-serif;
   font-size: 1.3rem;
   font-weight: 500;
   margin: 0;
