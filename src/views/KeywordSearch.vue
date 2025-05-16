@@ -1,14 +1,14 @@
 <template>
   <div class="keyword-search">
-    <!-- 헤더 - 페이지와 함께 스크롤됨 -->
+    <!-- Header 컴포넌트 사용 -->
     <Header 
-      :showHero="true"
-      heroImageSrc="https://images.unsplash.com/photo-1534430480872-3498386e7856?q=80&w=1470"
-      heroTitle="여행지 키워드 검색"
-      heroSubtitle="원하는 여행지 키워드로 이미지를 검색해보세요"
-      heroHeight="320px"
+      :showHero="showHero" 
+      :heroImageSrc="heroImageSrc"
+      :heroTitle="heroTitle"
+      :heroSubtitle="heroSubtitle"
+      :heroHeight="heroHeight"
     />
-    
+
     <!-- 컨텐츠 영역 - 히어로 섹션과 겹치지 않게 여백 추가 -->
     <div class="content-wrapper">
       <!-- 검색 패널 (전체 너비) -->
@@ -53,12 +53,13 @@
         </div>
       </div>
       
-      <!-- 결과 영역 (전체 너비) -->
+      <!-- 로딩 중일 때 로딩 스피너 표시 -->
       <div v-if="isLoading" class="loading-container">
-        <div class="loading-spinner"></div>
+        <div class="spinner"></div>
         <p class="loading-text">검색 중<span>.</span><span>.</span><span>.</span></p>
       </div>
       
+      <!-- 결과 영역 (전체 너비) -->
       <div v-else-if="searchPerformed" class="results-panel-container">
         <div class="results-panel">
           <div class="panel-header">
@@ -69,12 +70,14 @@
           
           <div class="panel-content">
             <div v-if="searchResults.length === 0" class="no-results">
-              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"></circle>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-              </svg>
-              <p>검색 결과가 없습니다</p>
-              <p class="hint">다른 키워드로 다시 시도해보세요</p>
+              <div class="no-results-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="8" y1="12" x2="16" y2="12"></line>
+                </svg>
+              </div>
+              <p class="no-results-text">검색 결과가 없습니다</p>
+              <p class="no-results-hint">다른 키워드로 다시 시도해보세요</p>
             </div>
             
             <div v-else class="results-grid">
@@ -94,38 +97,39 @@
                   <span class="rank-number">{{ index + 1 }}</span>
                 </div>
                 <div class="result-image-container">
-                  <img :src="`data:image/jpeg;base64,${result._source.image_data}`" :alt="result._source.image_name" class="result-image">
+                  <img v-if="result._source.image_data" :src="`data:image/jpeg;base64,${result._source.image_data}`" :alt="result._source.image_name" class="result-image">
+                  <div v-else class="placeholder-image">이미지 없음</div>
                 </div>
                 <div class="result-info">
                   <h4 class="result-name">{{ result._source.image_name }}</h4>
                   <div class="result-location">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                      <circle cx="12" cy="10" r="3"></circle>
-                    </svg>
+                    <span class="location-icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                      </svg>
+                    </span>
                     {{ result._source.image_location }}
                   </div>
                   <div class="result-similarity">
-                    <span>유사도:</span>
-                    <div class="similarity-bar">
-                      <div class="similarity-fill"
-                        :style="{ width: `${Math.round(result._score * 100) / 100 * 100}%` }"></div>
+                    <span class="similarity-label">유사도:</span>
+                    <div class="similarity-bar-container">
+                      <div class="similarity-bar" :style="{ width: `${(result._score * 100)}%` }"></div>
                     </div>
-                    <span class="similarity-value">{{ (Math.round(result._score * 100) / 100).toFixed(2) }}</span>
+                    <span class="similarity-value">{{ (result._score * 100).toFixed(0) }}%</span>
                   </div>
+                  <!-- 키워드 표시 영역 -->
                   <div v-if="result._source.image_tags && result._source.image_tags.length > 0" class="result-tags">
-                    <div class="tags-container">
-                      <span 
-                        v-for="(tag, tagIndex) in result._source.image_tags.slice(0, 3)" 
-                        :key="tagIndex"
-                        class="result-tag"
-                        @click.stop="applyKeyword(tag)"
-                      >
-                        #{{ tag }}
-                      </span>
-                    </div>
+                    <span 
+                      v-for="(tag, tagIndex) in result._source.image_tags.slice(0, 5)" 
+                      :key="tagIndex" 
+                      class="result-tag"
+                      @click.stop="applyKeyword(tag)"
+                    >
+                      {{ tag }}
+                    </span>
                   </div>
-                  <!-- 이미지 설명 추가 -->
+                  <!-- 이미지 설명 -->
                   <div v-if="result._source.image_description" class="result-description">
                     <div class="description-title">설명:</div>
                     <p class="description-text">{{ result._source.image_description }}</p>
@@ -135,7 +139,7 @@
             </div>
             
             <div v-if="searchResults.length > 0" class="load-more-container">
-              <button v-if="hasMoreResults" @click="loadMoreResults" class="btn btn-load-more">
+              <button v-if="hasMoreResults" @click="loadMoreResults" class="primary-btn load-more-btn">
                 더 보기 ({{ searchResults.length }}/{{ totalResults }})
               </button>
               <p v-else class="no-more-results">모든 결과를 불러왔습니다 ({{ searchResults.length }}건)</p>
@@ -150,7 +154,7 @@
       <p>© 2025 LOG:O - 당신의 여행을 기록하다</p>
     </footer>
 
-    <!-- 장소 상세 모달 - 수정된 레이아웃 -->
+    <!-- 장소 상세 모달 -->
     <div v-if="showDetailModal" class="modal-overlay" @click="closeDetailModal">
       <div class="place-detail-modal" @click.stop>
         <div class="modal-header">
@@ -182,8 +186,9 @@
           <!-- 이미지와 지도 섹션 (수평 레이아웃) -->
           <div class="visual-section">
             <div class="detail-image-container">
-              <img :src="`data:image/jpeg;base64,${selectedDetail.image_data}`" :alt="selectedDetail.image_name"
+              <img v-if="selectedDetail.image_data" :src="`data:image/jpeg;base64,${selectedDetail.image_data}`" :alt="selectedDetail.image_name"
                 class="detail-image">
+              <div v-else class="placeholder-image">이미지 없음</div>
             </div>
                 
             <!-- 지도 영역 -->
@@ -193,21 +198,27 @@
           </div>
           
           <!-- 태그 섹션 -->
-          <div class="detail-section" v-if="selectedDetail.image_tags && selectedDetail.image_tags.length > 0">
+          <div v-if="selectedDetail.image_tags && selectedDetail.image_tags.length > 0" class="detail-section">
             <h4>태그</h4>
             <div class="tag-list">
-              <span v-for="(tag, index) in selectedDetail.image_tags" :key="index" class="tag" @click="applyKeyword(tag)">{{ tag }}</span>
+              <span 
+                v-for="(tag, index) in selectedDetail.image_tags" 
+                :key="index" 
+                class="tag" 
+                @click="applyKeyword(tag)">
+                {{ tag }}
+              </span>
             </div>
           </div>
 
           <!-- 설명 섹션 -->
-          <div class="detail-section" v-if="selectedDetail.image_description">
+          <div v-if="selectedDetail.image_description" class="detail-section">
             <h4>설명</h4>
             <p class="detail-description">{{ selectedDetail.image_description }}</p>
           </div>
           
           <!-- 특성 분석 섹션 -->
-          <div class="detail-section" v-if="selectedDetail.dimensions">
+          <div v-if="selectedDetail.dimensions" class="detail-section">
             <h4>특성 분석</h4>
             <div class="detail-dimensions">
               <div v-for="(value, dimension) in selectedDetail.dimensions" :key="dimension" class="dimension-item">
@@ -220,8 +231,8 @@
             </div>
           </div>
           
-          <!-- 리뷰 섹션 (더미 데이터로 추가) -->
-          <div class="detail-section" v-if="selectedDetail.reviews && selectedDetail.reviews.length > 0">
+          <!-- 리뷰 섹션 (더미 데이터) -->
+          <div v-if="selectedDetail.reviews && selectedDetail.reviews.length > 0" class="detail-section">
             <h4>방문자 리뷰 ({{ selectedDetail.reviews.length }})</h4>
             <div class="reviews-container">
               <div v-for="(review, index) in selectedDetail.reviews" :key="index" class="review-item">
@@ -254,7 +265,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, nextTick } from "vue";
 import Header from "@/components/Header.vue";
 import { searchImagesByKeyword } from "@/services/api";
 import config from "@/config.js";
@@ -281,6 +292,13 @@ export default {
     const selectedDetail = ref({});
     const wishlistItems = ref([]);
     
+    // 히어로 섹션 속성
+    const showHero = ref(true);
+    const heroImageSrc = ref('https://images.unsplash.com/photo-1534430480872-3498386e7856?q=80&w=1470');
+    const heroTitle = ref('여행지 키워드 검색');
+    const heroSubtitle = ref('원하는 여행지 키워드로 이미지를 검색해보세요');
+    const heroHeight = ref('320px');
+    
     // 더미 리뷰 데이터
     const dummyReviews = [
       {
@@ -305,19 +323,18 @@ export default {
     
     // 차원 영어-한글 매핑
     const dimensionTranslations = {
-      "natural_elements": "자연 요소",
-      "urban_character": "도시 특성",
-      "water_features": "수경 요소",
-      "seasonal_appeal": "계절적 매력",
-      "relaxation_potential": "휴식 잠재력",
-      "romantic_atmosphere": "로맨틱한 분위기",
-      "activity_opportunities": "활동 기회",
-      "historical_cultural_value": "역사/문화적 가치",
-      "food_experience": "식도락 경험",
-      "shopping_potential": "쇼핑 잠재력"
+      "Natural Elements": "자연 요소",
+      "Urban Character": "도시 특성",
+      "Water Features": "수경 요소",
+      "Seasonal Appeal": "계절적 매력",
+      "Relaxation Potential": "휴식 잠재력",
+      "Romantic Atmosphere": "로맨틱한 분위기",
+      "Activity Opportunities": "활동 기회",
+      "Historical/Cultural Value": "역사/문화적 가치",
+      "Food Experience": "식도락 경험",
+      "Shopping Potential": "쇼핑 잠재력"
     };
 
-    
     // 차원 헤더 생성
     const getDimensionHeader = (dimension) => {
       return dimensionTranslations[dimension] || dimension;
@@ -337,6 +354,14 @@ export default {
     const sortedSearchResults = computed(() => {
       return [...searchResults.value].sort((a, b) => b._score - a._score);
     });
+    
+    // 더 많은 결과 있는지 확인
+    const hasMoreResults = computed(() => {
+      return searchResults.value.length < totalResults.value;
+    });
+    
+    // 카카오 지도 변수
+    let kakaoMap = null;
     
     // 컴포넌트 마운트 시 실행
     onMounted(async () => {
@@ -395,22 +420,6 @@ export default {
         document.head.appendChild(script);
       });
     };
-    
-    // 더 많은 결과 있는지 확인
-    const hasMoreResults = computed(() => {
-      return searchResults.value.length < totalResults.value;
-    });
-    
-    // 상태 메시지 및 클래스
-    const statusMessage = computed(() => actionStatus.value.message || '');
-    const statusClass = computed(() => {
-      if (actionStatus.value.type === 'success') {
-        return 'status-success';
-      } else if (actionStatus.value.type === 'error') {
-        return 'status-error';
-      }
-      return '';
-    });
     
     // 위시리스트 관리 함수
     const isInWishlist = (id) => {
@@ -525,85 +534,100 @@ export default {
     
     // 상세 모달 열기
     const openDetailModal = (result) => {
-      // 기존 데이터에 더미 리뷰 추가
+      // 리뷰 데이터 추가
       const detailWithReviews = {
         _id: result._id,
         _score: result._score,
         ...result._source,
-        reviews: dummyReviews  // 더미 리뷰 데이터 추가
+        reviews: dummyReviews
       };
       
       selectedDetail.value = detailWithReviews;
       showDetailModal.value = true;
       
-      // 모달이 열린 후 지도 초기화
-      setTimeout(() => {
-        initDetailMap();
-      }, 300);
+      // 모달이 열린 후 지도 초기화를 위해 nextTick 사용
+      nextTick(() => {
+        // 약간의 지연 추가로 모달 애니메이션 완료 후 지도 초기화
+        setTimeout(() => {
+          initDetailMap();
+        }, 300);
+      });
     };
     
     // 상세 모달의 지도 초기화
     const initDetailMap = async () => {
+      console.log('지도 초기화 함수 호출됨');
+  
+      const mapContainer = document.getElementById('detailMap');
+      if (!mapContainer) {
+        console.error('지도 컨테이너를 찾을 수 없습니다');
+        return;
+      }
+      
       try {
-        // API가 로드되지 않았다면 로드
+        // 카카오맵 API 로드 확인
         if (!window.kakao || !window.kakao.maps) {
           console.log('카카오 맵 API 로드 필요');
           await loadKakaoMapsScript();
         }
-
-        const mapContainer = document.getElementById('detailMap');
-        if (!mapContainer) {
-          console.error('지도 컨테이너를 찾을 수 없습니다');
-          return;
+        
+        // 선택된 장소의 위치 정보 확인
+        let lat = 37.5665; // 기본값: 서울시청
+        let lng = 126.9780;
+        
+        if (selectedDetail.value && selectedDetail.value.location_data) {
+          // 위치 데이터가 있는 경우 실제 위치 표시
+          const locationData = selectedDetail.value.location_data;
+          lat = locationData.latitude || lat;
+          lng = locationData.longitude || lng;
         }
-
-        // 선택한 장소의 위치 정보가 있으면 사용, 없으면 기본값
-        let lat = 37.501212; // 기본값: 역삼 멀티캠퍼스
-        let lng = 127.039508;
-
-        // selectedDetail에서 위치 정보 추출 시도
-        if (selectedDetail.value && selectedDetail.value.geoLocation &&
-          selectedDetail.value.geoLocation.coordinates) {
-          lat = selectedDetail.value.geoLocation.coordinates.latitude || lat;
-          lng = selectedDetail.value.geoLocation.coordinates.longitude || lng;
-        }
-
+        
         // 지도 옵션
         const mapOption = {
           center: new kakao.maps.LatLng(lat, lng),
-          level: 3
+          level: 3 // 확대 레벨
         };
-
+        
         // 지도 생성
-        const map = new kakao.maps.Map(mapContainer, mapOption);
-
+        kakaoMap = new kakao.maps.Map(mapContainer, mapOption);
+        
         // 마커 생성
         const markerPosition = new kakao.maps.LatLng(lat, lng);
         const marker = new kakao.maps.Marker({
           position: markerPosition
         });
-
-        // 마커를 지도에 표시
-        marker.setMap(map);
-
-        // 인포윈도우 생성
-        const infowindow = new kakao.maps.InfoWindow({
-          content: `<div style="padding:5px;font-size:12px;">${selectedDetail.value.image_name || '선택한 위치'}</div>`
+        
+        // 마커 지도에 표시
+        marker.setMap(kakaoMap);
+        
+        // 인포윈도우 추가
+        const infoContent = `
+          <div style="padding: 5px; text-align: center;">
+            <span style="font-weight: bold;">${selectedDetail.value.image_name || '여행지'}</span>
+          </div>
+        `;
+        
+        const infoWindow = new kakao.maps.InfoWindow({
+          content: infoContent
         });
-
-        // 인포윈도우 표시
-        infowindow.open(map, marker);
-
-        // 지도 컨트롤 추가
-        const zoomControl = new kakao.maps.ZoomControl();
-        map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
-
-        console.log('카카오 지도 초기화 완료:', lat, lng);
+        
+        // 마커에 마우스 오버 시 인포윈도우 표시
+        kakao.maps.event.addListener(marker, 'mouseover', function() {
+          infoWindow.open(kakaoMap, marker);
+        });
+        
+        // 마커에 마우스 아웃 시 인포윈도우 숨김
+        kakao.maps.event.addListener(marker, 'mouseout', function() {
+          infoWindow.close();
+        });
+        
+        console.log('카카오 지도 초기화 완료');
       } catch (error) {
-        console.error('카카오 지도 초기화 오류:', error);
+        console.error('지도 초기화 오류:', error);
+        mapContainer.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; background-color: #f0f0f0; color: #666; text-align: center; padding: 20px;">지도를 로드할 수 없습니다.</div>';
       }
     };
-    
+
     // 상세 모달 닫기
     const closeDetailModal = () => {
       showDetailModal.value = false;
@@ -617,35 +641,46 @@ export default {
       searchPerformed,
       hasMoreResults,
       totalResults,
-      statusMessage,
-      statusClass,
+      actionStatus,
+      showHero,
+      heroImageSrc,
+      heroTitle,
+      heroSubtitle,
+      heroHeight,
       performSearch,
       loadMoreResults,
       applyKeyword,
       openDetailModal,
+      closeDetailModal,
       isInWishlist,
+      toggleWishlist,
+      wishlistItems,
       showDetailModal,
       selectedDetail,
-      toggleWishlist,
-      closeDetailModal,
-      wishlistItems,
-      initDetailMap,
       sortedSearchResults,
       getDimensionHeader,
-      formatReviewDate
+      formatReviewDate,
+      initDetailMap
     };
   }
 };
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+/* Base styles */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Nunito:wght@400;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
+
+* {
+  box-sizing: border-box;
+}
 
 .keyword-search {
-  font-family: 'Noto Sans KR', sans-serif;
   min-height: 100vh;
-  background-color: #f8f9fa;
+  position: relative;
+  font-family: 'Noto Sans KR', 'Nunito', sans-serif;
   color: #333;
+  overflow-x: hidden;
+  background-color: #f8f9fa;
   display: flex;
   flex-direction: column;
 }
@@ -653,68 +688,110 @@ export default {
 /* 컨텐츠 영역 */
 .content-wrapper {
   position: relative;
-  padding: 2rem 0.5rem 3rem; 
+  padding: 2rem 0.5rem 3rem;
   z-index: 2;
-  max-width: 1600px;
+  max-width: 1400px;
   margin: 0 auto;
   width: 95%;
+  margin-top: 10px;
+  flex: 1;
+  background-color: #f8f9fa;
 }
 
-/* 검색 패널 */
-.search-panel-container, 
+/* 검색 패널 및 결과 패널 컨테이너 */
+.search-panel-container,
 .results-panel-container {
   margin-bottom: 1.5rem;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.8s ease-out forwards;
 }
 
-.search-panel, 
+.results-panel-container {
+  animation-delay: 0.2s;
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 패널 공통 스타일 */
+.search-panel,
 .results-panel {
   background-color: white;
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
   height: 100%;
   display: flex;
   flex-direction: column;
-  border: 1px solid rgba(0, 0, 0, 0.03);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .search-panel:hover,
 .results-panel:hover {
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+  transform: translateY(-5px);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
 }
 
 .panel-header {
-  padding: 1.25rem 1.75rem;
-  background-color: white;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 1.2rem 1.5rem;
+  background: linear-gradient(to right, #f8f9fa, #ffffff);
+  border-bottom: 1px solid #e2e8f0;
   position: relative;
 }
 
 .panel-header::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 50px;
-  height: 3px;
-  background: linear-gradient(90deg, #0d6efd, #4dabf7);
-  border-radius: 3px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(to right, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+
+.search-panel:hover .panel-header::after,
+.results-panel:hover .panel-header::after {
+  transform: scaleX(1);
 }
 
 .panel-title {
-  font-family: 'Playfair Display', 'Noto Sans KR', serif;
-  font-size: 1.4rem;
-  font-weight: 600;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 1.3rem;
+  font-weight: 500;
   margin: 0;
   text-align: center;
-  color: #1a202c;
+  color: #2d3748;
   letter-spacing: 0.5px;
+  position: relative;
+  display: inline-block;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.panel-title::after {
+  content: "";
+  position: absolute;
+  bottom: -5px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(to right, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
+  transform: scaleX(0.3);
+  transform-origin: center;
+  transition: transform 0.3s ease;
 }
 
 .panel-content {
-  padding: 1.75rem;
+  padding: 1.5rem;
   flex-grow: 1;
   display: flex;
   flex-direction: column;
@@ -731,36 +808,37 @@ export default {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   border-radius: 8px;
   overflow: hidden;
-  transition: box-shadow 0.3s ease;
+  transition: all 0.3s ease;
 }
 
 .search-input-container:focus-within {
-  box-shadow: 0 8px 20px rgba(13, 110, 253, 0.15);
+  box-shadow: 0 6px 16px rgba(72, 176, 228, 0.15);
 }
 
 .search-input {
   flex: 1;
-  padding: 0.9rem 1.2rem;
+  padding: 12px;
   border: 1px solid #e9ecef;
   border-right: none;
   border-radius: 8px 0 0 8px;
-  background-color: white;
-  color: #333;
+  font-family: 'Nunito', 'Noto Sans KR', sans-serif;
   font-size: 1rem;
-  outline: none;
+  background-color: white;
+  color: #495057;
   transition: all 0.3s ease;
 }
 
 .search-input:focus {
-  border-color: #86b7fe;
+  outline: none;
+  border-color: var(--logo-blue, #48b0e4);
 }
 
 .btn-search {
-  background: linear-gradient(135deg, #0d6efd, #0a58ca);
+  background: linear-gradient(135deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
   color: white;
   border: none;
   border-radius: 0 8px 8px 0;
-  padding: 0 1.75rem;
+  padding: 0 1.5rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -770,12 +848,13 @@ export default {
 }
 
 .btn-search:hover {
-  background: linear-gradient(135deg, #0a58ca, #084298);
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, var(--primary-dark, #3283ad), var(--logo-green, #5a9d87));
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(72, 176, 228, 0.25);
 }
 
 .btn-search:active {
-  transform: translateY(1px);
+  transform: translateY(0);
 }
 
 /* 검색 태그 */
@@ -802,38 +881,41 @@ export default {
 }
 
 .tag-chip {
-  background-color: #f1f3f5;
-  color: #495057;
+  background-color: rgba(72, 176, 228, 0.1);
+  color: var(--logo-blue, #48b0e4);
   padding: 0.4rem 1rem;
   border-radius: 20px;
   font-size: 0.9rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   border: 1px solid transparent;
 }
 
 .tag-chip:hover {
-  background: linear-gradient(135deg, #e7f5ff, #d0ebff);
-  color: #0d6efd;
-  border-color: #d0ebff;
+  background-color: var(--logo-blue, #48b0e4);
+  color: white;
+  border-color: var(--logo-blue, #48b0e4);
   transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(72, 176, 228, 0.2);
 }
 
-/* 로딩 컨테이너 */
+/* 로딩 상태 */
 .loading-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 4rem 0;
+  color: #6c757d;
+  text-align: center;
 }
 
-.loading-spinner {
+.spinner {
   width: 60px;
   height: 60px;
-  border: 3px solid rgba(13, 110, 253, 0.1);
+  border: 3px solid rgba(72, 176, 228, 0.1);
   border-radius: 50%;
-  border-top-color: #0d6efd;
+  border-top-color: var(--logo-blue, #48b0e4);
   animation: spin 1s ease-in-out infinite;
   margin-bottom: 1.5rem;
 }
@@ -876,100 +958,122 @@ export default {
   align-items: center;
   justify-content: center;
   padding: 4rem 0;
-  color: #6c757d;
+  color: #a0aec0;
   text-align: center;
 }
 
-.no-results svg {
-  margin-bottom: 1.5rem;
-  color: #adb5bd;
-  opacity: 0.7;
+.no-results-icon {
+  color: #a0aec0;
+  margin-bottom: 1rem;
 }
 
-.no-results p {
-  margin: 0.5rem 0;
-  font-size: 1.2rem;
-  font-weight: 500;
-}
-
-.no-results .hint {
+.no-results-text {
+  font-family: 'Noto Sans KR', sans-serif;
   font-size: 1rem;
-  color: #adb5bd;
-  margin-top: 0.5rem;
+  color: #e2e8f0;
+  margin: 0 0 0.5rem 0;
+}
+
+.no-results-hint {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 0.85rem;
+  color: #a0aec0;
+  margin: 0;
+  font-style: italic;
 }
 
 /* 결과 그리드 */
 .results-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.75rem;
-  margin-bottom: 2rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.8rem;
+  padding: 0.5rem;
 }
 
 .result-card {
   position: relative;
   background-color: white;
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
   cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  border: 1px solid rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .result-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.12);
+  transform: translateY(-8px) scale(1.01);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
 }
 
 .result-image-container {
   height: 200px;
   width: 100%;
   overflow: hidden;
+  background-color: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
   position: relative;
 }
 
-.result-image-container::after {
-  content: '';
+.result-image-container::before {
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(to bottom, rgba(0,0,0,0) 70%, rgba(0,0,0,0.2) 100%);
-  pointer-events: none;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, transparent 70%, rgba(0, 0, 0, 0.5));
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.result-card:hover .result-image-container::before {
+  opacity: 1;
 }
 
 .result-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.7s ease;
+  transition: transform 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
 }
 
 .result-card:hover .result-image {
   transform: scale(1.1);
 }
 
+.placeholder-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background-color: #f0f0f0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
 /* 등수 아이콘 스타일 */
 .result-rank {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 10px;
+  right: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
-  padding: 4px 12px;
-  background: linear-gradient(135deg, #0d6efd, #0a58ca);
+  padding: 3px 10px;
+  background: linear-gradient(135deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
   color: white;
-  border-radius: 20px;
-  font-size: 0.85rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
   font-weight: 600;
   z-index: 2;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .result-rank.with-heart {
@@ -995,7 +1099,7 @@ export default {
 }
 
 .heart-indicator.active {
-  color: #ff6b6b;
+  color: var(--logo-coral, #ff8e7f);
   animation: heartbeat 1s ease-in-out;
 }
 
@@ -1005,7 +1109,7 @@ export default {
 }
 
 .heart-indicator.active svg {
-  fill: #ff6b6b;
+  fill: var(--logo-coral, #ff8e7f);
 }
 
 @keyframes heartbeat {
@@ -1018,151 +1122,155 @@ export default {
 }
 
 .result-info {
-  padding: 1.25rem;
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  background-color: white;
+  padding: 1.2rem;
+  position: relative;
 }
 
 .result-name {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #1a202c;
+  color: #333;
   margin: 0 0 0.5rem 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.4;
+  transition: color 0.3s ease;
+}
+
+.result-card:hover .result-name {
+  color: var(--logo-blue, #48b0e4);
 }
 
 .result-location {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.25rem;
   font-size: 0.85rem;
   color: #6c757d;
   margin-bottom: 0.75rem;
 }
 
-.result-location svg {
-  flex-shrink: 0;
-  color: #6c757d;
+.location-icon {
+  color: var(--logo-blue, #48b0e4);
 }
 
+/* 유사도 표시 개선 */
 .result-similarity {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
   font-size: 0.85rem;
   color: #6c757d;
   margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.similarity-label {
+  font-weight: 500;
+  color: #6c757d;
+}
+
+.similarity-bar-container {
+  flex-grow: 1;
+  height: 8px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .similarity-bar {
-  flex-grow: 1;
-  height: 6px;
-  background-color: #e9ecef;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.similarity-fill {
   height: 100%;
-  background: linear-gradient(90deg, #0d6efd, #4dabf7);
-  border-radius: 3px;
-  transition: width 1.2s cubic-bezier(0.19, 1, 0.22, 1);
+  background: linear-gradient(90deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
+  border-radius: 4px;
+  transition: width 1.2s cubic-bezier(0.165, 0.84, 0.44, 1);
 }
 
 .similarity-value {
-  color: #1a202c;
   font-weight: 600;
-  min-width: 30px;
-  text-align: right;
+  color: var(--logo-blue, #48b0e4);
 }
 
+/* 결과 카드 태그 */
 .result-tags {
-  margin-top: 0.75rem;
-}
-
-.tags-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
 }
 
 .result-tag {
-  background-color: #e7f5ff;
-  color: #0d6efd;
-  padding: 0.25rem 0.6rem;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  background-color: rgba(72, 176, 228, 0.1);
+  color: var(--logo-blue, #48b0e4);
+  border-radius: 12px;
   transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .result-tag:hover {
-  background-color: #0d6efd;
+  background-color: var(--logo-blue, #48b0e4);
   color: white;
   transform: translateY(-2px);
 }
 
-/* 더 보기 버튼 */
+/* 더 불러오기 버튼 */
 .load-more-container {
   display: flex;
   justify-content: center;
-  margin-top: 1.5rem;
+  margin-top: 2rem;
 }
 
-.btn-load-more {
-  background-color: transparent;
-  border: 2px solid #0d6efd;
-  color: #0d6efd;
-  padding: 0.75rem 2.5rem;
-  border-radius: 8px;
+.load-more-btn {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, var(--logo-blue, #48b0e4), var(--primary-dark, #3283ad));
+  color: white;
+  border: none;
+  border-radius: 50px;
+  font-weight: 600;
+  font-size: 1rem;
   cursor: pointer;
   transition: all 0.3s ease;
-  font-weight: 500;
-  font-size: 1rem;
+  box-shadow: 0 4px 8px rgba(72, 176, 228, 0.25);
 }
 
-.btn-load-more:hover {
-  background-color: #0d6efd;
-  color: white;
+.load-more-btn:hover {
+  background: linear-gradient(135deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(13, 110, 253, 0.2);
-}
-
-.btn-load-more:active {
-  transform: translateY(0);
+  box-shadow: 0 6px 12px rgba(72, 176, 228, 0.3);
 }
 
 .no-more-results {
+  color: #a0aec0;
+  font-size: 0.95rem;
+}
+
+/* 결과 카드 설명 영역 */
+.result-description {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.description-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 0.25rem;
+}
+
+.description-text {
+  font-size: 0.8rem;
   color: #6c757d;
-  font-size: 1rem;
-  font-weight: 500;
-}
-
-/* 상태 메시지 */
-.status-message {
-  padding: 0.75rem 1.25rem;
-  border-radius: 8px;
-  font-size: 1rem;
-  margin-top: 1.25rem;
-  text-align: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-.status-success {
-  background-color: rgba(56, 161, 105, 0.1);
-  color: #38a169;
-  border-left: 4px solid #38a169;
-}
-
-.status-error {
-  background-color: rgba(229, 62, 62, 0.1);
-  color: #e53e3e;
-  border-left: 4px solid #e53e3e;
+  margin: 0;
+  line-height: 1.4;
+  max-height: 4.2em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
 }
 
 /* 푸터 */
@@ -1196,36 +1304,36 @@ export default {
   overflow-y: auto;
   padding: 2rem 0;
   backdrop-filter: blur(5px);
-  transition: all 0.3s ease;
 }
 
 .place-detail-modal {
   background-color: white;
   border-radius: 16px;
   width: 95%;
-  max-width: 1500px;
+  max-width: 1200px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
-  animation: modalFadeIn 0.4s ease-out;
+  animation: modalFadeIn 0.3s ease-out;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 @keyframes modalFadeIn {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: scale(1);
   }
 }
 
 .modal-header {
   display: flex;
-  padding: 1.5rem 2rem;
+  padding: 1.25rem 1.5rem;
   border-bottom: 1px solid #e2e8f0;
   position: sticky;
   top: 0;
@@ -1241,22 +1349,20 @@ export default {
 
 .modal-title-location h3 {
   margin: 0;
-  font-size: 1.4rem;
+  font-size: 1.25rem;
   font-weight: 600;
-  color: #1a202c;
+  color: #2d3748;
+  font-family: Georgia, 'Times New Roman', Times, serif;
 }
 
 .modal-location {
   margin-left: 1.5rem;
-  color: #4a5568;
+  color: #718096;
   font-size: 1rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 300px;
-  background-color: #f8fafc;
-  padding: 0.35rem 0.75rem;
-  border-radius: 4px;
 }
 
 .modal-actions {
@@ -1280,8 +1386,7 @@ export default {
 
 .close-btn:hover {
   background-color: #f7fafc;
-  color: #1a202c;
-  transform: rotate(90deg);
+  color: #4a5568;
 }
 
 .heart-btn {
@@ -1298,18 +1403,18 @@ export default {
 }
 
 .heart-btn:hover {
-  color: #f56565;
+  color: var(--logo-coral, #ff8e7f);
   transform: scale(1.1);
 }
 
 .heart-btn.active {
-  color: #f56565;
+  color: var(--logo-coral, #ff8e7f);
   animation: heartbeat 1s ease-in-out;
 }
 
-/* 모달 콘텐츠 영역 - 새로운 레이아웃 */
+/* 모달 콘텐츠 영역 */
 .modal-content {
-  padding: 2rem;
+  padding: 1.5rem;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -1318,55 +1423,31 @@ export default {
 /* 이미지와 지도를 수평으로 나란히 배치 */
 .visual-section {
   display: flex;
-  gap: 24px;
-  margin-bottom: 2rem;
+  gap: 20px;
+  margin-bottom: 1.5rem;
 }
 
 .detail-image-container, .detail-map-container {
   flex: 1;
-  height: 450px;
+  height: 400px;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-  position: relative;
-}
-
-.detail-image-container::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(to bottom, rgba(0,0,0,0) 80%, rgba(0,0,0,0.1) 100%);
-  pointer-events: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .detail-image, .detail-map {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.5s ease;
-}
-
-.detail-image:hover {
-  transform: scale(1.03);
 }
 
 /* 각 섹션 스타일 */
 .detail-section {
-  padding: 1.75rem;
-  margin-bottom: 2rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
   border-radius: 12px;
   background-color: #f8fafc;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  border: 1px solid rgba(0, 0, 0, 0.03);
-}
-
-.detail-section:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .detail-section:last-child {
@@ -1374,54 +1455,42 @@ export default {
 }
 
 .detail-section h4 {
-  font-size: 1.25rem;
+  font-size: 1.2rem;
   font-weight: 600;
-  color: #1a202c;
-  margin: 0 0 1.25rem 0;
+  color: #2d3748;
+  margin: 0 0 1rem 0;
   border-bottom: 2px solid #e2e8f0;
-  padding-bottom: 0.75rem;
-  position: relative;
-}
-
-.detail-section h4::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  width: 50px;
-  height: 2px;
-  background: linear-gradient(90deg, #0d6efd, #4dabf7);
+  padding-bottom: 0.5rem;
+  font-family: Georgia, 'Times New Roman', Times, serif;
 }
 
 /* 태그 리스트 */
 .tag-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: 0.6rem;
 }
 
 .tag {
-  background-color: #e7f5ff;
-  color: #0d6efd;
-  font-size: 0.95rem;
-  padding: 0.4rem 1rem;
-  border-radius: 20px;
+  background-color: rgba(72, 176, 228, 0.1);
+  color: var(--logo-blue, #48b0e4);
+  font-size: 0.9rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 50px;
   cursor: pointer;
   transition: all 0.2s ease;
-  border: 1px solid rgba(13, 110, 253, 0.1);
 }
 
 .tag:hover {
-  background-color: #0d6efd;
+  background-color: var(--logo-blue, #48b0e4);
   color: white;
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(13, 110, 253, 0.15);
 }
 
 /* 설명 텍스트 */
 .detail-description {
-  font-size: 1.05rem;
-  line-height: 1.8;
+  font-size: 1rem;
+  line-height: 1.7;
   color: #4a5568;
   margin: 0;
 }
@@ -1430,43 +1499,40 @@ export default {
 .detail-dimensions {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1rem;
 }
 
 .dimension-item {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
+  gap: 1rem;
 }
 
 .dimension-name {
-  width: 150px;
-  font-size: 1rem;
+  width: 140px;
+  font-size: 0.95rem;
   color: #4a5568;
-  font-weight: 500;
 }
 
 .dimension-bar-small {
   flex: 1;
-  height: 12px;
+  height: 10px;
   background-color: #e2e8f0;
-  border-radius: 6px;
+  border-radius: 5px;
   overflow: hidden;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .dimension-fill {
   height: 100%;
-  background: linear-gradient(90deg, #0d6efd, #4dabf7);
-  border-radius: 6px;
-  transition: width 1.2s cubic-bezier(0.19, 1, 0.22, 1);
+  background: linear-gradient(90deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
+  border-radius: 5px;
 }
 
 .dimension-value {
   width: 40px;
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  color: #1a202c;
+  color: #4a5568;
   text-align: right;
 }
 
@@ -1474,28 +1540,21 @@ export default {
 .reviews-container {
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
+  gap: 1.5rem;
 }
 
 .review-item {
-  padding: 1.5rem;
+  padding: 1.25rem;
   background-color: white;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  transition: transform 0.3s ease;
-  border: 1px solid rgba(0, 0, 0, 0.03);
-}
-
-.review-item:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .review-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .reviewer-info {
@@ -1505,25 +1564,22 @@ export default {
 
 .reviewer-name {
   font-weight: 600;
-  color: #1a202c;
-  font-size: 1.05rem;
+  color: #2d3748;
+  font-size: 1rem;
 }
 
 .review-date {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: #718096;
-  margin-top: 0.25rem;
 }
 
 .review-rating {
   color: #a0aec0;
-  font-size: 1.35rem;
-  letter-spacing: 2px;
+  font-size: 1.25rem;
 }
 
 .star-filled {
-  color: #f6ad55;
-  text-shadow: 0 2px 4px rgba(246, 173, 85, 0.2);
+  color: var(--logo-yellow, #ffd166);
 }
 
 .star-empty {
@@ -1531,13 +1587,13 @@ export default {
 }
 
 .review-content {
-  font-size: 1rem;
-  line-height: 1.7;
+  font-size: 0.95rem;
+  line-height: 1.6;
   color: #4a5568;
 }
 
 .modal-footer {
-  padding: 1.5rem 2rem;
+  padding: 1.25rem 1.5rem;
   border-top: 1px solid #e2e8f0;
   display: flex;
   justify-content: flex-end;
@@ -1549,69 +1605,32 @@ export default {
 }
 
 .cancel-btn {
-  padding: 0.85rem 2rem;
-  border-radius: 8px;
-  font-size: 1rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 50px;
+  font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s;
   background-color: #fff;
   color: #4a5568;
-  border: 2px solid #e2e8f0;
+  border: 1px solid #e2e8f0;
 }
 
 .cancel-btn:hover {
   background-color: #f7fafc;
-  border-color: #cbd5e0;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
 }
 
-.cancel-btn:active {
-  transform: translateY(0);
-}
-
-/* 결과 카드의 이미지 설명 스타일 */
-.result-description {
-  margin-top: 0.85rem;
-  padding-top: 0.85rem;
-  border-top: 1px solid #e9ecef;
-}
-
-.description-title {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #495057;
-  margin-bottom: 0.35rem;
-}
-
-.description-text {
-  font-size: 0.85rem;
-  color: #6c757d;
-  margin: 0;
-  line-height: 1.5;
-  max-height: 4.5em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-}
-
-/* 상위 랭킹 카드 스타일 */
+/* 등수 랭킹 컬러 */
 .result-card:nth-child(1) .result-rank {
-  background: linear-gradient(135deg, #ffd700, #ffb700);
-  box-shadow: 0 4px 10px rgba(255, 215, 0, 0.3);
+  background: linear-gradient(135deg, #ffca2c, #ffab00);
 }
 
 .result-card:nth-child(2) .result-rank {
-  background: linear-gradient(135deg, #c0c0c0, #a0a0a0);
-  box-shadow: 0 4px 10px rgba(192, 192, 192, 0.3);
+  background: linear-gradient(135deg, #e0e0e0, #b0b0b0);
 }
 
 .result-card:nth-child(3) .result-rank {
-  background: linear-gradient(135deg, #cd7f32, #b06a2c);
-  box-shadow: 0 4px 10px rgba(205, 127, 50, 0.3);
+  background: linear-gradient(135deg, #d98936, #b0732f);
 }
 
 /* 반응형 조정 */
@@ -1627,7 +1646,14 @@ export default {
   }
   
   .dimension-name {
-    width: 130px;
+    width: 120px;
+  }
+}
+
+@media (max-width: 900px) {
+  .top-section {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
   }
 }
 
@@ -1638,23 +1664,42 @@ export default {
   }
   
   .modal-location {
-    margin: 0.5rem 0 0 0;
-    max-width: 100%;
+    margin: 0.25rem 0 0 0;
   }
   
   .review-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
   
   .dimension-name {
-    width: 110px;
-    font-size: 0.9rem;
+    width: 100px;
+    font-size: 0.85rem;
   }
   
   .results-grid {
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .results-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .search-input-container {
+    flex-direction: column;
+  }
+  
+  .search-input {
+    border-radius: 8px;
+    border-right: 1px solid #e9ecef;
+  }
+  
+  .btn-search {
+    border-radius: 8px;
+    margin-top: 0.5rem;
   }
 }
 
@@ -1665,32 +1710,11 @@ export default {
   
   .dimension-name {
     width: 100%;
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.25rem;
   }
   
   .dimension-value {
     width: 40px;
-  }
-  
-  .panel-title {
-    font-size: 1.2rem;
-  }
-  
-  .search-input-container {
-    flex-direction: column;
-    box-shadow: none;
-  }
-  
-  .search-input {
-    border-radius: 8px;
-    margin-bottom: 0.5rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  }
-  
-  .btn-search {
-    border-radius: 8px;
-    width: 100%;
-    justify-content: center;
   }
 }
 </style>

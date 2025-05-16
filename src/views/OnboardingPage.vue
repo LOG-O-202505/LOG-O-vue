@@ -40,8 +40,6 @@
           <span class="travel-title" :class="{ visible: isLoaded }">Log Your Travel</span>
         </h1>
 
-        <p class="korean-subtitle" :class="{ visible: isLoaded }">여행의 가장 아름다운 순간을 계획하고 기록합니다</p>
-
       </div>
 
       <!-- Scroll indicator -->
@@ -617,6 +615,17 @@ onUnmounted(() => {
 </script>
 
 <style>
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Italianno&display=swap');
+
+/* Add custom font */
+@font-face {
+    font-family: 'LeferiPoint-SpecialItalicA';
+    src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2201-2@1.0/LeferiPoint-SpecialItalicA.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+}
+
 /* Base styles */
 * {
   margin: 0;
@@ -812,8 +821,8 @@ body {
 }
 
 .travel-title {
-  font-family: 'Dancing Script', cursive;
-  font-size: 7rem;
+  font-family: 'Italianno', cursive;
+  font-size: 10rem;
   font-weight: 700;
   margin-bottom: 2.5rem;
   line-height: 1.2;
@@ -1108,8 +1117,6 @@ body {
   /* 확실히 왼쪽에서 오른쪽으로 이동하는 애니메이션 */
   animation: waveAnimation 6s linear infinite;
 }
-
-
 
 .feature-description {
   font-size: 1.1rem;
