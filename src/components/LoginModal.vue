@@ -578,6 +578,7 @@ export default {
   background: transparent;
   border: none;
   cursor: pointer;
+  box-shadow: none; /* 추가: 명시적으로 shadow 제거 */
 }
 
 .close-button:hover {
@@ -680,21 +681,20 @@ export default {
 .kakao-button:hover {
   background-color: #FFDC3C;
 }
-
 .logo-button {
   background: linear-gradient(
     132deg,
-    #f06292,
-    #9575cd,
-    #4fc3f7,
-    #4db6ac,
-    #81c784,
-    #fff176,
-    #ff8a65,
-    #9575cd,
-    #7986cb,
-    #ef5350,
-    #f06292
+    #f8bbd0,
+    #d1c4e9,
+    #b3e5fc,
+    #b2dfdb,
+    #c8e6c9,
+    #fff9c4,
+    #ffccbc,
+    #d1c4e9,
+    #c5cae9,
+    #ffcdd2,
+    #f8bbd0
   );
   background-size: 1000% 1000%;
   animation: gradient 30s ease infinite;
@@ -730,7 +730,7 @@ export default {
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1rem; /* 소셜 버튼과 동일한 gap 유지 */
 }
 
 .form-group {
@@ -808,17 +808,17 @@ export default {
 .gradient-button {
   background: linear-gradient(
     132deg,
-    #f06292,
-    #9575cd,
-    #4fc3f7,
-    #4db6ac,
-    #81c784,
-    #fff176,
-    #ff8a65,
-    #9575cd,
-    #7986cb,
-    #ef5350,
-    #f06292
+    #f8bbd0,
+    #d1c4e9,
+    #b3e5fc,
+    #b2dfdb,
+    #c8e6c9,
+    #fff9c4,
+    #ffccbc,
+    #d1c4e9,
+    #c5cae9,
+    #ffcdd2,
+    #f8bbd0
   );
   background-size: 1000% 1000%;
   animation: gradient 30s ease infinite;
@@ -918,22 +918,21 @@ export default {
   cursor: pointer;
   background: linear-gradient(
     132deg,
-    #f06292,
-    #9575cd,
-    #4fc3f7,
-    #4db6ac,
-    #81c784,
-    #fff176,
-    #ff8a65,
-    #9575cd,
-    #7986cb,
-    #ef5350,
-    #f06292
+    #f8bbd0,
+    #d1c4e9,
+    #b3e5fc,
+    #b2dfdb,
+    #c8e6c9,
+    #fff9c4,
+    #ffccbc,
+    #d1c4e9,
+    #c5cae9,
+    #ffcdd2,
+    #f8bbd0
   );
   background-size: 1000% 1000%;
   animation: gradient 30s ease infinite;
 }
-
 /* 그라데이션 애니메이션 */
 @keyframes gradient {
   0% {

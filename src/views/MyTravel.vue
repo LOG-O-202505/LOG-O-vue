@@ -178,43 +178,6 @@
             </div>
           </div>
 
-          <!-- 이미지 팝업 모달 -->
-          <div v-if="selectedImage" class="image-modal" @click.self="closeImageModal">
-            <div class="image-modal-content">
-              <button class="close-modal-btn" @click="closeImageModal">×</button>
-              <img :src="`data:image/jpeg;base64,${selectedImage.image_data}`" alt="여행 이미지">
-              <div class="image-info">
-                <h3>{{ selectedImage.image_name }}</h3>
-                <div class="image-location">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                    <circle cx="12" cy="10" r="3"></circle>
-                  </svg>
-                  <span>{{ selectedImage.image_location }}</span>
-                </div>
-                <div class="image-date">{{ formatDate(selectedImage.created_at) }}</div>
-                <div class="image-tags">
-                  <span v-for="(tag, index) in selectedImage.image_tags" :key="index" class="image-tag">
-                    #{{ tag }}
-                  </span>
-                </div>
-                <div class="image-dimensions" v-if="selectedImage.dimensions">
-                  <h4>이미지 분석 결과</h4>
-                  <div class="dimensions-grid">
-                    <div v-for="(score, dimension) in selectedImage.dimensions" :key="dimension" class="dimension-item">
-                      <div class="dimension-name">{{ getCategoryName(dimension) }}</div>
-                      <div class="dimension-bar-container">
-                        <div class="dimension-bar" :style="{ width: `${score * 100}%` }"></div>
-                      </div>
-                      <div class="dimension-score">{{ (score * 100).toFixed(0) }}%</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <!-- 지역 호버 툴팁 -->
           <div v-if="hoveredRegion" class="region-tooltip" :style="tooltipStyle">
             {{ tooltipContent }}
@@ -244,7 +207,7 @@
             <div class="year-label">{{ yearData.year }}년</div>
             <div class="trips-wrapper">
               <div v-for="(trip, tripIndex) in yearData.trips" :key="tripIndex" class="trip-item"
-                :class="getSeasonClass(trip.season)" @click="openImageModal(trip)">
+                :class="getSeasonClass(trip.season)" @click="navigateToPlan()">
                 <div class="trip-date">{{ formatShortDate(trip.date) }}</div>
                 <div class="trip-image-preview">
                   <img :src="`data:image/jpeg;base64,${trip.image_data}`" :alt="trip.location">
@@ -394,7 +357,6 @@ export default {
     const detailMapContainer = ref(null);
     const radarChartContainer = ref(null);
     const selectedYear = ref('all');
-    const selectedImage = ref(null);
     const currentMapLevel = ref('ctprvn'); // 'ctprvn' 또는 'sig'
     const activeRegion = ref(null); // 활성화된 광역시도 코드
     const activeSig = ref(null); // 활성화된 시군구 코드
@@ -1304,14 +1266,9 @@ export default {
       currentMapLevel.value = 'ctprvn';
     };
 
-    // 이미지 모달 열기
-    const openImageModal = (image) => {
-      selectedImage.value = image;
-    };
-
-    // 이미지 모달 닫기
-    const closeImageModal = () => {
-      selectedImage.value = null;
+    // 여행 계획 페이지로 이동하는 함수
+    const navigateToPlan = () => {
+      router.push('/plan');
     };
 
     // 시군구 지도 렌더링 함수
@@ -1788,7 +1745,6 @@ export default {
       detailMapContainer,
       radarChartContainer,
       selectedYear,
-      selectedImage,
       currentMapLevel,
       activeRegion,
       activeSig,
@@ -1807,8 +1763,7 @@ export default {
       // 메서드
       selectRegion,
       resetToCtprvnMap,
-      openImageModal,
-      closeImageModal,
+      navigateToPlan,
       getSeasonClass,
       getSeasonName,
       formatDate,
@@ -2122,123 +2077,6 @@ export default {
 
 .frequency-label {
   font-size: 0.8rem;
-  color: #4a5568;
-}
-
-/* 이미지 모달 */
-.image-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.image-modal-content {
-  position: relative;
-  max-width: 80%;
-  max-height: 90%;
-  background-color: white;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  display: flex;
-  flex-direction: column;
-  max-width: 1000px;
-}
-
-.close-modal-btn {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background-color: rgba(0, 0, 0, 0.5);
-  color: white;
-  border: none;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  font-size: 1.2rem;
-  cursor: pointer;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.image-modal-content img {
-  max-width: 100%;
-  max-height: 60vh;
-  object-fit: contain;
-}
-
-.image-info {
-  padding: 1.5rem;
-  background-color: white;
-  overflow-y: auto;
-}
-
-.image-info h3 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.3rem;
-  color: #2d3748;
-}
-
-.image-location {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-  color: #718096;
-}
-
-.image-date {
-  font-size: 0.9rem;
-  color: #a0aec0;
-  margin-bottom: 1rem;
-}
-
-.image-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.image-tag {
-  background-color: #ebf4ff;
-  color: #4299e1;
-  padding: 0.3rem 0.8rem;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
-.image-dimensions h4 {
-  font-size: 1.1rem;
-  margin: 1rem 0 0.5rem;
-  color: #2d3748;
-}
-
-.dimensions-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.dimension-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.dimension-name {
-  width: 120px;
-  font-size: 0.9rem;
   color: #4a5568;
 }
 
