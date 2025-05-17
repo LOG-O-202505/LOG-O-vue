@@ -357,8 +357,8 @@ export default {
     },
     fadeOutBackground() {
       const fadeOut = setInterval(() => {
-        this.imageOpacity = Math.max(this.imageOpacity - 0.05, 0.2)
-        if (this.imageOpacity <= 0.2) clearInterval(fadeOut)
+        this.imageOpacity = Math.max(this.imageOpacity - 0.05, 0.4)
+        if (this.imageOpacity <= 0.4) clearInterval(fadeOut)
       }, 30)
     },
     handleLogoLogin() {
@@ -408,11 +408,25 @@ export default {
 
         const time = Date.now() * 0.001
         const waves = 10
+        
+        // Define pastel colors for waves
+        const waveColors = [
+          'rgba(165, 214, 167, ',  // light green
+          'rgba(197, 225, 165, ',  // lime green
+          'rgba(230, 238, 156, ',  // light yellow-green
+          'rgba(255, 245, 157, ',  // light yellow
+          'rgba(255, 224, 130, ',  // light amber
+          'rgba(255, 204, 128, ',  // light orange
+          'rgba(255, 171, 145, ',  // light deep orange
+          'rgba(188, 170, 164, ',  // light brown
+          'rgba(238, 238, 238, ',  // light grey
+          'rgba(179, 229, 252, '   // light blue
+        ]
 
         for (let i = 0; i < waves; i++) {
           ctx.beginPath()
           const alpha = 0.05 + i * 0.01
-          ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`
+          ctx.fillStyle = waveColors[i % waveColors.length] + alpha + ')'
 
           for (let x = 0; x < canvas.width; x += 5) {
             const y =
@@ -683,23 +697,32 @@ export default {
 }
 .logo-button {
   background: linear-gradient(
-    132deg,
+    to right,
+    #ffcdd2,
     #f8bbd0,
-    #d1c4e9,
-    #b3e5fc,
-    #b2dfdb,
-    #c8e6c9,
-    #fff9c4,
-    #ffccbc,
+    #e1bee7,
     #d1c4e9,
     #c5cae9,
-    #ffcdd2,
-    #f8bbd0
+    #bbdefb,
+    #b3e5fc,
+    #b2dfdb
   );
-  background-size: 1000% 1000%;
-  animation: gradient 30s ease infinite;
+  background-size: 200% 100%;
+  animation: horizontalGradient 8s ease infinite;
   color: white;
   border: none;
+}
+
+@keyframes horizontalGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 /* 구분선 */
@@ -807,23 +830,38 @@ export default {
 /* 그라데이션 버튼 */
 .gradient-button {
   background: linear-gradient(
-    132deg,
-    #f8bbd0,
-    #d1c4e9,
-    #b3e5fc,
-    #b2dfdb,
-    #c8e6c9,
-    #fff9c4,
-    #ffccbc,
-    #d1c4e9,
-    #c5cae9,
+    -45deg,
     #ffcdd2,
-    #f8bbd0
+    #ef9a9a,
+    #f48fb1,
+    #ce93d8,
+    #b39ddb,
+    #9fa8da,
+    #90caf9,
+    #81d4fa
   );
-  background-size: 1000% 1000%;
-  animation: gradient 30s ease infinite;
+  background-size: 400% 400%;
+  animation: shimmerGradient 15s ease infinite;
   color: white;
   border: none;
+}
+
+@keyframes shimmerGradient {
+  0% {
+    background-position: 0% 0%;
+  }
+  25% {
+    background-position: 100% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  75% {
+    background-position: 0% 100%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
 }
 
 .back-button {
@@ -849,22 +887,39 @@ export default {
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    132deg,
-    #f8bbd0,
-    #d1c4e9,
-    #b3e5fc,
-    #b2dfdb,
-    #c8e6c9,
-    #fff9c4,
-    #ffccbc,
-    #d1c4e9,
-    #c5cae9,
-    #ffcdd2,
-    #f8bbd0
+    45deg,
+    #a5d6a7,
+    #c5e1a5,
+    #e6ee9c,
+    #fff59d,
+    #ffe082,
+    #ffcc80,
+    #ffab91,
+    #bcaaa4,
+    #eeeeee,
+    #b3e5fc
   );
-  background-size: 1000% 1000%;
-  animation: gradient 30s ease infinite;
+  background-size: 400% 400%;
+  animation: gradientShift 18s ease infinite;
   transition: opacity 0.5s;
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 0%;
+  }
+  25% {
+    background-position: 50% 100%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  75% {
+    background-position: 100% 0%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
 }
 
 .wave-canvas {
@@ -917,32 +972,35 @@ export default {
   font-weight: 500;
   cursor: pointer;
   background: linear-gradient(
-    132deg,
-    #f8bbd0,
-    #d1c4e9,
-    #b3e5fc,
-    #b2dfdb,
-    #c8e6c9,
-    #fff9c4,
-    #ffccbc,
-    #d1c4e9,
-    #c5cae9,
-    #ffcdd2,
-    #f8bbd0
+    135deg,
+    #b2ebf2,
+    #80deea,
+    #4dd0e1,
+    #b39ddb,
+    #9fa8da,
+    #90caf9,
+    #81d4fa,
+    #80cbc4
   );
-  background-size: 1000% 1000%;
-  animation: gradient 30s ease infinite;
+  background-size: 300% 300%;
+  animation: diagonalGradient 12s ease infinite;
 }
-/* 그라데이션 애니메이션 */
-@keyframes gradient {
+
+@keyframes diagonalGradient {
   0% {
-    background-position: 0% 50%;
+    background-position: 0% 0%;
+  }
+  25% {
+    background-position: 50% 50%;
   }
   50% {
-    background-position: 100% 50%;
+    background-position: 100% 100%;
+  }
+  75% {
+    background-position: 50% 50%;
   }
   100% {
-    background-position: 0% 50%;
+    background-position: 0% 0%;
   }
 }
 </style>

@@ -40,6 +40,8 @@
           <span class="travel-title" :class="{ visible: isLoaded }">Log Your Travel</span>
         </h1>
 
+        <p class="korean-subtitle" :class="{ visible: isLoaded }">여행의 가장 아름다운 순간을 계획하고 기록합니다</p>
+
       </div>
 
       <!-- Scroll indicator -->
