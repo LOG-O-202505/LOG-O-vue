@@ -15,7 +15,7 @@
       <!-- 1. 사용자 여행 통계 요약 -->
       <div class="statistics-summary">
         <div class="statistic-card">
-          <div class="statistic-value">{{ userStats.totalTrips }}</div>
+          <div class="statistic-value">{{ totalTripsCount }}</div>
           <div class="statistic-label">전체 여행</div>
         </div>
         <div class="statistic-card">
@@ -97,15 +97,18 @@
         </div>
       </div>
 
-      <!-- 2. 차원별 취향 프로필 -->
-      <div class="preference-profile">
-        <h2 class="section-title">내 여행 취향 프로필</h2>
+      <!-- 2. 취향 프로필 섹션 -->
+      <div class="preference-profile section-container">
+        <div class="section-header">
+          <h2 class="section-title">내 여행 취향 프로필</h2>
+        </div>
         <div class="profile-content">
-          <div class="radar-chart-container" ref="radarChartContainer">
-            <!-- 레이더 차트가 렌더링 될 컨테이너 -->
+          <div class="radar-chart-section">
+            <div class="radar-chart-container" ref="radarChartContainer">
+              <!-- 레이더 차트가 렌더링 될 컨테이너 -->
+            </div>
           </div>
           <div class="profile-insight">
-            <h3>당신의 여행 스타일</h3>
             <p>{{ userInsight }}</p>
             <div class="top-categories">
               <div v-for="(category, index) in topCategories" :key="index" class="category-item">
@@ -120,19 +123,12 @@
         </div>
       </div>
 
-      <!-- 3. 여행 지도 시각화 -->
-      <div class="travel-map-container">
-        <div class="map-controls">
-          <h2>나의 여행 히트맵</h2>
-          <div class="map-filter">
-            <label for="year-filter">년도:</label>
-            <select id="year-filter" v-model="selectedYear">
-              <option value="all">전체</option>
-              <option v-for="year in availableYears" :key="year" :value="year">{{ year }}년</option>
-            </select>
-          </div>
+      <!-- 3. 여행 히트맵 섹션 -->
+      <div class="travel-map-container section-container">
+        <div class="section-header">
+          <h2 class="section-title">나의 여행 히트맵</h2>
         </div>
-
+        
         <!-- 지도 시각화 영역 -->
         <div class="map-visualization">
           <!-- 광역시도 지도 -->
@@ -196,9 +192,11 @@
         </div>
       </div>
 
-      <!-- 4. 시간별 여행 타임라인 -->
-      <div class="travel-timeline">
-        <h2 class="section-title">{{ timelineTitle }}</h2>
+      <!-- 4. 여행 타임라인 섹션 -->
+      <div class="travel-timeline section-container">
+        <div class="section-header">
+          <h2 class="section-title">{{ timelineTitle }}</h2>
+        </div>
         <div class="timeline-container">
           <div v-if="filteredTimeline.length === 0" class="no-trips">
             <p>선택한 지역의 여행 기록이 없습니다.</p>
@@ -253,7 +251,7 @@ import propertiesData from '@/assets/extracted_ctprvn.json';
 import sigGeoJson from '@/assets/sig.json';
 import sigPropertiesData from '@/assets/extracted_properties.json';
 import { useRouter } from 'vue-router';
-import { getUserAverageTravelPreferences } from '@/services/api';
+import { getUserAverageTravelPreferences, getUserTravelStatistics } from '@/services/api';
 
 export default {
   name: 'MyTravel',
@@ -357,7 +355,6 @@ export default {
     const mapContainer = ref(null);
     const detailMapContainer = ref(null);
     const radarChartContainer = ref(null);
-    const selectedYear = ref('all');
     const currentMapLevel = ref('ctprvn'); // 'ctprvn' 또는 'sig'
     const activeRegion = ref(null); // 활성화된 광역시도 코드
     const activeSig = ref(null); // 활성화된 시군구 코드
@@ -374,9 +371,9 @@ export default {
 
     // 사용자 통계 (실제 구현시 API로 가져와야 함)
     const userStats = reactive({
-      totalTrips: 38,
-      visitedRegions: 8,
-      totalImages: 143,
+      totalTrips: 0,
+      visitedRegions: 0,
+      totalImages: 0,
       topCategory: '' // API로부터 가져올 예정
     });
 
@@ -472,103 +469,44 @@ export default {
       "Shopping Potential": "쇼핑 잠재력"
     };
 
-    // 지역별 방문한 시군구 데이터 (실제로는 API에서 가져와야 함)
-    const visitedDistricts = reactive({
-      '11': { // 서울
-        total: 25, // 총 시군구 수
-        visited: ['11110', '11140', '11170', '11200', '11215'],
-        visitCounts: { // 방문 빈도
-          '11110': 35, // 종로구
-          '11140': 28, // 중구
-          '11170': 15, // 용산구
-          '11200': 8,  // 성동구
-          '11215': 3   // 광진구
-        }
-      },
-      '26': { // 부산
-        total: 16,
-        visited: ['26110', '26140', '26170'],
-        visitCounts: {
-          '26110': 25, // 중구
-          '26140': 18, // 서구
-          '26170': 5   // 동구
-        }
-      },
-      '41': { // 경기도
-        total: 31,
-        visited: ['41110', '41111', '41113', '41115', '41117', '41130', '41150', '41170', '41190'],
-        visitCounts: {
-          '41110': 12, // 수원시
-          '41111': 8,  // 성남시
-          '41113': 5,  // 의정부시
-          '41115': 2,  // 안양시
-          '41117': 18, // 부천시
-          '41130': 42, // 광명시
-          '41150': 25, // 평택시
-          '41170': 55, // 동두천시
-          '41190': 33  // 안산시
-        }
-      },
-      '42': { // 강원도
-        total: 18,
-        visited: ['42110', '42130', '42150', '42170', '42190', '42210', '42230'],
-        visitCounts: {
-          '42110': 30, // 춘천시
-          '42130': 22, // 원주시
-          '42150': 18, // 강릉시
-          '42170': 14, // 동해시
-          '42190': 9,  // 태백시
-          '42210': 6,  // 속초시
-          '42230': 3   // 삼척시
-        }
-      },
-      '44': { // 충남
-        total: 15,
-        visited: ['44131', '44150'],
-        visitCounts: {
-          '44131': 51, // 천안시
-          '44150': 3  // 공주시
-        }
-      },
-      '46': { // 전남
-        total: 22,
-        visited: ['46110', '46130', '46150', '46170', '46230'],
-        visitCounts: {
-          '46110': 15, // 목포시
-          '46130': 12, // 여수시
-          '46150': 8,  // 순천시
-          '46170': 4,  // 나주시
-          '46230': 2   // 광양시
-        }
-      },
-      '47': { // 경북
-        total: 23,
-        visited: ['47940', '47130', '47150', '47170'],
-        visitCounts: {
-          '47940': 20, // 울릉군
-          '47130': 12, // 경주시
-          '47150': 7,  // 김천시
-          '47170': 3   // 안동시
-        }
-      },
-      '48': { // 경남
-        total: 18,
-        visited: ['48120', '48170', '48220'],
-        visitCounts: {
-          '48120': 10, // 창원시
-          '48170': 6,  // 진주시
-          '48220': 2   // 통영시
-        }
-      },
-      '50': { // 제주
-        total: 2,
-        visited: ['50110', '50130'],
-        visitCounts: {
-          '50110': 45, // 제주시
-          '50130': 38  // 서귀포시
-        }
-      }
+    // 지역별 방문한 시군구 데이터
+    const travelStats = ref({
+      regions: {},
+      totalVisitedRegions: 0,
+      totalVisitedSigs: 0,
+      totalVisits: 0
     });
+
+    // 사용자 여행 데이터 로드 함수
+    const loadUserTravelData = async () => {
+      try {
+        // 사용자 ID 1의 여행 통계 데이터 가져오기 (고정)
+        const stats = await getUserTravelStatistics(1);
+        
+        // 데이터 상태 업데이트
+        travelStats.value = stats;
+        
+        // 사용자 통계 업데이트
+        userStats.totalTrips = stats.totalVisits;
+        userStats.visitedRegions = stats.totalVisitedRegions;
+        userStats.totalImages = stats.totalVisits; // 방문 = 이미지 인증으로 가정
+        
+        console.log('사용자 여행 데이터 로드 완료:', stats);
+        
+        // 데이터 로드 후 지도 다시 그리기
+        if (currentMapLevel.value === 'ctprvn') {
+          nextTick(() => {
+            renderMap();
+          });
+        } else if (currentMapLevel.value === 'sig' && activeRegion.value) {
+          nextTick(() => {
+            renderDetailMap(activeRegion.value);
+          });
+        }
+      } catch (error) {
+        console.error('사용자 여행 데이터 로드 오류:', error);
+      }
+    };
 
     // 타임라인 데이터 (실제 구현시 API로 가져와야 함)
     const travelTimeline = reactive([
@@ -803,12 +741,28 @@ export default {
       if (!hoveredRegion.value) return null;
 
       if (currentMapLevel.value === 'ctprvn') {
-        const region = visitedDistricts[hoveredRegion.value];
-        if (!region) return null;
+        const regionCode = hoveredRegion.value;
+        const region = travelStats.value.regions[regionCode];
+        
+        if (!region) return {
+          visitedCount: 0,
+          totalCount: 0,
+          percentage: 0
+        };
 
-        const visitedCount = region.visited.length;
-        const totalCount = region.total;
-        const percentage = Math.round((visitedCount / totalCount) * 100);
+        // 시군구 전체 수 (실제 데이터가 없으므로 기존 로직 사용)
+        let totalCount = 0;
+        const regionData = propertiesData.find(r => r.CTPRVN_CD === regionCode);
+        if (regionData) {
+          // 시군구 데이터에서 해당 지역의 시군구 수 계산
+          totalCount = sigGeoJson.features.filter(f => 
+            f.properties && f.properties.SIG_CD && 
+            f.properties.SIG_CD.substring(0, 2) === regionCode
+          ).length;
+        }
+        
+        const visitedCount = region.visitedSigs || 0;
+        const percentage = totalCount > 0 ? Math.round((visitedCount / totalCount) * 100) : 0;
 
         return {
           visitedCount,
@@ -818,36 +772,19 @@ export default {
       } else {
         // 시군구 레벨에서는 방문 빈도 표시
         const regionCode = activeRegion.value;
-        const region = visitedDistricts[regionCode];
-        if (!region || !region.visitCounts) return null;
-
         const hoveredSigCode = hoveredRegion.value.substring(0, 5);
-
-        // 정확한 방문 여부를 확인하기 위해 방문한 시군구 목록을 먼저 확인
+        
+        const region = travelStats.value.regions[regionCode];
+        if (!region) return { isVisited: false, visitCount: 0 };
+        
+        // 방문한 시군구 확인
         let isVisited = false;
         let visitCount = 0;
-
-        // 정확히 일치하는 경우
-        if (region.visitCounts[hoveredSigCode] !== undefined) {
+        
+        // 시군구 데이터 확인
+        if (region.sigs && region.sigs[hoveredSigCode]) {
           isVisited = true;
-          visitCount = region.visitCounts[hoveredSigCode];
-        } else {
-          // 다양한 코드 형식으로 매칭 시도
-          for (const visitedCode of region.visited) {
-            // 앞 5자리 비교
-            if (visitedCode.substring(0, 5) === hoveredSigCode.substring(0, 5)) {
-              isVisited = true;
-              visitCount = region.visitCounts[visitedCode] || 0;
-              break;
-            }
-
-            // 시군구 코드 뒷부분(3자리) 비교
-            if (visitedCode.substring(2, 5) === hoveredSigCode.substring(2, 5)) {
-              isVisited = true;
-              visitCount = region.visitCounts[visitedCode] || 0;
-              break;
-            }
-          }
+          visitCount = region.sigs[hoveredSigCode].count || 0;
         }
 
         return {
@@ -920,10 +857,7 @@ export default {
         }
       }
 
-      // 년도 필터 적용
-      if (selectedYear.value !== 'all') {
-        allTrips = allTrips.filter(trip => trip.year === parseInt(selectedYear.value));
-      }
+      // 연도 필터 제거: 이제 연도로 필터링하지 않음
 
       // 연도별로 그룹화
       const tripsByYear = {};
@@ -1014,14 +948,21 @@ export default {
 
     // 지역 색상 함수 정의 - 10단계 색상 구현
     const getRegionColor = (regionCode) => {
-      if (!visitedDistricts[regionCode]) {
+      const regionData = travelStats.value.regions[regionCode];
+      if (!regionData) {
         return '#e2e8f0'; // 데이터가 없는 지역은 회색
       }
 
-      // 방문한 시군구 비율 계산 (0 ~ 1)
-      const region = visitedDistricts[regionCode];
-      const visitedRatio = region.visited.length / region.total;
-
+      // 해당 지역의 시군구 수 계산 (실제 시군구 수)
+      const totalSigs = sigGeoJson.features.filter(f => 
+        f.properties && f.properties.SIG_CD && 
+        f.properties.SIG_CD.substring(0, 2) === regionCode
+      ).length;
+      
+      // 방문한 시군구 비율 계산 (0~1 사이 값)
+      const visitedRatio = totalSigs > 0 ? (regionData.visitedSigs / totalSigs) : 0;
+      
+      // 비율에 따른 색상 반환 (0~100%)
       return getColorForPercentage(visitedRatio * 100);
     };
 
@@ -1038,7 +979,7 @@ export default {
         '#2B6CB0', // 60-70%
         '#2C5282', // 70-80%
         '#2A4365', // 80-90%
-        '#2B6CB0'  // 90-100% - 최고 가중치와 동일한 색상 적용
+        '#1A365D'  // 90-100%
       ];
 
       // 비율에 따른 색상 인덱스 계산 (0~9)
@@ -1051,68 +992,22 @@ export default {
     const getFrequencyColor = (sigCode, regionCode) => {
       // 시군구 코드의 앞 5자리만 사용 (일관성을 위해)
       let lookupCode = sigCode.substring(0, 5);
-
-      // 로깅 - 디버깅용
-      console.log(`[getFrequencyColor] region=${regionCode}, sigCode=${sigCode}, lookupCode=${lookupCode}`);
-
+      
       // 지역 데이터가 없는 경우
-      if (!visitedDistricts[regionCode]) {
-        console.log(`[getFrequencyColor] No data for region ${regionCode}`);
+      if (!travelStats.value.regions[regionCode]) {
         return '#EDF2F7'; // 방문 기록 없음
       }
-
-      // 방문 횟수 데이터 확인
-      const visitCounts = visitedDistricts[regionCode].visitCounts;
-      if (!visitCounts) {
-        console.log(`[getFrequencyColor] No visit counts for region ${regionCode}`);
-        return '#EDF2F7';
+      
+      // 시군구 방문 데이터 확인
+      const region = travelStats.value.regions[regionCode];
+      if (!region.sigs || !region.sigs[lookupCode]) {
+        return '#EDF2F7'; // 미방문
       }
-
-      // 로깅 - 해당 지역 데이터가 처음 로딩될 때만 실행
-      if (!window[`logged_${regionCode}`]) {
-        window[`logged_${regionCode}`] = true;
-        console.log(`[getFrequencyColor] Available codes for region ${regionCode}:`, Object.keys(visitCounts));
-        console.log(`[getFrequencyColor] Visited districts for region ${regionCode}:`, visitedDistricts[regionCode].visited);
-      }
-
-      // 방문 횟수 조회
-      let visitCount = 0;
-      let matched = false;
-
-      // 정확히 일치하는 경우 먼저 확인
-      if (visitCounts[lookupCode] !== undefined) {
-        visitCount = visitCounts[lookupCode];
-        console.log(`[getFrequencyColor] Exact match for ${lookupCode}: ${visitCount} visits`);
-        matched = true;
-      } else {
-        // 가능한 매칭 시도
-        for (const visitedCode of visitedDistricts[regionCode].visited) {
-          // 코드 앞 5자리 비교
-          if (visitedCode.substring(0, 5) === lookupCode.substring(0, 5)) {
-            visitCount = visitCounts[visitedCode] || 0;
-            console.log(`[getFrequencyColor] Code match: ${lookupCode} -> ${visitedCode}: ${visitCount} visits`);
-            matched = true;
-            break;
-          }
-
-          // 시군구 코드 뒷부분(3자리) 비교
-          if (visitedCode.substring(2, 5) === lookupCode.substring(2, 5)) {
-            visitCount = visitCounts[visitedCode] || 0;
-            console.log(`[getFrequencyColor] District part match: ${lookupCode} -> ${visitedCode}: ${visitCount} visits`);
-            matched = true;
-            break;
-          }
-        }
-      }
-
-      if (!matched) {
-        console.log(`[getFrequencyColor] ⚠️ No match found for ${lookupCode} - marking as unvisited`);
-        return '#EDF2F7'; // 매치되지 않으면 미방문 색상 반환
-      }
-
+      
+      // 방문 횟수 가져오기
+      const visitCount = region.sigs[lookupCode].count || 0;
+      
       // 방문 횟수에 따른 색상 반환
-      console.log(`[getFrequencyColor] Final visit count for ${lookupCode}: ${visitCount}`);
-
       if (visitCount >= 30) return '#2B6CB0';     // 30회 이상 - 최고 가중치
       if (visitCount >= 20) return '#3182CE';     // 20-29회
       if (visitCount >= 10) return '#4299E1';     // 10-19회
@@ -1209,11 +1104,17 @@ export default {
         // 히트맵 모드 효과 - 항상 적용
         regions
           .attr('opacity', d => {
-            const region = visitedDistricts[d.properties.CTPRVN_CD];
+            const region = travelStats.value.regions[d.properties.CTPRVN_CD];
             if (!region) return 0.3;
 
-            // 방문한 시군구 비율에 따른 투명도 계산
-            const visitedRatio = region.visited.length / region.total;
+            // 해당 지역의 시군구 수 계산
+            const totalSigs = sigGeoJson.features.filter(f => 
+              f.properties && f.properties.SIG_CD && 
+              f.properties.SIG_CD.substring(0, 2) === d.properties.CTPRVN_CD
+            ).length;
+            
+            // 방문 시군구 비율에 따른 투명도 계산 (0.3~1.0 범위)
+            const visitedRatio = totalSigs > 0 ? (region.visitedSigs / totalSigs) : 0;
             return 0.3 + (visitedRatio * 0.7);
           });
 
@@ -1297,7 +1198,7 @@ export default {
 
     // 지역 방문 데이터 로깅 (디버깅용)
     const logRegionVisitData = (regionCode) => {
-      const region = visitedDistricts[regionCode];
+      const region = travelStats.value.regions[regionCode];
       if (!region) {
         console.log(`No data for region ${regionCode}`);
         return;
@@ -1305,8 +1206,8 @@ export default {
 
       console.log(`Region ${regionCode} data:`);
       console.log(`- Total districts: ${region.total}`);
-      console.log(`- Visited districts: ${region.visited.length}`);
-      console.log(`- Visit counts:`, region.visitCounts);
+      console.log(`- Visited districts: ${region.visitedSigs}`);
+      console.log(`- Visit counts:`, region.sigs);
     };
 
     // 시군구 선택 함수
@@ -1401,9 +1302,9 @@ export default {
         console.log(`[renderDetailMap] Found ${filteredFeatures.length} districts for region ${regionCode}`);
 
         // 방문 데이터 확인
-        const regionData = visitedDistricts[regionCode];
-        if (regionData && regionData.visitCounts) {
-          console.log(`[renderDetailMap] Visit counts for region ${regionCode}:`, regionData.visitCounts);
+        const regionData = travelStats.value.regions[regionCode];
+        if (regionData && regionData.sigs) {
+          console.log(`[renderDetailMap] Visit counts for region ${regionCode}:`, regionData.sigs);
         }
 
         // 각 시군구에 대한 코드 매핑 과정을 자세히 로깅
@@ -1415,19 +1316,19 @@ export default {
           console.log(`  - District: ${sigCode}, Name: ${sigName}`);
 
           // 방문 정보 확인
-          if (regionData && regionData.visitCounts) {
-            const keys = Object.keys(regionData.visitCounts);
+          if (regionData && regionData.sigs) {
+            const keys = Object.keys(regionData.sigs);
             let matched = false;
 
             // 다양한 방법으로 매칭 시도
             // 1. 정확한 코드 매칭
-            if (regionData.visitCounts[sigCode] !== undefined) {
-              console.log(`    ✅ Exact match: ${sigCode} - ${regionData.visitCounts[sigCode]} visits`);
+            if (regionData.sigs[sigCode] !== undefined) {
+              console.log(`    ✅ Exact match: ${sigCode} - ${regionData.sigs[sigCode]} visits`);
               matched = true;
             }
             // 2. 앞 5자리 매칭
-            else if (sigCode.length > 5 && regionData.visitCounts[sigCode.substring(0, 5)] !== undefined) {
-              console.log(`    ✅ 5-digit match: ${sigCode} -> ${sigCode.substring(0, 5)} - ${regionData.visitCounts[sigCode.substring(0, 5)]} visits`);
+            else if (sigCode.length > 5 && regionData.sigs[sigCode.substring(0, 5)] !== undefined) {
+              console.log(`    ✅ 5-digit match: ${sigCode} -> ${sigCode.substring(0, 5)} - ${regionData.sigs[sigCode.substring(0, 5)]} visits`);
               matched = true;
             }
             // 3. 다양한 코드 형식 매칭
@@ -1436,7 +1337,7 @@ export default {
                 if (key.substring(0, 2) === regionCode &&
                   (key.substring(2, 5) === sigCode.substring(2, 5) ||
                     sigCode.includes(key.substring(2)))) {
-                  console.log(`    ✅ Partial match: ${sigCode} -> ${key} - ${regionData.visitCounts[key]} visits`);
+                  console.log(`    ✅ Partial match: ${sigCode} -> ${key} - ${regionData.sigs[key]} visits`);
                   matched = true;
                   break;
                 }
@@ -1478,26 +1379,26 @@ export default {
             const sigName = d.properties.SIG_KOR_NM || '';
 
             // 방문 여부 확인
-            const regionData = visitedDistricts[regionCode];
+            const regionData = travelStats.value.regions[regionCode];
             let isVisited = false;
             let visitCount = 0;
 
-            if (regionData && regionData.visitCounts) {
+            if (regionData && regionData.sigs) {
               // 정확히 일치하는 코드 확인
               const lookupCode = sigCode.substring(0, 5);
 
-              if (regionData.visitCounts[lookupCode] !== undefined) {
+              if (regionData.sigs[lookupCode]) {
                 isVisited = true;
-                visitCount = regionData.visitCounts[lookupCode];
+                visitCount = regionData.sigs[lookupCode].count || 0;
               } else {
-                // 방문 코드 목록에서 매칭 확인
-                for (const visitedCode of regionData.visited) {
-                  // 코드 앞 5자리 비교
-                  if (visitedCode.substring(0, 5) === lookupCode ||
-                    // 시군구 코드(3자리) 비교
-                    visitedCode.substring(2, 5) === lookupCode.substring(2, 5)) {
+                // 코드 매칭 시도 (다른 코드 형식 처리)
+                const sigKeys = Object.keys(regionData.sigs);
+                for (const sigKey of sigKeys) {
+                  // 앞 5자리가 같거나, 뒷부분 3자리가 동일한 경우
+                  if (sigKey.substring(0, 5) === lookupCode.substring(0, 5) ||
+                      sigKey.substring(2, 5) === lookupCode.substring(2, 5)) {
                     isVisited = true;
-                    visitCount = regionData.visitCounts[visitedCode];
+                    visitCount = regionData.sigs[sigKey].count || 0;
                     break;
                   }
                 }
@@ -1507,7 +1408,7 @@ export default {
             // 색상 결정
             let color = '#EDF2F7'; // 기본 미방문 색상
 
-            if (isVisited) {
+            if (isVisited && visitCount) {
               if (visitCount >= 30) color = '#2B6CB0';     // 30회 이상 - 최고 가중치
               else if (visitCount >= 20) color = '#3182CE';     // 20-29회
               else if (visitCount >= 10) color = '#4299E1';     // 10-19회
@@ -1708,7 +1609,6 @@ export default {
 
       // 애니메이션 효과를 위한 시작 설정 (모든 값이 0에서 시작)
       const initialDataPoints = dimensions.map((dim) => {
-        // const angle = angleSlice * i - Math.PI / 2;
         return {
           x: 0,
           y: 0,
@@ -1771,25 +1671,6 @@ export default {
         .attr('cy', d => d.y)
         .attr('r', 5);
 
-      // 값 라벨 추가 (특히 높은 값은 더 강조)
-      radarChartSvg.selectAll('.value-label')
-        .data(dataPoints)
-        .enter()
-        .append('text')
-        .attr('class', 'value-label')
-        .attr('x', d => d.x * 1.1)
-        .attr('y', d => d.y * 1.1)
-        .attr('text-anchor', 'middle')
-        .style('font-size', d => d.value > 0.7 ? '0.75rem' : '0.65rem')
-        .style('font-weight', d => d.value > 0.7 ? 'bold' : 'normal')
-        .style('fill', d => d.value > 0.7 ? '#2c5282' : '#718096')
-        .style('opacity', 0)
-        .text(d => (d.value * 100).toFixed(0) + '%')
-        .transition()
-        .delay(800)
-        .duration(300)
-        .style('opacity', d => d.value > 0.5 ? 1 : 0.7);
-
       // 창 크기 변경 시 차트 크기 조정
       const resizeRadarChart = () => {
         renderRadarChart();
@@ -1802,8 +1683,8 @@ export default {
       };
     };
 
-    // 필터 변경 시 지도 업데이트
-    watch([selectedYear], () => {
+    // 필터 변경 시 지도 업데이트 - selectedYear 제거
+    watch([activeRegion, activeSig], () => {
       if (currentMapLevel.value === 'ctprvn') {
         renderMap();
       } else if (currentMapLevel.value === 'sig' && activeRegion.value) {
@@ -1830,9 +1711,9 @@ export default {
 
       // 사용자 데이터 로드
       loadUserData();
-
-      // 사용자 데이터 로드 및 지도 렌더링
-      renderMap();
+      
+      // 사용자 여행 통계 데이터 로드
+      loadUserTravelData();
 
       // 레이더 차트 렌더링 - 사용자 데이터 로드 후 renderRadarChart 함수가 호출되므로 여기서는 호출하지 않음
     });
@@ -1841,7 +1722,18 @@ export default {
       window.removeEventListener('mousemove', updateMousePosition);
     });
 
+    // 타임라인에서 총 여행 개수 계산
+    const totalTripsCount = computed(() => {
+      return filteredTimeline.value.reduce((sum, year) => sum + year.trips.length, 0);
+    });
+
     return {
+      // 기존 반환값과 함께 새로운 함수와 상태 포함
+      // ...
+      totalTripsCount,
+      travelStats,
+      loadUserTravelData,
+      
       // 새 여행 계획 관련 상태 및 메서드
       showNewTripForm,
       newTrip,
@@ -1852,7 +1744,6 @@ export default {
       mapContainer,
       detailMapContainer,
       radarChartContainer,
-      selectedYear,
       currentMapLevel,
       activeRegion,
       activeSig,
@@ -1904,10 +1795,28 @@ export default {
   flex-grow: 1;
 }
 
-/* 섹션 타이틀 */
+/* 섹션 컨테이너 공통 스타일 */
+.section-container {
+  background-color: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+}
+
+/* 섹션 헤더 공통 스타일 */
+.section-header {
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 1rem;
+}
+
+/* 섹션 타이틀 통일 */
 .section-title {
   font-size: 1.5rem;
-  margin: 0 0 1.5rem 0;
+  font-weight: 600;
+  margin: 0;
   color: #2d3748;
 }
 
@@ -1974,6 +1883,12 @@ export default {
   overflow: hidden;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
   margin-bottom: 2rem;
+  padding: 0;  /* 내부 padding은 map-controls에서 처리 */
+}
+
+.travel-map-container .section-header {
+  padding: 1.5rem 1.5rem 1rem;
+  margin-bottom: 0; /* Override the default margin to remove extra gap */
 }
 
 .map-controls {
@@ -1983,6 +1898,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
+  margin-bottom: 1.5rem;
 }
 
 .map-controls h2 {
@@ -2198,31 +2114,65 @@ export default {
   padding: 1.5rem;
 }
 
+.profile-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 1rem;
+}
+
+.preference-title, .style-title {
+  margin: 0;
+  width: 50%;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #2d3748;
+  padding: 0 1rem;
+}
+
+.preference-title {
+  text-align: left;
+}
+
+.style-title {
+  text-align: right;
+}
+
 .profile-content {
   display: grid;
   grid-template-columns: 1fr 2fr;
   gap: 2rem;
+  min-height: 320px;
+}
+
+.radar-chart-section {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
 }
 
 .radar-chart-container {
-  height: 300px;
+  height: 280px;
   width: 100%;
+  margin: 0 auto;
 }
 
 .profile-insight {
-  padding: 1rem;
-}
-
-.profile-insight h3 {
-  font-size: 1.3rem;
-  margin: 0 0 1rem 0;
-  color: #2d3748;
+  padding: 0 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
 }
 
 .profile-insight p {
   line-height: 1.6;
   color: #4a5568;
   margin-bottom: 1.5rem;
+  font-size: 1.05rem;
 }
 
 .top-categories {
@@ -2476,21 +2426,75 @@ export default {
 
 /* 반응형 디자인 */
 @media (max-width: 1200px) {
+  .preference-profile {
+    padding: 1.5rem 1rem;
+  }
+
+  .profile-header {
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .preference-title, .style-title {
+    width: 100%;
+    text-align: center;
+    padding: 0;
+  }
+  
+  .style-title {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e2e8f0;
+    border-bottom: none;
+  }
+  
+  .profile-content {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  
+  .radar-chart-container {
+    height: 250px;
+    max-width: 350px;
+    margin: 0 auto 1.5rem auto;
+  }
+  
+  .profile-insight {
+    padding: 0 0.75rem;
+  }
+
   .statistics-summary {
     grid-template-columns: repeat(2, 1fr);
   }
-
-  .profile-content {
-    grid-template-columns: 1fr;
-  }
-
-  .radar-chart-container {
-    margin: 0 auto;
-    max-width: 400px;
-  }
-
+  
   .trip-item {
-    width: calc(33.333% - 1rem); /* 중간 화면에서는 한 줄에 3개 */
+    width: calc(33.333% - 1.125rem); /* 중간 화면에서는 한 줄에 3개 */
+  }
+}
+
+@media (max-width: 576px) {
+  .preference-profile {
+    padding: 1.25rem 0.75rem;
+  }
+  
+  .profile-header {
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .preference-title, .style-title {
+    font-size: 1.25rem;
+  }
+  
+  .radar-chart-container {
+    height: 220px;
+    margin-bottom: 1rem;
+  }
+  
+  .profile-insight p {
+    font-size: 1rem;
+    margin-bottom: 1rem;
   }
 }
 

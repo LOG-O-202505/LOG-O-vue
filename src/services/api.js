@@ -1243,6 +1243,147 @@ export const getUserAverageTravelPreferences = async (userId = 1) => {
   }
 };
 
+/**
+ * 사용자의 지역별/시군구별 여행 통계 조회
+ * @param {number} userId - 사용자 ID (기본값: 1)
+ * @returns {Promise<Object>} - 지역별/시군구별 방문 통계 및 최근 방문 정보
+ */
+export const getUserTravelStatistics = async (userId = 1) => {
+  try {
+    console.log(`사용자 ID ${userId}의 지역별/시군구별 여행 통계 조회 시작`);
+
+    // Elasticsearch 쿼리 구성 - 지역별, 시군구별 방문 집계
+    const query = {
+      size: 0,
+      query: {
+        term: {
+          u_id: userId
+        }
+      },
+      aggs: {
+        by_region: {
+          terms: {
+            field: "p_region",
+            size: 100
+          },
+          aggs: {
+            by_sig: {
+              terms: {
+                field: "p_sig",
+                size: 1000
+              },
+              aggs: {
+                verification_count: {
+                  value_count: {
+                    field: "p_id"
+                  }
+                },
+                last_verification: {
+                  top_hits: {
+                    size: 1,
+                    _source: [
+                      "p_name", 
+                      "p_address", 
+                      "p_description", 
+                      "upload_date"
+                    ],
+                    sort: [
+                      {
+                        "upload_date": {
+                          "order": "desc"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    };
+
+    // config에서 Elasticsearch API URL 사용
+    const response = await fetch(`${config.ES_API}/travel_places/_search`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(query)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('사용자 여행 통계 조회 API 응답 오류:', errorData);
+      throw new Error('사용자 여행 통계 조회 실패: ' + JSON.stringify(errorData));
+    }
+
+    const result = await response.json();
+    console.log('사용자 여행 통계 조회 결과:', result);
+    
+    // 집계 결과 처리 및 반환
+    const regions = result.aggregations?.by_region?.buckets || [];
+    const processedData = {};
+    let totalVisitedRegions = 0;
+    let totalVisitedSigs = 0;
+    let totalVisits = 0;
+    
+    regions.forEach(region => {
+      const regionCode = region.key;
+      const sigs = region.by_sig.buckets;
+      
+      if (sigs.length > 0) {
+        totalVisitedRegions++;
+        
+        // 지역별 총 방문 횟수
+        const regionTotal = sigs.reduce((sum, sig) => sum + sig.verification_count.value, 0);
+        totalVisits += regionTotal;
+        
+        // 지역 데이터 구성
+        processedData[regionCode] = {
+          total: regionTotal,
+          visitedSigs: sigs.length,
+          sigs: {}
+        };
+        
+        // 시군구별 데이터 처리
+        sigs.forEach(sig => {
+          const sigCode = sig.key;
+          const count = sig.verification_count.value;
+          const lastVisit = sig.last_verification.hits.hits[0]?._source || null;
+          
+          totalVisitedSigs++;
+          
+          processedData[regionCode].sigs[sigCode] = {
+            count,
+            lastVisit
+          };
+        });
+      }
+    });
+    
+    // 최종 결과
+    const travelStats = {
+      regions: processedData,
+      totalVisitedRegions,
+      totalVisitedSigs,
+      totalVisits
+    };
+    
+    console.log('사용자 여행 통계 처리 완료:', travelStats);
+    return travelStats;
+  } catch (error) {
+    console.error('사용자 여행 통계 조회 오류:', error);
+    // 에러 발생 시 기본 빈 데이터 반환
+    return {
+      regions: {},
+      totalVisitedRegions: 0,
+      totalVisitedSigs: 0,
+      totalVisits: 0
+    };
+  }
+};
+
 /*
  * 이미지 위치 정보 추출 및 구글 지도 연동 사용 방법:
  *
