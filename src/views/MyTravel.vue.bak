@@ -335,17 +335,6 @@ export default {
         return;
       }
       
-      // 입력된 정보를 콘솔에 출력
-      console.log('새 여행 계획 정보:', {
-        title: newTrip.title,
-        destination: newTrip.destination,
-        startDate: newTrip.startDate,
-        endDate: newTrip.endDate,
-        budget: parseInt(newTrip.budget),
-        notes: newTrip.notes,
-        duration: tripDuration.value
-      });
-      
       // 계획 페이지로 이동
       router.push('/plan');
       
@@ -1052,27 +1041,15 @@ export default {
       // 시군구 코드의 앞 5자리만 사용 (일관성을 위해)
       let lookupCode = sigCode.substring(0, 5);
 
-      // 로깅 - 디버깅용
-      console.log(`[getFrequencyColor] region=${regionCode}, sigCode=${sigCode}, lookupCode=${lookupCode}`);
-
       // 지역 데이터가 없는 경우
       if (!visitedDistricts[regionCode]) {
-        console.log(`[getFrequencyColor] No data for region ${regionCode}`);
         return '#EDF2F7'; // 방문 기록 없음
       }
 
       // 방문 횟수 데이터 확인
       const visitCounts = visitedDistricts[regionCode].visitCounts;
       if (!visitCounts) {
-        console.log(`[getFrequencyColor] No visit counts for region ${regionCode}`);
         return '#EDF2F7';
-      }
-
-      // 로깅 - 해당 지역 데이터가 처음 로딩될 때만 실행
-      if (!window[`logged_${regionCode}`]) {
-        window[`logged_${regionCode}`] = true;
-        console.log(`[getFrequencyColor] Available codes for region ${regionCode}:`, Object.keys(visitCounts));
-        console.log(`[getFrequencyColor] Visited districts for region ${regionCode}:`, visitedDistricts[regionCode].visited);
       }
 
       // 방문 횟수 조회
@@ -1082,7 +1059,6 @@ export default {
       // 정확히 일치하는 경우 먼저 확인
       if (visitCounts[lookupCode] !== undefined) {
         visitCount = visitCounts[lookupCode];
-        console.log(`[getFrequencyColor] Exact match for ${lookupCode}: ${visitCount} visits`);
         matched = true;
       } else {
         // 가능한 매칭 시도
@@ -1090,7 +1066,6 @@ export default {
           // 코드 앞 5자리 비교
           if (visitedCode.substring(0, 5) === lookupCode.substring(0, 5)) {
             visitCount = visitCounts[visitedCode] || 0;
-            console.log(`[getFrequencyColor] Code match: ${lookupCode} -> ${visitedCode}: ${visitCount} visits`);
             matched = true;
             break;
           }
@@ -1098,7 +1073,6 @@ export default {
           // 시군구 코드 뒷부분(3자리) 비교
           if (visitedCode.substring(2, 5) === lookupCode.substring(2, 5)) {
             visitCount = visitCounts[visitedCode] || 0;
-            console.log(`[getFrequencyColor] District part match: ${lookupCode} -> ${visitedCode}: ${visitCount} visits`);
             matched = true;
             break;
           }
@@ -1106,13 +1080,10 @@ export default {
       }
 
       if (!matched) {
-        console.log(`[getFrequencyColor] ⚠️ No match found for ${lookupCode} - marking as unvisited`);
         return '#EDF2F7'; // 매치되지 않으면 미방문 색상 반환
       }
 
       // 방문 횟수에 따른 색상 반환
-      console.log(`[getFrequencyColor] Final visit count for ${lookupCode}: ${visitCount}`);
-
       if (visitCount >= 30) return '#2B6CB0';     // 30회 이상 - 최고 가중치
       if (visitCount >= 20) return '#3182CE';     // 20-29회
       if (visitCount >= 10) return '#4299E1';     // 10-19회
@@ -1286,27 +1257,15 @@ export default {
       activeRegion.value = regionCode;
       currentMapLevel.value = 'sig';
 
-      // 선택한 지역의 방문 데이터 로깅
-      logRegionVisitData(regionCode);
-
       // 시군구 지도 렌더링
       nextTick(() => {
         renderDetailMap(regionCode);
       });
     };
 
-    // 지역 방문 데이터 로깅 (디버깅용)
+    // 지역 방문 데이터 로깅 (제거)
     const logRegionVisitData = (regionCode) => {
-      const region = visitedDistricts[regionCode];
-      if (!region) {
-        console.log(`No data for region ${regionCode}`);
-        return;
-      }
-
-      console.log(`Region ${regionCode} data:`);
-      console.log(`- Total districts: ${region.total}`);
-      console.log(`- Visited districts: ${region.visited.length}`);
-      console.log(`- Visit counts:`, region.visitCounts);
+      // 함수 내용 제거
     };
 
     // 시군구 선택 함수
@@ -1336,8 +1295,6 @@ export default {
     // 시군구 지도 렌더링 함수
     const renderDetailMap = (regionCode) => {
       if (!detailMapContainer.value) return;
-
-      console.log(`=== Rendering detail map for region: ${regionCode} ===`);
 
       // 기존 SVG 제거
       d3.select(detailMapContainer.value).selectAll("svg").remove();
@@ -1394,60 +1351,8 @@ export default {
         });
 
         if (filteredFeatures.length === 0) {
-          console.log(`[renderDetailMap] No district data found for region ${regionCode}`);
           return;
         }
-
-        console.log(`[renderDetailMap] Found ${filteredFeatures.length} districts for region ${regionCode}`);
-
-        // 방문 데이터 확인
-        const regionData = visitedDistricts[regionCode];
-        if (regionData && regionData.visitCounts) {
-          console.log(`[renderDetailMap] Visit counts for region ${regionCode}:`, regionData.visitCounts);
-        }
-
-        // 각 시군구에 대한 코드 매핑 과정을 자세히 로깅
-        console.log(`[renderDetailMap] District code mapping for region ${regionCode}:`);
-        filteredFeatures.forEach(feature => {
-          const sigCode = feature.properties.SIG_CD;
-          const sigName = feature.properties.SIG_KOR_NM || '';
-
-          console.log(`  - District: ${sigCode}, Name: ${sigName}`);
-
-          // 방문 정보 확인
-          if (regionData && regionData.visitCounts) {
-            const keys = Object.keys(regionData.visitCounts);
-            let matched = false;
-
-            // 다양한 방법으로 매칭 시도
-            // 1. 정확한 코드 매칭
-            if (regionData.visitCounts[sigCode] !== undefined) {
-              console.log(`    ✅ Exact match: ${sigCode} - ${regionData.visitCounts[sigCode]} visits`);
-              matched = true;
-            }
-            // 2. 앞 5자리 매칭
-            else if (sigCode.length > 5 && regionData.visitCounts[sigCode.substring(0, 5)] !== undefined) {
-              console.log(`    ✅ 5-digit match: ${sigCode} -> ${sigCode.substring(0, 5)} - ${regionData.visitCounts[sigCode.substring(0, 5)]} visits`);
-              matched = true;
-            }
-            // 3. 다양한 코드 형식 매칭
-            else {
-              for (const key of keys) {
-                if (key.substring(0, 2) === regionCode &&
-                  (key.substring(2, 5) === sigCode.substring(2, 5) ||
-                    sigCode.includes(key.substring(2)))) {
-                  console.log(`    ✅ Partial match: ${sigCode} -> ${key} - ${regionData.visitCounts[key]} visits`);
-                  matched = true;
-                  break;
-                }
-              }
-            }
-
-            if (!matched) {
-              console.log(`    ❌ No match found for ${sigCode}`);
-            }
-          }
-        });
 
         // 필터링된 데이터로 새로운 GeoJSON 객체 생성
         const filteredGeoJson = {
@@ -1475,17 +1380,17 @@ export default {
           .attr('d', path)
           .attr('fill', d => {
             const sigCode = d.properties.SIG_CD;
-            const sigName = d.properties.SIG_KOR_NM || '';
-
+            // Remove unused sigName variable
+            
             // 방문 여부 확인
             const regionData = visitedDistricts[regionCode];
             let isVisited = false;
             let visitCount = 0;
-
+            
             if (regionData && regionData.visitCounts) {
               // 정확히 일치하는 코드 확인
               const lookupCode = sigCode.substring(0, 5);
-
+              
               if (regionData.visitCounts[lookupCode] !== undefined) {
                 isVisited = true;
                 visitCount = regionData.visitCounts[lookupCode];
@@ -1503,10 +1408,10 @@ export default {
                 }
               }
             }
-
+            
             // 색상 결정
             let color = '#EDF2F7'; // 기본 미방문 색상
-
+            
             if (isVisited) {
               if (visitCount >= 30) color = '#2B6CB0';     // 30회 이상 - 최고 가중치
               else if (visitCount >= 20) color = '#3182CE';     // 20-29회
@@ -1514,9 +1419,7 @@ export default {
               else if (visitCount >= 5) color = '#63B3ED';      // 5-9회
               else if (visitCount >= 1) color = '#90CDF4';      // 1-4회
             }
-
-            console.log(`[renderDetailMap] ${sigName} (${sigCode}): ${isVisited ? `방문 ${visitCount}회` : '미방문'} - 색상: ${color}`);
-
+            
             return color;
           })
           .attr('stroke', '#2D3748') // 검정에 가까운 어두운 회색
@@ -1708,7 +1611,7 @@ export default {
 
       // 애니메이션 효과를 위한 시작 설정 (모든 값이 0에서 시작)
       const initialDataPoints = dimensions.map((dim) => {
-        // const angle = angleSlice * i - Math.PI / 2;
+        // Remove unused angle variable - we don't need it since all points start at center (0,0)
         return {
           x: 0,
           y: 0,

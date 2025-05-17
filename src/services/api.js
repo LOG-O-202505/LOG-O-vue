@@ -1113,6 +1113,136 @@ export const extractGeoLocationData = async (imageFile) => {
   }
 };
 
+/**
+ * 특정 사용자의 평균 여행 성향 벡터 가져오기
+ * @param {number} userId - 사용자 ID (기본값: 1)
+ * @returns {Promise<Object>} - 평균 여행 성향 벡터 및 사용자 정보
+ */
+export const getUserAverageTravelPreferences = async (userId = 1) => {
+  try {
+    console.log(`사용자 ID ${userId}의 평균 여행 성향 조회 시작`);
+
+    // Elasticsearch 쿼리 구성
+    const query = {
+      size: 0,
+      aggs: {
+        users: {
+          terms: {
+            field: "u_id",
+            size: 100
+          },
+          aggs: {
+            vector_avg: {
+              scripted_metric: {
+                init_script: "state.sum = new double[10]; state.count = 0;",
+                map_script: `
+                  if (params._source.containsKey('p_vector')) {
+                    state.count++;
+                    def vector = params._source.p_vector;
+                    for (int i = 0; i < vector.length; i++) {
+                      state.sum[i] += vector[i];
+                    }
+                  }
+                `,
+                combine_script: "return state;",
+                reduce_script: `
+                  double[] totalSum = new double[10];
+                  long totalCount = 0;
+                  
+                  for (state in states) {
+                    if (state.count > 0) {
+                      totalCount += state.count;
+                      for (int i = 0; i < 10; i++) {
+                        totalSum[i] += state.sum[i];
+                      }
+                    }
+                  }
+                  
+                  Map result = new HashMap();
+                  double[] avgVector = new double[10];
+                  
+                  if (totalCount > 0) {
+                    for (int i = 0; i < 10; i++) {
+                      avgVector[i] = totalSum[i] / totalCount;
+                    }
+                  }
+                  
+                  result.put('avg_vector', avgVector);
+                  result.put('count', totalCount);
+                  return result;
+                `
+              }
+            },
+            user_info: {
+              top_hits: {
+                size: 1,
+                _source: ["u_id", "u_age", "u_gender"],
+                sort: [{ "upload_date": { "order": "desc" } }]
+              }
+            }
+          }
+        }
+      }
+    };
+
+    // config에서 Elasticsearch API URL 사용
+    const response = await fetch(`${config.ES_API}/travel_places/_search`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(query)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('사용자 평균 조회 API 응답 오류:', errorData);
+      throw new Error('사용자 평균 조회 실패: ' + JSON.stringify(errorData));
+    }
+
+    const result = await response.json();
+    
+    // 특정 사용자의 버킷 찾기
+    const userBucket = result.aggregations.users.buckets.find(bucket => bucket.key === userId);
+    
+    if (!userBucket) {
+      console.warn(`사용자 ID ${userId}의 데이터를 찾을 수 없습니다.`);
+      // 기본 더미 데이터 반환
+      return {
+        avgVector: [0.7, 0.4, 0.6, 0.8, 0.9, 0.6, 0.5, 0.5, 0.7, 0.2],
+        userInfo: {
+          u_id: userId,
+          u_age: 20,
+          u_gender: "M"
+        },
+        count: 0
+      };
+    }
+
+    // 결과 구성
+    const userPreferences = {
+      avgVector: userBucket.vector_avg.value.avg_vector,
+      userInfo: userBucket.user_info.hits.hits[0]._source,
+      count: userBucket.vector_avg.value.count
+    };
+    
+    console.log('사용자 평균 여행 성향 조회 완료:', userPreferences);
+    return userPreferences;
+  } catch (error) {
+    console.error('사용자 평균 조회 오류:', error);
+    // 에러 발생 시 기본 더미 데이터 반환
+    return {
+      avgVector: [0.7, 0.4, 0.6, 0.8, 0.9, 0.6, 0.5, 0.5, 0.7, 0.2],
+      userInfo: {
+        u_id: userId,
+        u_age: 20,
+        u_gender: "M"
+      },
+      count: 0
+    };
+  }
+};
+
 /*
  * 이미지 위치 정보 추출 및 구글 지도 연동 사용 방법:
  *
