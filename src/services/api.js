@@ -746,6 +746,7 @@ export const searchImagesByKeyword = async (keyword, size = 10, from = 0) => {
           "p_tags", 
           "p_description", 
           "p_image", 
+          "p_vector",
           "u_age", 
           "u_gender"
         ]

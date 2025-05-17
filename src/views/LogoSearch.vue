@@ -140,15 +140,30 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(score, dimension) in dimensionResults" :key="dimension">
-                    <td class="dimension-name">{{ getDimensionHeader(dimension) }}</td>
-                    <td class="dimension-score">{{ typeof score === 'number' ? score.toFixed(1) : score }}</td>
-                    <td class="dimension-bar">
-                      <div class="bar-container">
-                        <div class="bar" :style="{ width: `${typeof score === 'number' ? score * 100 : 0}%` }"></div>
-                      </div>
-                    </td>
-                  </tr>
+                  <!-- Array format (p_vector) -->
+                  <template v-if="Array.isArray(dimensionResults)">
+                    <tr v-for="(score, index) in dimensionResults" :key="'dim-'+index">
+                      <td class="dimension-name">{{ getDimensionHeader(index) }}</td>
+                      <td class="dimension-score">{{ typeof score === 'number' ? score.toFixed(1) : score }}</td>
+                      <td class="dimension-bar">
+                        <div class="bar-container">
+                          <div class="bar" :style="{ width: `${typeof score === 'number' ? score * 100 : 0}%` }"></div>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                  <!-- Object format (old style) -->
+                  <template v-else>
+                    <tr v-for="(score, dimension) in dimensionResults" :key="dimension">
+                      <td class="dimension-name">{{ getDimensionHeader(dimension) }}</td>
+                      <td class="dimension-score">{{ typeof score === 'number' ? score.toFixed(1) : score }}</td>
+                      <td class="dimension-bar">
+                        <div class="bar-container">
+                          <div class="bar" :style="{ width: `${typeof score === 'number' ? score * 100 : 0}%` }"></div>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
                 </tbody>
               </table>
             </div>
@@ -182,19 +197,19 @@
                   <span class="rank-number">{{ index + 1 }}</span>
                 </div>
                 <div class="result-image-container">
-                  <img v-if="result._source.image_data" :src="`data:image/jpeg;base64,${result._source.image_data}`" :alt="result._source.image_name"
+                  <img v-if="result._source.p_image" :src="`data:image/jpeg;base64,${result._source.p_image}`" :alt="result._source.p_name"
                     class="result-image">
                   <div v-else class="placeholder-image">이미지 없음</div>
                 </div>
                 <div class="result-info">
-                  <h4 class="result-name">{{ result._source.image_name }}</h4>
+                  <h4 class="result-name">{{ result._source.p_name }}</h4>
                   <div class="result-location">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
                       stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                       <circle cx="12" cy="10" r="3"></circle>
                     </svg>
-                    {{ result._source.image_location }}
+                    {{ result._source.p_address }}
                   </div>
                   <div class="result-similarity">
                     <span>유사도:</span>
@@ -208,15 +223,15 @@
                     </div>
                   </div>
                   <!-- 키워드 표시 영역 -->
-                  <div v-if="result._source.image_tags && result._source.image_tags.length > 0" class="result-tags">
-                    <span v-for="(tag, tagIndex) in result._source.image_tags.slice(0, 5)" :key="tagIndex" class="result-tag">
+                  <div v-if="result._source.p_tags && result._source.p_tags.length > 0" class="result-tags">
+                    <span v-for="(tag, tagIndex) in result._source.p_tags.slice(0, 5)" :key="tagIndex" class="result-tag">
                       {{ tag }}
                     </span>
                   </div>
                   <!-- 이미지 설명 -->
-                  <div v-if="result._source.image_description" class="result-description">
+                  <div v-if="result._source.p_description" class="result-description">
                     <div class="description-title">설명:</div>
-                    <p class="description-text">{{ result._source.image_description }}</p>
+                    <p class="description-text">{{ result._source.p_description }}</p>
                   </div>
                 </div>
               </div>
@@ -236,8 +251,8 @@
       <div class="place-detail-modal" @click.stop>
         <div class="modal-header">
           <div class="modal-title-location">
-            <h3>{{ selectedDetail.image_name }}</h3>
-            <div class="modal-location">{{ selectedDetail.image_location }}</div>
+            <h3>{{ selectedDetail.p_name }}</h3>
+            <div class="modal-location">{{ selectedDetail.p_address }}</div>
           </div>
           <div class="modal-actions">
             <button class="heart-btn" :class="{ 'active': isInWishlist(selectedDetail._id) }"
@@ -263,7 +278,7 @@
           <!-- 이미지와 지도 섹션 (수평 레이아웃) -->
           <div class="visual-section">
             <div class="detail-image-container">
-              <img v-if="selectedDetail.image_data" :src="`data:image/jpeg;base64,${selectedDetail.image_data}`" :alt="selectedDetail.image_name"
+              <img v-if="selectedDetail.p_image" :src="`data:image/jpeg;base64,${selectedDetail.p_image}`" :alt="selectedDetail.p_name"
                 class="detail-image">
               <div v-else class="placeholder-image">이미지 없음</div>
             </div>
@@ -275,25 +290,25 @@
           </div>
           
           <!-- 태그 섹션 -->
-          <div v-if="selectedDetail.image_tags && selectedDetail.image_tags.length > 0" class="detail-section">
+          <div v-if="selectedDetail.p_tags && selectedDetail.p_tags.length > 0" class="detail-section">
             <h4>태그</h4>
             <div class="tag-list">
-              <span v-for="(tag, index) in selectedDetail.image_tags" :key="index" class="tag">{{ tag }}</span>
+              <span v-for="(tag, index) in selectedDetail.p_tags" :key="index" class="tag">{{ tag }}</span>
             </div>
           </div>
 
           <!-- 설명 섹션 -->
-          <div v-if="selectedDetail.image_description" class="detail-section">
+          <div v-if="selectedDetail.p_description" class="detail-section">
             <h4>설명</h4>
-            <p class="detail-description">{{ selectedDetail.image_description }}</p>
+            <p class="detail-description">{{ selectedDetail.p_description }}</p>
           </div>
           
           <!-- 특성 분석 섹션 -->
-          <div v-if="analysisResult" class="detail-section">
+          <div v-if="selectedDetail.p_vector" class="detail-section">
             <h4>특성 분석</h4>
             <div class="detail-dimensions">
-              <div v-for="(value, dimension) in dimensionResults" :key="dimension" class="dimension-item">
-                <span class="dimension-name">{{ getDimensionHeader(dimension) }}</span>
+              <div v-for="(value, index) in selectedDetail.p_vector" :key="index" class="dimension-item">
+                <span class="dimension-name">{{ getDimensionHeader(index) }}</span>
                 <div class="dimension-bar-small">
                   <div class="dimension-fill" :style="{ width: `${value * 100}%` }"></div>
                 </div>
@@ -418,6 +433,12 @@ export default {
     const dimensionResults = computed(() => {
       if (!analysisResult.value) return null;
 
+      // 새 버전: p_vector 배열이 존재하는 경우
+      if (Array.isArray(analysisResult.value.p_vector)) {
+        return analysisResult.value.p_vector;
+      }
+      
+      // 기존 버전: 차원 데이터가 개별 키로 존재하는 경우
       const dimensionKeys = [
         "Natural Elements",
         "Urban Character",
@@ -448,22 +469,40 @@ export default {
     });
 
     // 차원 영어-한글 매핑
-    const dimensionTranslations = {
-      "Natural Elements": "자연 요소",
-      "Urban Character": "도시 특성",
-      "Water Features": "수경 요소",
-      "Seasonal Appeal": "계절적 매력",
-      "Relaxation Potential": "휴식 잠재력",
-      "Romantic Atmosphere": "로맨틱한 분위기",
-      "Activity Opportunities": "활동 기회",
-      "Historical/Cultural Value": "역사/문화적 가치",
-      "Food Experience": "식도락 경험",
-      "Shopping Potential": "쇼핑 잠재력"
-    };
+    const dimensionLabels = [
+      "자연 요소",
+      "도시 특성",
+      "수경 요소",
+      "계절적 매력",
+      "휴식 잠재력",
+      "로맨틱한 분위기",
+      "활동 기회",
+      "역사/문화적 가치",
+      "식도락 경험",
+      "쇼핑 잠재력"
+    ];
 
-    // 차원 헤더 생성
-    const getDimensionHeader = (dimension) => {
-      return dimensionTranslations[dimension] || dimension;
+    // 차원 헤더 생성 - 이제 인덱스를 받아 해당 레이블 반환
+    const getDimensionHeader = (index) => {
+      if (typeof index === 'number') {
+        return dimensionLabels[index] || `차원 ${index + 1}`;
+      } else {
+        // 기존 차원 이름이 "Natural Elements" 같은 문자열인 경우 호환성 유지
+        const oldMapping = {
+          "Natural Elements": "자연 요소",
+          "Urban Character": "도시 특성",
+          "Water Features": "수경 요소",
+          "Seasonal Appeal": "계절적 매력",
+          "Relaxation Potential": "휴식 잠재력",
+          "Romantic Atmosphere": "로맨틱한 분위기",
+          "Activity Opportunities": "활동 기회",
+          "Historical/Cultural Value": "역사/문화적 가치",
+          "Food Experience": "식도락 경험",
+          "Shopping Potential": "쇼핑 잠재력"
+        };
+        
+        return oldMapping[index] || index;
+      }
     };
 
     // 더미 리뷰 데이터
@@ -645,7 +684,7 @@ export default {
         _score: result._score,
         ...result._source,
         reviews: dummyReviews,
-        image_data: result._source.image_data || ''
+        p_image: result._source.p_image || ''
       };
       
       selectedDetail.value = detailWithReviews;
@@ -709,7 +748,7 @@ export default {
         // 인포윈도우 추가
         const infoContent = `
           <div style="padding: 5px; text-align: center;">
-            <span style="font-weight: bold;">${selectedDetail.value.image_name || '여행지'}</span>
+            <span style="font-weight: bold;">${selectedDetail.value.p_name || '여행지'}</span>
           </div>
         `;
         
@@ -745,14 +784,17 @@ export default {
     };
 
     const toggleWishlist = (item) => {
+      // Get the name safely from either _source or directly
+      const itemName = item._source ? item._source.p_name : item.p_name;
+      
       if (isInWishlist(item._id)) {
         // 위시리스트에서 제거
         wishlistItems.value = wishlistItems.value.filter(i => i._id !== item._id);
-        showActionStatus(`${item.image_name}이(가) 위시리스트에서 제거되었습니다.`, "success");
+        showActionStatus(`${itemName}이(가) 위시리스트에서 제거되었습니다.`, "success");
       } else {
         // 위시리스트에 추가
         wishlistItems.value.push(item);
-        showActionStatus(`${item.image_name}이(가) 위시리스트에 추가되었습니다.`, "success");
+        showActionStatus(`${itemName}이(가) 위시리스트에 추가되었습니다.`, "success");
       }
 
       // 로컬 스토리지에 저장
@@ -896,7 +938,18 @@ export default {
         showActionStatus("유사한 이미지 검색 중...", "pending");
 
         // 특성 벡터 생성
-        const featuresVector = createFeaturesVector(analysisResult.value);
+        let featuresVector;
+        
+        // 새 버전: p_vector 배열이 있는 경우 그대로 사용
+        if (Array.isArray(analysisResult.value.p_vector)) {
+          console.log("p_vector 배열 사용:", analysisResult.value.p_vector);
+          featuresVector = analysisResult.value.p_vector;
+        } 
+        // 기존 버전: dimensions 객체로부터 벡터 생성
+        else {
+          console.log("createFeaturesVector 함수로 벡터 생성");
+          featuresVector = createFeaturesVector(analysisResult.value);
+        }
 
         // Elasticsearch에서 유사 이미지 검색
         const results = await searchSimilarImages(featuresVector, 10);
