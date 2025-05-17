@@ -485,47 +485,142 @@ export const saveToElasticsearch = async (
     console.log('분석 결과:', analysisResult);
     console.log('특성 벡터:', featuresVector);
     console.log('구조화된 위치 데이터:', locationData);
+
+    // 지역 및 시군구 코드 변수 초기화
+    let regionCode = "00"; // 기본값
+    let sigCode = "00000"; // 기본값
+    let p_address = location || ''; // 기본 주소는 location 텍스트
     
-    console.log('Elasticsearch 저장 시작:', imageId);
-    console.log('Elasticsearch API 주소:', `${config.ES_API}/travel_images/_doc/${imageId}`);
-    
-    // 위치 정보에서 지역 정보 추출 (locationData가 없을 경우)
-    const finalLocationData = locationData || findRegionInfoFromLocation(location);
-    console.log('최종 위치 데이터:', finalLocationData);
-    
-    // 문서 구조 생성
-    const document = {
-      image_id: imageId,
-      image_name: name,
-      image_location: location, // 기존 필드 유지 (하위 호환성)
-      location: finalLocationData, // 새로운 구조화된 위치 정보
-      image_tags: tags,
-      image_description: description,
-      image_data: base64Data, // 압축된 Base64 데이터 저장
-      upload_date: new Date().toISOString(),
-      features_vector: featuresVector,
-      dimensions: {
-        natural_elements: analysisResult["Natural Elements"],
-        urban_character: analysisResult["Urban Character"],
-        water_features: analysisResult["Water Features"],
-        seasonal_appeal: analysisResult["Seasonal Appeal"],
-        relaxation_potential: analysisResult["Relaxation Potential"],
-        romantic_atmosphere: analysisResult["Romantic Atmosphere"],
-        activity_opportunities: analysisResult["Activity Opportunities"],
-        historical_cultural_value: analysisResult["Historical/Cultural Value"],
-        food_experience: analysisResult["Food Experience"],
-        shopping_potential: analysisResult["Shopping Potential"]
+    // 처리 방식에 따라 다른 로직 적용
+    if (locationData) {
+      console.log('LocationData 정보:', locationData);
+      
+      // 1. TripPlan에서 전달한 구조화된 locationInfo가 있는 경우 (이미 regionInfo 포함)
+      if (locationData.province_code) {
+        console.log('구조화된 위치 정보 사용 (TripPlan에서 전달)');
+        // 이미 구조화된 데이터가 있는 경우
+        regionCode = locationData.province_code || "00";
+        sigCode = locationData.city_code || "00000";
+        p_address = locationData.full_text || location;
       }
+      // 2. locationData에 위도/경도 정보가 있는 경우 - 역지오코딩 실행
+      else if (locationData.latitude && locationData.longitude) {
+        console.log('좌표 정보로 역지오코딩 실행');
+        const geoResult = await reverseGeocode(locationData.latitude, locationData.longitude);
+        
+        if (geoResult) {
+          if (geoResult.regionInfo) {
+            regionCode = geoResult.regionInfo.province_code || "00";
+            sigCode = geoResult.regionInfo.city_code || "00000";
+          }
+          
+          // Nominatim에서 반환한 주소 정보 우선 사용
+          if (geoResult.display_name) {
+            p_address = geoResult.display_name;
+          } else {
+            // 주소 컴포넌트 개별적으로 조합
+            p_address = [
+              geoResult.city, 
+              geoResult.borough, 
+              geoResult.quarter || geoResult.suburb, 
+              geoResult.road
+            ].filter(Boolean).join(' ');
+          }
+          
+          console.log('역지오코딩 성공:', regionCode, sigCode, p_address);
+        }
+      }
+      // 3. 위치 정보에 카카오 API에서 온 좌표가 있는 경우
+      else if (locationData.y && locationData.x) {
+        console.log('카카오 좌표 정보로 역지오코딩 실행');
+        const geoResult = await reverseGeocode(locationData.y, locationData.x);
+        
+        if (geoResult) {
+          if (geoResult.regionInfo) {
+            regionCode = geoResult.regionInfo.province_code || "00";
+            sigCode = geoResult.regionInfo.city_code || "00000";
+          }
+          
+          p_address = geoResult.display_name || locationData.address_name || location;
+          console.log('역지오코딩 성공:', regionCode, sigCode, p_address);
+        }
+      }
+      // 4. locationData의 regionInfo 필드 사용
+      else if (locationData.regionInfo) {
+        console.log('RegionInfo 필드 사용');
+        regionCode = locationData.regionInfo.province_code || "00";
+        sigCode = locationData.regionInfo.city_code || "00000";
+        p_address = locationData.full_text || location;
+      }
+      // 5. locationData.address 객체가 있는 경우 (Nominatim 응답 구조와 유사)
+      else if (locationData.address) {
+        console.log('주소 객체로 역지오코딩 정보 추출');
+        
+        // 주소 객체에서 정보 추출
+        const address = {
+          province: locationData.address.city || locationData.address.province || '',
+          city: locationData.address.borough || '',
+          quarter: locationData.address.quarter || locationData.address.suburb || '',
+          road: locationData.address.road || ''
+        };
+        
+        // 지역 코드 매핑
+        const mappedRegion = mapAddressToRegionCode(address);
+        regionCode = mappedRegion.province_code || "00";
+        sigCode = mappedRegion.city_code || "00000";
+        
+        // 주소 생성
+        p_address = locationData.display_name || 
+                    [address.province, address.city, address.quarter, address.road]
+                      .filter(Boolean).join(' ');
+      }
+    } else {
+      // 6. 텍스트 기반 위치 정보로부터 지역 정보 추출 시도
+      console.log('텍스트 기반 위치 정보에서 지역 정보 추출 시도');
+      const extractedInfo = findRegionInfoFromLocation(location);
+      if (extractedInfo && extractedInfo.regionInfo) {
+        regionCode = extractedInfo.regionInfo.province_code || "00";
+        sigCode = extractedInfo.regionInfo.city_code || "00000";
+        p_address = location;
+      }
+    }
+    
+    // 숫자형으로 변환 (문자열로 저장되어 있을 경우 대비)
+    // parseInt를 사용하되, fallback으로 0 사용
+    // parseInt(null)은 NaN을 반환하므로 || 연산자로 0으로 대체
+    regionCode = parseInt(regionCode, 10) || 0;
+    sigCode = parseInt(sigCode, 10) || 0;
+    
+    // 로깅
+    console.log('최종 지역 코드:', regionCode);
+    console.log('최종 시군구 코드:', sigCode);
+    console.log('최종 주소:', p_address);
+
+    // 새로운 형식으로 문서 구조 생성
+    const document = {
+      p_id: 1, // 더미 데이터로 1로 고정
+      p_name: name, // 카카오 지도에서의 여행지 이름
+      p_address: p_address, // 카카오에서 가져오는 여행지의 실제 Full 주소
+      p_region: regionCode, // 여행 지역 코드 (숫자 2자리)
+      p_sig: sigCode, // 여행 시군구 코드 (숫자 5자리)
+      p_tags: tags, // 이미지 키워드 분석 결과에서 추출
+      p_description: description, // 이미지 내용 분석 결과에서 추출
+      p_image: base64Data, // 압축된 이미지 데이터
+      p_vector: featuresVector, // 이미지 특성을 나타내는 10차원 벡터
+      u_id: 1, // 사용자 ID - 임시로 1로 고정
+      u_age: 20, // 임시로 20대로 설정
+      u_gender: "M", // 임시로 M으로 설정
+      upload_date: new Date().toISOString()
     };
     
     console.log('최종 문서 구조 (이미지 데이터 제외):');
     const documentCopy = {...document};
-    delete documentCopy.image_data;
+    delete documentCopy.p_image;
     console.log(JSON.stringify(documentCopy, null, 2));
     console.log('=== Elasticsearch 저장 데이터 로깅 끝 ===');
     
-    // config에서 Elasticsearch API URL 사용
-    const response = await fetch(`${config.ES_API}/travel_images/_doc/${imageId}`, {
+    // config에서 Elasticsearch API URL 사용 - travel_places 인덱스로 저장
+    const response = await fetch(`${config.ES_API}/travel_places/_doc/${imageId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json'
@@ -561,12 +656,12 @@ export const saveToElasticsearch = async (
 export const searchSimilarImages = async (featuresVector, limit = 10) => {
   try {
     console.log('유사 이미지 검색 시작');
-    console.log('검색 API 주소:', `${config.ES_API}/travel_images/_search`);
+    console.log('검색 API 주소:', `${config.ES_API}/travel_places/_search`);
     
     // KNN 검색 쿼리 구성
     const query = {
       knn: {
-        field: "features_vector",
+        field: "p_vector",
         query_vector: featuresVector,
         k: limit,
         num_candidates: 100
@@ -574,7 +669,7 @@ export const searchSimilarImages = async (featuresVector, limit = 10) => {
     };
     
     // config에서 Elasticsearch API URL 사용
-    const response = await fetch(`${config.ES_API}/travel_images/_search`, {
+    const response = await fetch(`${config.ES_API}/travel_places/_search`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -582,7 +677,7 @@ export const searchSimilarImages = async (featuresVector, limit = 10) => {
       body: JSON.stringify({
         size: limit,
         query: query,
-        _source: ["image_id", "image_name", "image_location", "image_tags","image_description", "image_data", "dimensions"]
+        _source: ["p_id", "p_name", "p_address", "p_region", "p_sig", "p_tags", "p_description", "p_image", "u_age", "u_gender"]
       })
     });
     
@@ -615,21 +710,17 @@ export const searchSimilarImages = async (featuresVector, limit = 10) => {
 export const searchImagesByKeyword = async (keyword, size = 10, from = 0) => {
   try {
     console.log('키워드 검색 시작:', keyword);
-    console.log('검색 API 주소:', `${config.ES_API}/travel_images/_search`);
+    console.log('검색 API 주소:', `${config.ES_API}/travel_places/_search`);
     
     // 검색 쿼리 구성
     const query = {
       multi_match: {
         query: keyword,
         fields: [
-          "image_name", 
-          "image_tags", 
-          "image_description", 
-          "image_location",
-          // 새로운 구조화된 위치 필드 추가
-          "location.full_text",
-          "location.province_name",
-          "location.city_name"
+          "p_name", 
+          "p_tags", 
+          "p_description", 
+          "p_address"
         ],
         type: "best_fields",
         operator: "or"
@@ -637,7 +728,7 @@ export const searchImagesByKeyword = async (keyword, size = 10, from = 0) => {
     };
     
     // config에서 Elasticsearch API URL 사용
-    const response = await fetch(`${config.ES_API}/travel_images/_search`, {
+    const response = await fetch(`${config.ES_API}/travel_places/_search`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -647,14 +738,16 @@ export const searchImagesByKeyword = async (keyword, size = 10, from = 0) => {
         from: from,
         query: query,
         _source: [
-          "image_id", 
-          "image_name", 
-          "image_location", 
-          "image_description", 
-          "location", 
-          "image_tags", 
-          "image_data", 
-          "dimensions"
+          "p_id", 
+          "p_name", 
+          "p_address", 
+          "p_region", 
+          "p_sig", 
+          "p_tags", 
+          "p_description", 
+          "p_image", 
+          "u_age", 
+          "u_gender"
         ]
       })
     });
@@ -711,19 +804,37 @@ export const reverseGeocode = async (latitude, longitude) => {
     console.log('역지오코딩 결과:', data);
     
     // 한국 주소 형식으로 결과 구성
+    // OSM API 응답 구조에서 필요한 필드 추출
     let address = {
       country: data.address.country || '',
-      province: data.address.province || data.address.state || '',
+      // 주요 행정구역 정보 - 여러 표현 가능성을 고려해 다양한 필드 체크
+      province: data.address.province || data.address.state || data.address.city || '',
+      // borough는 한국에서는 주로 '구' (강남구, 서초구 등)
+      borough: data.address.borough || '',
+      // city는 한국에서는 주로 특별시/광역시 (서울, 부산 등)
       city: data.address.city || data.address.town || data.address.village || '',
-      district: data.address.suburb || data.address.neighbourhood || '',
+      // quarter/suburb는 한국에서는 주로 '동' (역삼동, 잠실동 등)
+      quarter: data.address.quarter || '', 
+      suburb: data.address.suburb || data.address.neighbourhood || '',
       road: data.address.road || '',
       display_name: data.display_name || '',
     };
     
     console.log('추출된 주소 정보:', address);
     
-    // 지역 코드 매핑 시도
-    const regionInfo = mapAddressToRegionCode(address);
+    // 광역시/도 매핑을 위한 정보 설정
+    // 서울시의 경우 borough는 '강남구', city는 '서울'
+    const provinceForMapping = address.city || address.province; // 광역시/도
+    const cityForMapping = address.borough || address.quarter || address.suburb; // 구/동
+    
+    console.log('매핑용 광역시/도:', provinceForMapping);
+    console.log('매핑용 구/동:', cityForMapping);
+    
+    // 지역 코드 매핑 시도 (수정된 정보로 시도)
+    const regionInfo = mapAddressToRegionCode({
+      province: provinceForMapping,
+      city: cityForMapping
+    });
     
     return {
       ...address,
@@ -743,6 +854,7 @@ export const reverseGeocode = async (latitude, longitude) => {
 const mapAddressToRegionCode = (address) => {
   try {
     console.log('주소를 지역 코드로 매핑 시작');
+    console.log('입력 주소 정보:', address);
     
     // 기본 결과 객체
     const result = {
@@ -752,38 +864,63 @@ const mapAddressToRegionCode = (address) => {
       city_name: null
     };
     
-    // 광역시/도 찾기
+    // 특수한 경우 처리: 서울특별시 등의 특별시는 province와 city가 동일할 수 있음
+    if (address.province && !address.city && 
+        (address.province.includes('서울') || 
+         address.province.includes('부산') || 
+         address.province.includes('대구') || 
+         address.province.includes('인천') || 
+         address.province.includes('광주') || 
+         address.province.includes('대전') || 
+         address.province.includes('울산') || 
+         address.province.includes('세종'))) {
+      address.city = address.province;
+    }
+    
+    // 광역시/도 찾기 (province나 city에서 찾기)
     for (const provinceCode in regionMapping) {
       const province = regionMapping[provinceCode];
       // 정확한 이름 일치 또는 부분 매칭
+      // province에 광역시/도 이름이 포함되어 있거나 광역시/도 이름에 province가 포함되어 있는지 확인
       if (address.province && (
           address.province === province.name || 
           address.province.includes(province.name) || 
           province.name.includes(address.province))
       ) {
-        console.log(`광역시/도 매칭 성공: ${province.name} (코드: ${provinceCode})`);
+        console.log(`광역시/도 매칭 성공(province로 매칭): ${province.name} (코드: ${provinceCode})`);
         result.province_code = provinceCode;
         result.province_name = province.name;
         
-        // 시/군/구 찾기
-        const city = address.city || address.district;
-        if (city && province.children) {
-          for (const cityInfo of province.children) {
-            if (city === cityInfo.name || 
-                city.includes(cityInfo.name) || 
-                cityInfo.name.includes(city)) {
-              console.log(`시/군/구 매칭 성공: ${cityInfo.name} (코드: ${cityInfo.code})`);
-              result.city_code = cityInfo.code;
-              result.city_name = cityInfo.name;
-              break;
-            }
-          }
+        // 시/군/구 찾기 - address.city에서 찾기
+        matchCityCode(province, address.city, result);
+        
+        // 성공적으로 찾았으면 여기서 종료
+        if (result.city_code) break;
+      }
+      // province에서 찾지 못한 경우 city에서 찾기 (서울, 부산 등의 광역시인 경우)
+      else if (address.city && (
+          address.city === province.name || 
+          address.city.includes(province.name) || 
+          province.name.includes(address.city))
+      ) {
+        console.log(`광역시/도 매칭 성공(city로 매칭): ${province.name} (코드: ${provinceCode})`);
+        result.province_code = provinceCode;
+        result.province_name = province.name;
+        
+        // 시/군/구 찾기 - address.borough나 address.suburb에서 찾기
+        if (address.borough) {
+          matchCityCode(province, address.borough, result);
+        } else if (address.quarter) {
+          matchCityCode(province, address.quarter, result);
+        } else if (address.suburb) {
+          matchCityCode(province, address.suburb, result);
         }
         
         break;
       }
     }
     
+    console.log('최종 지역 코드 매핑 결과:', result);
     return result;
   } catch (error) {
     console.error('지역 코드 매핑 오류:', error);
@@ -793,6 +930,30 @@ const mapAddressToRegionCode = (address) => {
       city_code: null,
       city_name: null
     };
+  }
+};
+
+/**
+ * 시/군/구 코드 매칭 도우미 함수
+ * @param {Object} province - 광역시/도 정보
+ * @param {string} cityName - 시/군/구 이름
+ * @param {Object} result - 결과를 저장할 객체
+ */
+const matchCityCode = (province, cityName, result) => {
+  if (!cityName || !province.children) return;
+  
+  for (const cityInfo of province.children) {
+    // 서울 강남구 -> 강남구, 서울 역삼동 -> 역삼동 등으로 정규화
+    const normalizedCityName = cityName.replace(/^(.+)(시|구|군|동)$/, '$1$2');
+    
+    if (normalizedCityName === cityInfo.name || 
+        normalizedCityName.includes(cityInfo.name) || 
+        cityInfo.name.includes(normalizedCityName)) {
+      console.log(`시/군/구 매칭 성공: ${cityInfo.name} (코드: ${cityInfo.code})`);
+      result.city_code = cityInfo.code;
+      result.city_name = cityInfo.name;
+      break;
+    }
   }
 };
 
