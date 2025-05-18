@@ -627,6 +627,11 @@
                     {{ isVerifying ? '인증 중...' : '인증하기' }}
                   </button>
                   <button @click="clearVerificationPhoto" class="btn cancel-btn" :disabled="isVerifying">취소</button>
+                  
+                  <!-- 관리자 인증 버튼 추가 -->
+                  <button @click="adminVerify()" class="btn admin-btn" :disabled="isVerifying || !verificationPhotoPreview">
+                    관리자 인증
+                  </button>
                 </div>
               </div>
             </div>
@@ -2882,6 +2887,33 @@ export default {
       }
     };
 
+    // 관리자 인증 함수 추가
+    const adminVerify = () => {
+      if (!verificationPhotoPreview.value) return;
+      
+      // 로딩 상태 설정
+      isVerifying.value = true;
+      
+      console.log('===== 관리자 인증 시작 =====');
+      
+      // 관리자 인증은 GPS 체크를 우회하고 항상 성공 처리
+      verificationResult.value = {
+        success: true,
+        message: '관리자 권한으로 인증되었습니다!'
+      };
+      
+      // 리뷰 모달 표시를 위해 필요한 거리 정보 설정
+      if (distanceFromTarget.value === null) {
+        distanceFromTarget.value = 0; // 거리를 0으로 설정하여 항상 통과하도록 함
+      }
+      
+      console.log('관리자 권한으로 인증 성공 처리됨');
+      console.log('===== 관리자 인증 완료 =====');
+      
+      // 로딩 상태 해제
+      isVerifying.value = false;
+    };
+
     return {
       tripData,
       tripDays,
@@ -2997,6 +3029,7 @@ export default {
       searchDuration,
       memoTextarea,
       autoResizeTextarea,
+      adminVerify,
     };
   }
 };
@@ -4930,5 +4963,27 @@ textarea {
 /* Add scrollbar only when content exceeds max-height */
 .form-group textarea.expanded {
   overflow-y: auto;
+}
+
+/* 관리자 인증 버튼 스타일 */
+.admin-btn {
+  background-color: #c62828;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  margin-left: 8px;
+}
+
+.admin-btn:hover {
+  background-color: #b71c1c;
+}
+
+.admin-btn:disabled {
+  background-color: #e57373;
+  cursor: not-allowed;
 }
 </style>
