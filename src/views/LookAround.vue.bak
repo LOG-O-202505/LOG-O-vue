@@ -215,11 +215,70 @@
               <!-- 연령대별 원형 그래프 -->
               <div class="chart-container">
                 <h5>연령대별 방문 비율</h5>
-                <div class="age-chart-wrapper">
-                  <div v-if="totalAgeVisits === 0" class="no-age-data">
-                    <p>연령대 데이터가 없습니다</p>
+                <div class="pie-chart-wrapper">
+                  <svg width="320" height="320" viewBox="0 0 320 320">
+                    <g transform="translate(160, 160)">
+                      <!-- 파이 차트 조각들 -->
+                      <g v-if="totalAgeVisits > 0">
+                        <path v-for="(segment, index) in agePieSegments" 
+                          :key="index"
+                          :d="segment.path"
+                          :fill="segment.color"
+                          :stroke="'white'"
+                          stroke-width="2"
+                          @mouseover="hoveredSegment = segment"
+                          @mouseleave="hoveredSegment = null"
+                          class="pie-segment"
+                        />
+                        <!-- 퍼센트 레이블 (5% 이상인 세그먼트만) -->
+                        <g v-for="(segment, index) in agePieSegments" :key="`label-${index}`">
+                          <text 
+                            v-if="segment.percentage >= 5"
+                            :x="segment.labelX" 
+                            :y="segment.labelY" 
+                            text-anchor="middle" 
+                            :fill="segment.textColor || '#333'"
+                            font-size="14"
+                            font-weight="bold"
+                            class="segment-label"
+                          >
+                            ({{ segment.percentage }}%)
+                          </text>
+                        </g>
+                        
+                        <!-- 연령대 지시선과 레이블 -->
+                        <g v-for="(segment, index) in agePieSegments" :key="`pointer-${index}`">
+                          <line 
+                            v-if="segment.percentage >= 2"
+                            :x1="segment.midpointX * 0.95" 
+                            :y1="segment.midpointY * 0.95" 
+                            :x2="segment.pointerX" 
+                            :y2="segment.pointerY"
+                            stroke="#333"
+                            stroke-width="1.2"
+                          />
+                          <text 
+                            v-if="segment.percentage >= 2"
+                            :x="segment.pointerX + segment.pointerOffsetX" 
+                            :y="segment.pointerY + 5" 
+                            :text-anchor="segment.pointerTextAnchor"
+                            fill="#333"
+                            font-size="13"
+                            font-weight="600"
+                            class="pointer-label"
+                          >
+                            '{{ segment.age }}년대생'
+                          </text>
+                        </g>
+                      </g>
+                      <circle v-else cx="0" cy="0" r="100" fill="#e2e8f0" />
+                    </g>
+                  </svg>
+                  
+                  <!-- 호버 툴팁 -->
+                  <div v-if="hoveredSegment" class="pie-tooltip" :style="pieTooltipStyle">
+                    {{ hoveredSegment.label }}: {{ hoveredSegment.value }}명 ({{ hoveredSegment.percentage }}%)
                   </div>
-                  <canvas v-else ref="ageChartCanvas" width="380" height="380"></canvas>
                 </div>
               </div>
               
@@ -227,65 +286,40 @@
               <div class="chart-container">
                 <h5>성별 방문 비율</h5>
                 <div v-if="totalStatsVisits > 0" class="gender-chart-container">
+                  <div class="gender-percentage-wrapper">
+                    <div class="gender-percent-label male">{{ malePercentage }}%</div>
+                    <div class="gender-percent-label female">{{ femalePercentage }}%</div>
+                  </div>
+                  
                   <div class="gender-icons-wrapper">
-                    <div class="gender-figure-container">
-                      <!-- 남성 아이콘 -->
-                      <div class="gender-icon male">
-                        <div class="icon-container">
-                          <svg viewBox="0 0 158.66 332.54" class="male-icon">
-                            <!-- 배경 회색 아이콘 -->
-                            <g>
-                              <path class="icon-background" d="M123.25,82.17H35.42C13.84,82.17-2.72,101.3.37,122.66l11.55,79.69c1.17,8.06,8.07,14.03,16.21,14.03h2.43l14.06,116.16h69.42l14.06-116.16h2.51c8.11,0,14.99-5.96,16.15-13.98l11.56-79.94c2.97-21.29-13.57-40.29-35.07-40.29Z" fill="#d1d5db"/>
-                              <circle class="icon-background" cx="79.33" cy="37.42" r="37.42" transform="translate(-3.23 67.06) rotate(-45)" fill="#d1d5db"/>
-                            </g>
-                            
-                            <!-- 색상이 채워진 남성 아이콘 (진행률 표시) -->
-                            <g style="mask: url(#male-mask)">
-                              <path d="M123.25,82.17H35.42C13.84,82.17-2.72,101.3.37,122.66l11.55,79.69c1.17,8.06,8.07,14.03,16.21,14.03h2.43l14.06,116.16h69.42l14.06-116.16h2.51c8.11,0,14.99-5.96,16.15-13.98l11.56-79.94c2.97-21.29-13.57-40.29-35.07-40.29Z" fill="#4c7bd8"/>
-                              <circle cx="79.33" cy="37.42" r="37.42" transform="translate(-3.23 67.06) rotate(-45)" fill="#4c7bd8"/>
-                            </g>
-                            
-                            <!-- 남성 심볼 (항상 맨 위에 보이는 부분) -->
-                            <path d="M86.77,172.23v-14.03c13.6-3.35,23.72-15.64,23.72-30.25,0-17.18-13.98-31.16-31.16-31.16s-31.16,13.98-31.16,31.16c0,14.66,10.19,26.99,23.85,30.29v14l-11.47-7.63-8.17,12.28,27.02,17.97,27.02-17.97-8.17-12.28-11.47,7.63ZM62.92,127.95c0-9.05,7.36-16.41,16.41-16.41s16.41,7.36,16.41,16.41-7.36,16.41-16.41,16.41-16.41-7.36-16.41-16.41Z" fill="#fff"/>
-                            
-                            <!-- 마스크 정의 - 아래에서부터 채우기 -->
-                            <mask :id="`male-mask`">
-                              <rect x="0" y="0" width="160" height="332.54" fill="white"/>
-                              <rect x="0" y="0" :height="332.54 * (1 - malePercentage / 100)" width="160" fill="black"/>
-                            </mask>
-                          </svg>
-                        </div>
-                        <div class="gender-label-percent">남성 <span class="percent-value">{{ malePercentage }}%</span></div>
-                      </div>
-                      
-                      <!-- 여성 아이콘 -->
-                      <div class="gender-icon female">
-                        <div class="icon-container">
-                          <svg viewBox="0 0 157.19 332.54" class="female-icon">
-                            <!-- 배경 회색 아이콘 -->
-                            <g>
-                              <circle class="icon-background" cx="78.68" cy="37.42" r="37.42" transform="translate(24.18 105.4) rotate(-76.72)" fill="#d1d5db"/>
-                              <path class="icon-background" d="M156.76,187.25l-24.97-94.01c-.03-.1-.06-.2-.09-.29-2.35-6.46-8.49-10.77-15.37-10.77H41.02c-6.89,0-13.03,4.31-15.37,10.77-.03.1-.06.19-.09.29L.59,187.25s-5.18,20.11,15.14,23.87h.31l-6.41,33.76h24.91l12.45,87.66h63.38l12.45-87.66h24.91l-6.41-33.76h.3c19.58-3.22,15.15-23.87,15.15-23.87Z" fill="#d1d5db"/>
-                            </g>
-                            
-                            <!-- 색상이 채워진 여성 아이콘 (진행률 표시) -->
-                            <g style="mask: url(#female-mask)">
-                              <circle cx="78.68" cy="37.42" r="37.42" transform="translate(24.18 105.4) rotate(-76.72)" fill="#e5518d"/>
-                              <path d="M156.76,187.25l-24.97-94.01c-.03-.1-.06-.2-.09-.29-2.35-6.46-8.49-10.77-15.37-10.77H41.02c-6.89,0-13.03,4.31-15.37,10.77-.03.1-.06.19-.09.29L.59,187.25s-5.18,20.11,15.14,23.87h.31l-6.41,33.76h24.91l12.45,87.66h63.38l12.45-87.66h24.91l-6.41-33.76h.3c19.58-3.22,15.15-23.87,15.15-23.87Z" fill="#e5518d"/>
-                            </g>
-                            
-                            <!-- 여성 심볼 (항상 맨 위에 보이는 부분) -->
-                            <path d="M109.86,127.87c0-17.14-13.94-31.08-31.08-31.08s-31.08,13.94-31.08,31.08c0,14.63,10.16,26.92,23.79,30.21v11.86h-11.52v14.71h11.52v11.52h14.71v-11.52h11.52s0-14.71,0-14.71h-11.52v-11.89c13.56-3.34,23.66-15.6,23.66-30.18ZM62.41,127.87c0-9.03,7.34-16.37,16.37-16.37s16.37,7.34,16.37,16.37-7.34,16.37-16.37,16.37-16.37-7.34-16.37-16.37Z" fill="#fff"/>
-                            
-                            <!-- 마스크 정의 - 아래에서부터 채우기 -->
-                            <mask :id="`female-mask`">
-                              <rect x="0" y="0" width="160" height="332.54" fill="white"/>
-                              <rect x="0" y="0" :height="332.54 * (1 - femalePercentage / 100)" width="160" fill="black"/>
-                            </mask>
-                          </svg>
-                        </div>
-                        <div class="gender-label-percent">여성 <span class="percent-value">{{ femalePercentage }}%</span></div>
-                      </div>
+                    <div class="gender-icon-container male">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 247 512.35" class="person-icon">
+                        <path class="icon-background" d="M102.84 93.79c-25.89-.01-46.88-21-46.88-46.9C55.96 21 76.95 0 102.84 0v93.79zM101.6 310.66h-5.81v176.92c0 13.6-11.18 24.77-24.77 24.77h-.01c-13.59 0-24.77-11.14-24.77-24.77V171.01h-8.65v124.54c0 10.34-8.46 18.79-18.79 18.79h-.01C8.46 314.34 0 305.89 0 295.55V161.51c-.05-21.79 7.33-37.07 20.69-47.13 11.62-8.76 46.41-13.09 80.91-12.99v209.27z M102.85 0c25.9 0 46.9 20.99 46.9 46.89 0 25.9-21 46.9-46.9 46.9h-.01V0h.01z M102.84 354.45h10.02v133.13c0 13.6 11.14 24.77 24.77 24.77 13.62 0 24.77-11.14 24.77-24.77V360.01h50.99L162.4 179.64v-8.63h8l.57-.14 38.23 135.99c2.87 10.23 13.5 16.21 23.74 13.34 10.24-2.88 16.21-13.51 13.34-23.75l-38.74-137.79c-.23-.81-.5-1.6-.82-2.35-4.91-20.44-7.1-32.66-19.44-41.95-11.38-8.57-51.05-12.89-84.44-12.96v253.05z" fill="#d1d5db"/>
+                        
+                        <g :clip-path="`url(#male-clip-${selectedDetail.id || 'default'})`">
+                          <path d="M102.84 93.79c-25.89-.01-46.88-21-46.88-46.9C55.96 21 76.95 0 102.84 0v93.79zM101.6 310.66h-5.81v176.92c0 13.6-11.18 24.77-24.77 24.77h-.01c-13.59 0-24.77-11.14-24.77-24.77V171.01h-8.65v124.54c0 10.34-8.46 18.79-18.79 18.79h-.01C8.46 314.34 0 305.89 0 295.55V161.51c-.05-21.79 7.33-37.07 20.69-47.13 11.62-8.76 46.41-13.09 80.91-12.99v209.27z" fill="#16a5a5"/>
+                        </g>
+                        
+                        <clipPath :id="`male-clip-${selectedDetail.id || 'default'}`">
+                          <rect x="0" y="0" width="247" :height="512.35 * (malePercentage / 100)" />
+                        </clipPath>
+                      </svg>
+                      <div class="gender-label">남</div>
+                    </div>
+                    
+                    <div class="gender-icon-container female">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 247 512.35" class="person-icon">
+                        <path class="icon-background" d="M102.84 354.45h10.02v133.13c0 13.6 11.14 24.77 24.77 24.77 13.62 0 24.77-11.14 24.77-24.77V360.01h50.99L162.4 179.64v-8.63h8l.57-.14 38.23 135.99c2.87 10.23 13.5 16.21 23.74 13.34 10.24-2.88 16.21-13.51 13.34-23.75l-38.74-137.79c-.23-.81-.5-1.6-.82-2.35-4.91-20.44-7.1-32.66-19.44-41.95-11.38-8.57-51.05-12.89-84.44-12.96v253.05zM102.85 0c25.9 0 46.9 20.99 46.9 46.89 0 25.9-21 46.9-46.9 46.9h-.01V0h.01z" fill="#d1d5db"/>
+                        
+                        <g :clip-path="`url(#female-clip-${selectedDetail.id || 'default'})`">
+                          <path d="M102.84 354.45h10.02v133.13c0 13.6 11.14 24.77 24.77 24.77 13.62 0 24.77-11.14 24.77-24.77V360.01h50.99L162.4 179.64v-8.63h8l.57-.14 38.23 135.99c2.87 10.23 13.5 16.21 23.74 13.34 10.24-2.88 16.21-13.51 13.34-23.75l-38.74-137.79c-.23-.81-.5-1.6-.82-2.35-4.91-20.44-7.1-32.66-19.44-41.95-11.38-8.57-51.05-12.89-84.44-12.96v253.05zM102.85 0c25.9 0 46.9 20.99 46.9 46.89 0 25.9-21 46.9-46.9 46.9h-.01V0h.01z" fill="#e05d55"/>
+                        </g>
+                        
+                        <clipPath :id="`female-clip-${selectedDetail.id || 'default'}`">
+                          <rect x="0" y="0" width="247" :height="512.35 * (femalePercentage / 100)" />
+                        </clipPath>
+                      </svg>
+                      <div class="gender-label">여</div>
                     </div>
                   </div>
                   
@@ -299,41 +333,40 @@
                   <p>성별 데이터가 없습니다</p>
                 </div>
               </div>
+              <div v-else class="no-stats-data">
+                <p>아직 연령대별 방문 통계 데이터가 없습니다.</p>
+              </div>
             </div>
             
-            <div v-if="ageStats.length === 0" class="no-stats-data">
-              <p>아직 연령대별 방문 통계 데이터가 없습니다.</p>
+            <!-- 통계 로딩 중 -->
+            <div v-if="isLoadingStats" class="detail-section stats-section">
+              <h4>연령대별 방문 통계</h4>
+              <div class="stats-loading">
+                <div class="spinner"></div>
+                <p>통계 데이터를 불러오는 중...</p>
+              </div>
             </div>
-          </div>
-          
-          <!-- 통계 로딩 중 -->
-          <div v-if="isLoadingStats" class="detail-section stats-section">
-            <h4>연령대별 방문 통계</h4>
-            <div class="stats-loading">
-              <div class="spinner"></div>
-              <p>통계 데이터를 불러오는 중...</p>
-            </div>
-          </div>
-          
-          <!-- 리뷰 섹션 - 분리를 위해 클래스 추가 -->
-          <div v-if="selectedDetail.reviews && selectedDetail.reviews.length > 0" class="detail-section reviews-section">
-            <h4>방문자 리뷰 ({{ selectedDetail.reviews.length }})</h4>
-            <div class="reviews-container">
-              <div v-for="(review, index) in selectedDetail.reviews" :key="index" class="review-item">
-                <div class="review-header">
-                  <div class="reviewer-info">
-                    <div class="reviewer-name">{{ review.userName }}</div>
-                    <div class="review-date">{{ formatReviewDate(review.date) }}</div>
+            
+            <!-- 리뷰 섹션 -->
+            <div v-if="selectedDetail.reviews && selectedDetail.reviews.length > 0" class="detail-section">
+              <h4>방문자 리뷰 ({{ selectedDetail.reviews.length }})</h4>
+              <div class="reviews-container">
+                <div v-for="(review, index) in selectedDetail.reviews" :key="index" class="review-item">
+                  <div class="review-header">
+                    <div class="reviewer-info">
+                      <div class="reviewer-name">{{ review.userName }}</div>
+                      <div class="review-date">{{ formatReviewDate(review.date) }}</div>
+                    </div>
+                    <div class="review-rating">
+                      <span v-for="star in 5" :key="star" 
+                        :class="{'star-filled': star <= review.rating, 'star-empty': star > review.rating}">
+                        ★
+                      </span>
+                    </div>
                   </div>
-                  <div class="review-rating">
-                    <span v-for="star in 5" :key="star" 
-                      :class="{'star-filled': star <= review.rating, 'star-empty': star > review.rating}">
-                      ★
-                    </span>
+                  <div class="review-content">
+                    {{ review.comment }}
                   </div>
-                </div>
-                <div class="review-content">
-                  {{ review.comment }}
                 </div>
               </div>
             </div>
@@ -351,7 +384,6 @@
   import Header from '@/components/Header.vue';
   import { ref, computed, onMounted, watch, nextTick } from 'vue';
   import * as d3 from 'd3';
-  import Chart from 'chart.js/auto';
   import ctprvnGeoJson from '@/assets/ctprvn.json';
   import propertiesData from '@/assets/extracted_ctprvn.json';
   import sigGeoJson from '@/assets/sig.json';
@@ -454,97 +486,6 @@
       // 연령대별 총 방문 수 계산
       const totalAgeVisits = computed(() => {
         return ageStats.value.reduce((sum, stat) => sum + stat.value, 0);
-      });
-      
-      // Chart.js 인스턴스 참조
-      let ageChart = null;
-      
-      // 연령대별 도넛 차트 렌더링 함수
-      const renderAgeChart = () => {
-        const canvas = ageChartCanvas.value;
-        if (!canvas || totalAgeVisits.value === 0) return;
-        
-        // 기존 차트 제거
-        if (ageChart) {
-          ageChart.destroy();
-        }
-        
-        // 데이터 준비 (값이 있는 연령대만 필터링)
-        const filteredAgeStats = ageStats.value.filter(stat => stat.value > 0);
-        
-        // 차트 데이터 및 색상 배열 준비
-        const data = filteredAgeStats.map(stat => stat.value);
-        const labels = filteredAgeStats.map(stat => `${stat.age}대`);
-        const colors = filteredAgeStats.map(stat => getColorForAge(stat.age));
-        const percentages = filteredAgeStats.map(stat => 
-          ((stat.value / totalAgeVisits.value) * 100).toFixed(1)
-        );
-        
-        // Chart.js 도넛 차트 생성
-        ageChart = new Chart(canvas, {
-          type: 'doughnut',
-          data: {
-            labels: labels,
-            datasets: [{
-              data: data,
-              backgroundColor: colors,
-              borderColor: '#ffffff',
-              borderWidth: 2,
-              hoverOffset: 15
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '50%',
-            layout: {
-              padding: 20
-            },
-            plugins: {
-              legend: {
-                position: 'right',
-                labels: {
-                  font: {
-                    size: 12
-                  },
-                  generateLabels: (chart) => {
-                    const datasets = chart.data.datasets;
-                    return chart.data.labels.map((label, i) => {
-                      const percentage = percentages[i];
-                      return {
-                        text: `${label} (${percentage}%)`,
-                        fillStyle: datasets[0].backgroundColor[i],
-                        strokeStyle: datasets[0].borderColor,
-                        lineWidth: datasets[0].borderWidth,
-                        hidden: false,
-                        index: i
-                      };
-                    });
-                  }
-                }
-              },
-              tooltip: {
-                callbacks: {
-                  label: (context) => {
-                    const value = context.raw;
-                    const percentage = percentages[context.dataIndex];
-                    return `${context.label}: ${value}명 (${percentage}%)`;
-                  }
-                }
-              }
-            }
-          }
-        });
-      };
-      
-      // 차트 canvas 참조
-      const ageChartCanvas = ref(null);
-      
-      // 연령 통계 변경 시 차트 업데이트
-      watch([ageStats, totalAgeVisits], () => {
-        nextTick(() => {
-          renderAgeChart();
-        });
       });
       
       // 연령별 파이 차트 세그먼트 계산
@@ -1918,11 +1859,6 @@
         // 범례 추가
         addLegend();
         
-        // 연령대별 차트 초기 렌더링
-        nextTick(() => {
-          renderAgeChart();
-        });
-        
         // 위시리스트 복원
         const savedWishlist = localStorage.getItem('logo_wishlist');
         if (savedWishlist) {
@@ -2260,12 +2196,11 @@
         genderStats,
         totalStatsVisits,
         isLoadingStats,
-        // 파이/도넛 차트 관련
+        // 파이 차트 관련
         hoveredSegment,
         hoveredGenderSegment,
         totalAgeVisits,
         agePieSegments,
-        ageChartCanvas,
         genderPieSegments,
         pieTooltipStyle,
         genderTooltipStyle,
@@ -3049,7 +2984,6 @@
     flex-direction: column;
     animation: modalFadeIn 0.3s ease-out;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    font-family: 'Noto Sans KR', sans-serif;
   }
 
   @keyframes modalFadeIn {
@@ -3084,7 +3018,7 @@
     font-size: 1.25rem;
     font-weight: 600;
     color: #2d3748;
-    font-family: 'Noto Sans KR', sans-serif;
+    font-family: Georgia, 'Times New Roman', Times, serif;
   }
 
   .modal-location {
@@ -3095,41 +3029,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 300px;
-  }
-
-  /* 각 섹션 스타일 */
-  .detail-section {
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-    border-radius: 12px;
-    background-color: #f8fafc;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  }
-
-  .detail-section:last-child {
-    margin-bottom: 0;
-  }
-
-  .detail-section h4 {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: #2d3748;
-    margin: 0 0 1rem 0;
-    border-bottom: 2px solid #e2e8f0;
-    padding-bottom: 0.5rem;
-    font-family: 'Noto Sans KR', sans-serif;
-  }
-
-  .chart-container h5 {
-    font-family: 'Noto Sans KR', sans-serif;
-  }
-
-  .reviewer-name, .review-date, .review-content {
-    font-family: 'Noto Sans KR', sans-serif;
-  }
-
-  .info-label, .info-value {
-    font-family: 'Noto Sans KR', sans-serif;
   }
 
   .modal-actions {
@@ -3227,7 +3126,7 @@
     margin: 0 0 1rem 0;
     border-bottom: 2px solid #e2e8f0;
     padding-bottom: 0.5rem;
-    font-family: 'Noto Sans KR', sans-serif;
+    font-family: Georgia, 'Times New Roman', Times, serif;
   }
 
   /* 태그 리스트 */
@@ -3694,77 +3593,79 @@
     margin-top: 20px;
   }
 
+  .gender-percentage-wrapper {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 320px;
+    margin-bottom: 10px;
+  }
+
+  .gender-percent-label {
+    font-size: 1.8rem;
+    font-weight: bold;
+  }
+
+  .gender-percent-label.male {
+    color: #16a5a5;
+  }
+
+  .gender-percent-label.female {
+    color: #e05d55;
+  }
+
   .gender-icons-wrapper {
     display: flex;
     justify-content: center;
+    gap: 40px;
     margin-bottom: 20px;
   }
 
-  .gender-figure-container {
-    display: flex;
-    justify-content: center;
-    gap: 60px;
-    margin: 10px 0 20px;
-  }
-
-  .gender-icon {
+  .gender-icon-container {
     display: flex;
     flex-direction: column;
     align-items: center;
-    position: relative;
   }
 
-  .icon-container {
-    position: relative;
-    width: 130px;
-    height: 260px;
-    overflow: hidden;
-    margin-bottom: 15px;
+  .person-icon {
+    width: 100px;
+    height: 208px;
+    margin-bottom: 10px;
   }
 
-  .male-icon, .female-icon {
-    height: 100%;
-    width: 100%;
-  }
-
-  .gender-label-percent {
-    font-size: 0.9rem;
-    font-weight: 500;
-    text-align: center;
-  }
-
-  .gender-icon.male .gender-label-percent {
-    color: #4c7bd8;
-  }
-
-  .gender-icon.female .gender-label-percent {
-    color: #e5518d;
-  }
-
-  .percent-value {
+  .gender-label {
+    font-size: 1.2rem;
     font-weight: 600;
-    font-size: 0.85rem;
+    margin-top: 5px;
+  }
+
+  .gender-icon-container.male .gender-label {
+    color: #16a5a5;
+  }
+
+  .gender-icon-container.female .gender-label {
+    color: #e05d55;
   }
 
   .gender-percentage-bar {
     display: flex;
     width: 100%;
     max-width: 320px;
-    height: 8px;
+    height: 10px;
     background-color: #f3f4f6;
-    border-radius: 4px;
+    border-radius: 5px;
     overflow: hidden;
     margin-top: 10px;
   }
 
   .male-percentage {
     height: 100%;
-    background-color: #4c7bd8;
+    background-color: #16a5a5;
   }
 
   .female-percentage {
     height: 100%;
-    background-color: #e5518d;
+    background-color: #e05d55;
   }
 
   .no-gender-data {
@@ -3774,62 +3675,5 @@
     height: 200px;
     color: #64748b;
     font-style: italic;
-  }
-
-  .pie-chart-wrapper {
-    position: relative;
-    width: 320px;
-    height: 320px;
-    margin: 0 auto;
-  }
-  
-  .age-chart-wrapper {
-    position: relative;
-    width: 320px;
-    height: 320px;
-    margin: 0 auto;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  
-  .no-age-data {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-    width: 100%;
-    color: #64748b;
-    font-style: italic;
-    background-color: #f8fafc;
-    border-radius: 8px;
-  }
-
-  .reviews-section {
-    margin-top: 1.5rem;
-    border-top: 1px solid #e2e8f0;
-    padding-top: 1.5rem;
-  }
-  
-  .age-chart-wrapper {
-    position: relative;
-    width: 380px;
-    height: 380px;
-    margin: 0 auto;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  
-  .no-age-data {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-    width: 100%;
-    color: #64748b;
-    font-style: italic;
-    background-color: #f8fafc;
-    border-radius: 8px;
   }
   </style> 

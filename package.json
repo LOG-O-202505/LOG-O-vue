@@ -8,12 +8,14 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
+    "chart.js": "^4.4.9",
     "core-js": "^3.8.3",
     "d3": "^7.9.0",
     "exif-js": "^2.3.0",
     "topojson-client": "^3.1.0",
     "vue": "^3.2.13",
     "vue-router": "^4.5.1",
+    "vue3-google-login": "^2.0.33",
     "vuex": "^4.1.0"
   },
   "devDependencies": {
