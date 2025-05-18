@@ -6,7 +6,7 @@
 
       <video v-if="isVideoAvailable" ref="backgroundVideoRef" class="background-video" autoplay muted loop playsinline
         @error="handleVideoError">
-        <source :src="`${currentVideoSrc}.webm`" type="video/webm" />
+        <source :src="currentVideoSrc" type="video/webm" />
         비디오를 재생할 수 없습니다.
       </video>
       <div v-else class="static-background animated-bg"></div>
@@ -101,7 +101,7 @@
           <div class="device-frame">
             <div class="mockup-content hotplace-mockup">
               <div class="mockup-map">
-                <img src="/img/seoul_hotplace.png" alt="대한민국 핫플레이스 지도" width="450" height="300" class="korea-map" />
+                <img src="@/assets/img/seoul_hotplace.png" alt="대한민국 핫플레이스 지도" width="450" height="300" class="korea-map" />
               </div>
               <div class="mockup-caption">대한민국 시도별 핫플레이스 한눈에 보기</div>
             </div>
@@ -117,7 +117,7 @@
               <div class="mockup-title">이미지 기반 AI 여행지 추천</div>
               <div class="mockup-ai-logos">
                 <div class="ai-logo-container">
-                  <img src="/img/llava-color.png" alt="Llava 마스코트" width="100" height="100"
+                  <img src="@/assets/img/llava-color.png" alt="Llava 마스코트" width="100" height="100"
                     style="background-color: white;" class="ai-logo" />
                   <div class="ai-name">Llava</div>
                 </div>
@@ -125,7 +125,7 @@
                   <div class="plus-circle">+</div>
                 </div>
                 <div class="ai-logo-container">
-                  <img src="/img/meta.png" alt="Llama 마스코트" width="120" height="100"
+                  <img src="@/assets/img/meta.png" alt="Llama 마스코트" width="120" height="100"
                     style="background-color: white; object-fit: contain;" class="ai-logo" />
                   <div class="ai-name">Llama</div>
                 </div>
@@ -195,10 +195,10 @@
           <div class="device-frame">
             <div class="mockup-content search-mockup">
               <div class="mockup-logos">
-                <img src="/img/elasticsearch.png" alt="ElasticSearch 로고" width="70" height="70"
+                <img src="@/assets/img/elasticsearch.png" alt="ElasticSearch 로고" width="70" height="70"
                   style="background-color: white; object-fit: contain;" class="tech-logo" />
                 <span class="plus-icon">+</span>
-                <img src="/img/meta.png" alt="Llama 로고" width="80" height="80" style="background-color: white;"
+                <img src="@/assets/img/meta.png" alt="Llama 로고" width="80" height="80" style="background-color: white;"
                   class="tech-logo" />
               </div>
               <div class="mockup-search-flow">
@@ -228,13 +228,13 @@
               <div class="mockup-title">영수증 자동 분석</div>
               <div class="mockup-process">
                 <div class="process-item">
-                  <img src="/img/ocr.png" alt="OCR 아이콘" width="100" height="80" style="background-color: white;"
+                  <img src="@/assets/img/ocr.png" alt="OCR 아이콘" width="100" height="80" style="background-color: white;"
                     class="process-icon" />
                   <div class="process-name">OCR 텍스트 추출</div>
                 </div>
                 <div class="process-arrow">→</div>
                 <div class="process-item">
-                  <img src="/img/meta.png" alt="Llama 아이콘" width="80" height="80" style="background-color: white;"
+                  <img src="@/assets/img/meta.png" alt="Llama 아이콘" width="80" height="80" style="background-color: white;"
                     class="process-icon" />
                   <div class="process-name">Llama 분석</div>
                 </div>
@@ -325,7 +325,7 @@
               </div>
               <div class="mockup-images-container">
                 <div class="mockup-image">
-                  <img src="/img/mypage_map.png" alt="대한민국 방문 지도" width="450" height="200" class="korea-visited-map" />
+                  <img src="@/assets/img/mypage_map.png" alt="대한민국 방문 지도" width="450" height="200" class="korea-visited-map" />
                 </div>
               </div>
               <div class="mockup-stats">
@@ -411,14 +411,20 @@ const visibleSections = reactive({
 })
 
 // Video data
-const videoNames = ["videos/train", "videos/river", "videos/europe", "videos/canyon", "videos/city"]
+const videoNames = [
+  require('@/assets/videos/train.webm'),
+  require('@/assets/videos/river.webm'),
+  require('@/assets/videos/europe.webm'),
+  require('@/assets/videos/canyon.webm'),
+  require('@/assets/videos/city.webm')
+]
 
 const videoLocations = {
-  "videos/train": "Interlaken, Switzerland",
-  "videos/river": "Bahamas",
-  "videos/europe": "Arc de Triomphe, Paris, France",
-  "videos/canyon": "Sedona, Arizona",
-  "videos/city": "Seville Cathedral, Spain",
+  [require('@/assets/videos/train.webm')]: "Interlaken, Switzerland",
+  [require('@/assets/videos/river.webm')]: "Bahamas",
+  [require('@/assets/videos/europe.webm')]: "Arc de Triomphe, Paris, France",
+  [require('@/assets/videos/canyon.webm')]: "Sedona, Arizona",
+  [require('@/assets/videos/city.webm')]: "Seville Cathedral, Spain",
 }
 
 const currentVideoSrc = computed(() => videoNames[currentVideoIndex.value])
@@ -431,17 +437,16 @@ const handleVideoLoadError = () => {
 }
 
 const checkVideoPaths = () => {
-  fetch(videoNames[0] + ".webm")
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error("비디오 파일을 찾을 수 없습니다")
-      }
+  try {
+    if (videoNames.length > 0 && videoNames[0]) {
       isVideoAvailable.value = true
-    })
-    .catch((error) => {
-      console.error("비디오 경로 검증 실패:", error)
-      handleVideoLoadError()
-    })
+    } else {
+      throw new Error("비디오 파일을 찾을 수 없습니다")
+    }
+  } catch (error) {
+    console.error("비디오 경로 검증 실패:", error)
+    handleVideoLoadError()
+  }
 }
 
 const tryPlayVideo = () => {
