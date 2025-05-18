@@ -661,6 +661,36 @@
               <textarea id="review-text" v-model="reviewText" placeholder="이 장소에 대한 후기를 작성해주세요..." rows="6"></textarea>
             </div>
             
+            <!-- 테스트용 데이터 입력 필드 추가 -->
+            <div class="test-data-container">
+              <h4 class="test-data-title">테스트용 데이터 입력 (개발용)</h4>
+              <div class="test-data-inputs">
+                <div class="test-data-input-row">
+                  <div class="test-data-field">
+                    <label for="p_id">장소 ID (p_id):</label>
+                    <input type="number" id="p_id" v-model="testDataInputs.p_id" min="1" placeholder="장소 ID">
+                  </div>
+                  <div class="test-data-field">
+                    <label for="u_id">사용자 ID (u_id):</label>
+                    <input type="number" id="u_id" v-model="testDataInputs.u_id" min="1" placeholder="사용자 ID">
+                  </div>
+                </div>
+                <div class="test-data-input-row">
+                  <div class="test-data-field">
+                    <label for="u_age">나이 (u_age):</label>
+                    <input type="number" id="u_age" v-model="testDataInputs.u_age" min="1" placeholder="나이">
+                  </div>
+                  <div class="test-data-field">
+                    <label for="u_gender">성별 (u_gender):</label>
+                    <select id="u_gender" v-model="testDataInputs.u_gender">
+                      <option value="M">남성</option>
+                      <option value="F">여성</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
             <!-- 로딩 인디케이터 스타일 수정 -->
             <div v-if="isVerifying" class="verification-loading-section">
               <LoadingSpinner 
@@ -2600,7 +2630,15 @@ export default {
     // 별점과 후기 상태 추가
     const reviewRating = ref(0);
     const reviewText = ref('');
-
+    
+    // 테스트 데이터 입력용 상태 추가
+    const testDataInputs = ref({
+      p_id: 1,
+      u_id: 1,
+      u_age: 20,
+      u_gender: 'M'
+    });
+    
     // 거리 표시 형식을 미터로 변경하는 함수
     const formatDistance = (distance) => {
       // km 단위에서 m 단위로 변환하고 쉼표 추가
@@ -2806,7 +2844,11 @@ export default {
           verificationPhotoPreview.value,
           analysisResult,
           featuresVector,
-          locationInfo // 지오코딩으로 얻은 구조화된 위치 정보
+          locationInfo, // 지오코딩으로 얻은 구조화된 위치 정보
+          testDataInputs.value.p_id,
+          testDataInputs.value.u_id,
+          testDataInputs.value.u_age,
+          testDataInputs.value.u_gender
         );
         
         if (!esResponse || !esResponse._id) {
@@ -3030,6 +3072,7 @@ export default {
       memoTextarea,
       autoResizeTextarea,
       adminVerify,
+      testDataInputs,
     };
   }
 };
@@ -4985,5 +5028,59 @@ textarea {
 .admin-btn:disabled {
   background-color: #e57373;
   cursor: not-allowed;
+}
+
+/* 테스트 데이터 입력 필드 스타일 */
+.test-data-container {
+  margin-top: 24px;
+  padding: 16px;
+  background-color: #f8f9fa;
+  border: 1px dashed #adb5bd;
+  border-radius: 6px;
+}
+
+.test-data-title {
+  margin: 0 0 12px 0;
+  font-size: 15px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.test-data-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.test-data-input-row {
+  display: flex;
+  gap: 16px;
+}
+
+.test-data-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.test-data-field label {
+  font-size: 13px;
+  color: #495057;
+}
+
+.test-data-field input,
+.test-data-field select {
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.test-data-field input:focus,
+.test-data-field select:focus {
+  border-color: #4dabf7;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(77, 171, 247, 0.25);
 }
 </style>

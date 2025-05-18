@@ -433,6 +433,10 @@ export const findRegionInfoFromLocation = (locationString) => {
  * @param {Object} analysisResult - 분석 결과
  * @param {Array<number>} featuresVector - 특성 벡터
  * @param {Object} locationData - 지역 정보 데이터 (optional)
+ * @param {number} p_id - 장소 ID
+ * @param {number} u_id - 사용자 ID
+ * @param {number} u_age - 사용자 나이
+ * @param {string} u_gender - 사용자 성별
  * @returns {Promise<Object>} - Elasticsearch 응답
  */
 export const saveToElasticsearch = async (
@@ -444,7 +448,11 @@ export const saveToElasticsearch = async (
   imageBase64,
   analysisResult,
   featuresVector,
-  locationData = null
+  locationData = null,
+  p_id = 1,
+  u_id = 1,
+  u_age = 20,
+  u_gender = 'M'
 ) => {
   try {
     console.log('=== Elasticsearch 저장 데이터 로깅 시작 ===');
@@ -454,6 +462,12 @@ export const saveToElasticsearch = async (
     console.log('태그:', tags);
     console.log('설명:', description);
     
+    // 추가 파라미터 로깅
+    console.log('장소 ID (p_id):', p_id);
+    console.log('사용자 ID (u_id):', u_id);
+    console.log('사용자 나이 (u_age):', u_age);
+    console.log('사용자 성별 (u_gender):', u_gender);
+
     // 이미지 압축 확인 및 필요 시 압축 처리
     let compressedImageBase64 = imageBase64;
     
@@ -598,7 +612,7 @@ export const saveToElasticsearch = async (
 
     // 새로운 형식으로 문서 구조 생성
     const document = {
-      p_id: 1, // 더미 데이터로 1로 고정
+      p_id: p_id, // 사용자 입력 p_id 사용
       p_name: name, // 카카오 지도에서의 여행지 이름
       p_address: p_address, // 카카오에서 가져오는 여행지의 실제 Full 주소
       p_region: regionCode, // 여행 지역 코드 (숫자 2자리)
@@ -607,9 +621,9 @@ export const saveToElasticsearch = async (
       p_description: description, // 이미지 내용 분석 결과에서 추출
       p_image: base64Data, // 압축된 이미지 데이터
       p_vector: featuresVector, // 이미지 특성을 나타내는 10차원 벡터
-      u_id: 1, // 사용자 ID - 임시로 1로 고정
-      u_age: 20, // 임시로 20대로 설정
-      u_gender: "M", // 임시로 M으로 설정
+      u_id: u_id, // 사용자 ID - 매개변수에서 가져옴
+      u_age: u_age, // 사용자 나이 - 매개변수에서 가져옴
+      u_gender: u_gender, // 사용자 성별 - 매개변수에서 가져옴
       upload_date: new Date().toISOString()
     };
     
