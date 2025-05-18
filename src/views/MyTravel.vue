@@ -245,6 +245,7 @@
 <script>
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import * as d3 from 'd3';
+import Chart from 'chart.js/auto';
 import Header from '@/components/Header.vue';
 import ctprvnGeoJson from '@/assets/ctprvn.json';
 import propertiesData from '@/assets/extracted_ctprvn.json';
@@ -367,7 +368,7 @@ export default {
     let detailMapSvg = null;
     let mapG = null;
     let detailMapG = null;
-    let radarChartSvg = null;
+    let radarChart = ref(null); // Chart.js 인스턴스
 
     // 사용자 통계 (실제 구현시 API로 가져와야 함)
     const userStats = reactive({
@@ -1516,170 +1517,114 @@ export default {
     const renderRadarChart = () => {
       if (!radarChartContainer.value) return;
 
-      // 기존 SVG 제거
-      d3.select(radarChartContainer.value).selectAll("svg").remove();
-
-      const width = radarChartContainer.value.clientWidth;
-      const height = radarChartContainer.value.clientHeight;
-      const radius = Math.min(width, height) / 2 * 0.8;
+      // 기존 차트가 있다면 파괴
+      if (radarChart.value) {
+        radarChart.value.destroy();
+      }
 
       // 데이터 준비
       const dimensions = Object.keys(dimensionScores);
-      const dimensionCount = dimensions.length;
-      const angleSlice = Math.PI * 2 / dimensionCount;
+      const dimensionLabels = dimensions.map(d => getCategoryName(d));
+      const dimensionValues = dimensions.map(d => dimensionScores[d]);
 
-      // SVG 생성
-      radarChartSvg = d3.select(radarChartContainer.value)
-        .append('svg')
-        .attr('width', width)
-        .attr('height', height)
-        .append('g')
-        .attr('transform', `translate(${width / 2}, ${height / 2})`);
+      // 캔버스 컨텍스트 가져오기
+      const canvas = document.createElement('canvas');
+      canvas.width = radarChartContainer.value.clientWidth;
+      canvas.height = radarChartContainer.value.clientHeight;
+      radarChartContainer.value.innerHTML = '';
+      radarChartContainer.value.appendChild(canvas);
+      
+      const ctx = canvas.getContext('2d');
 
-      // 배경 원형 레벨
-      const levels = 5;
-      const levelFactor = radius / levels;
-
-      // 배경 그리드 생성
-      const grid = radarChartSvg.append('g').attr('class', 'radar-grid');
-
-      // 원형 그리드
-      for (let level = 0; level < levels; level++) {
-        const levelRadius = levelFactor * (level + 1);
-
-        grid.append('circle')
-          .attr('cx', 0)
-          .attr('cy', 0)
-          .attr('r', levelRadius)
-          .style('fill', 'none')
-          .style('stroke', '#e2e8f0')
-          .style('stroke-dasharray', '3,3');
-      }
-
-      // 축 그리기
-      const axisGrid = grid.selectAll('.axis')
-        .data(dimensions)
-        .enter()
-        .append('g')
-        .attr('class', 'axis');
-
-      // 방사형 축
-      axisGrid.append('line')
-        .attr('x1', 0)
-        .attr('y1', 0)
-        .attr('x2', (d, i) => radius * Math.cos(angleSlice * i - Math.PI / 2))
-        .attr('y2', (d, i) => radius * Math.sin(angleSlice * i - Math.PI / 2))
-        .style('stroke', '#e2e8f0')
-        .style('stroke-width', '1px');
-
-      // 축 라벨
-      axisGrid.append('text')
-        .attr('class', 'legend')
-        .attr('text-anchor', (d, i) => {
-          const angle = angleSlice * i - Math.PI / 2;
-          if (Math.abs(angle) < 0.1 || Math.abs(angle - Math.PI) < 0.1) return 'middle';
-          return angle > 0 && angle < Math.PI ? 'start' : 'end';
-        })
-        .attr('dy', '0.35em')
-        .attr('x', (d, i) => {
-          const angle = angleSlice * i - Math.PI / 2;
-          const labelDistance = radius * 1.15;
-          return labelDistance * Math.cos(angle);
-        })
-        .attr('y', (d, i) => {
-          const angle = angleSlice * i - Math.PI / 2;
-          const labelDistance = radius * 1.15;
-          return labelDistance * Math.sin(angle);
-        })
-        .text(d => getCategoryName(d))
-        .style('font-size', '0.7rem')
-        .style('fill', '#4a5568');
-
-      // 데이터 영역 그리기
-      const dataPoints = dimensions.map((dim, i) => {
-        const angle = angleSlice * i - Math.PI / 2;
-        const value = dimensionScores[dim];
-        return {
-          x: radius * value * Math.cos(angle),
-          y: radius * value * Math.sin(angle),
-          value,
-          dimension: dim
-        };
+      // Chart.js 레이더 차트 생성
+      radarChart.value = new Chart(ctx, {
+        type: 'radar',
+        data: {
+          labels: dimensionLabels,
+          datasets: [{
+            label: '취향 프로필',
+            data: dimensionValues,
+            backgroundColor: 'rgba(66, 153, 225, 0.5)',
+            borderColor: '#4299e1',
+            borderWidth: 2,
+            pointBackgroundColor: '#4299e1',
+            pointBorderColor: '#fff',
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: '#4299e1',
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            r: {
+              angleLines: {
+                color: 'rgba(0, 0, 0, 0.1)'
+              },
+              grid: {
+                color: 'rgba(0, 0, 0, 0.1)'
+              },
+              suggestedMin: 0,
+              suggestedMax: 1,
+              ticks: {
+                display: false
+              },
+              pointLabels: {
+                font: {
+                  size: 12,
+                  family: "'Noto Sans KR', sans-serif"
+                },
+                color: '#4a5568'
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.label}: ${Math.round(context.raw * 100)}%`;
+                }
+              },
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              padding: 10,
+              titleFont: {
+                size: 14,
+                family: "'Noto Sans KR', sans-serif"
+              },
+              bodyFont: {
+                size: 13,
+                family: "'Noto Sans KR', sans-serif"
+              }
+            }
+          },
+          animation: {
+            duration: 1000,
+            easing: 'easeOutQuart'
+          }
+        }
       });
-
-      // 애니메이션 효과를 위한 시작 설정 (모든 값이 0에서 시작)
-      const initialDataPoints = dimensions.map((dim) => {
-        return {
-          x: 0,
-          y: 0,
-          value: 0,
-          dimension: dim
-        };
-      });
-
-      // 데이터 영역 경로
-      const radarArea = radarChartSvg.append('path')
-        .datum(initialDataPoints)
-        .attr('class', 'radar-area')
-        .attr('d', d => {
-          return d3.line()
-            .x(d => d.x)
-            .y(d => d.y)
-            .curve(d3.curveLinearClosed)(d);
-        })
-        .style('fill', 'rgba(66, 153, 225, 0.6)')
-        .style('stroke', '#4299e1')
-        .style('stroke-width', '2px')
-        .on('mouseover', function () {
-          d3.select(this).style('fill', 'rgba(66, 153, 225, 0.8)');
-        })
-        .on('mouseout', function () {
-          d3.select(this).style('fill', 'rgba(66, 153, 225, 0.6)');
-        });
-
-      // 애니메이션 효과 적용
-      radarArea.transition()
-        .duration(800)
-        .attrTween('d', function() {
-          const interpolator = d3.interpolate(initialDataPoints, dataPoints);
-          return function(t) {
-            const interpolatedData = interpolator(t);
-            return d3.line()
-              .x(d => d.x)
-              .y(d => d.y)
-              .curve(d3.curveLinearClosed)(interpolatedData);
-          };
-        });
-
-      // 데이터 포인트 (처음에는 중앙에서 시작)
-      const points = radarChartSvg.selectAll('.radar-point')
-        .data(dataPoints)
-        .enter()
-        .append('circle')
-        .attr('class', 'radar-point')
-        .attr('cx', 0)
-        .attr('cy', 0)
-        .attr('r', 0)  // 처음에는 크기 0으로 시작
-        .style('fill', '#4299e1')
-        .style('stroke', '#fff')
-        .style('stroke-width', '2px');
-
-      // 데이터 포인트에 애니메이션 효과 적용
-      points.transition()
-        .duration(800)
-        .attr('cx', d => d.x)
-        .attr('cy', d => d.y)
-        .attr('r', 5);
 
       // 창 크기 변경 시 차트 크기 조정
       const resizeRadarChart = () => {
-        renderRadarChart();
+        if (radarChart.value) {
+          // Chart.js는 자동으로 반응형이지만, 컨테이너 크기가 변경되면 차트를 업데이트
+          radarChart.value.update();
+        }
       };
 
       window.addEventListener('resize', resizeRadarChart);
 
       return () => {
         window.removeEventListener('resize', resizeRadarChart);
+        if (radarChart.value) {
+          radarChart.value.destroy();
+          radarChart.value = null;
+        }
       };
     };
 
