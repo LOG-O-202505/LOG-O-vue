@@ -131,6 +131,38 @@
         
         <!-- 지도 시각화 영역 -->
         <div class="map-visualization">
+          <!-- 랭킹 정보 패널 -->
+          <div class="ranking-panel">
+            <div class="ranking-header">
+              <h3>{{ currentMapLevel === 'ctprvn' ? '지역별 방문 랭킹' : '시군구별 방문 랭킹' }}</h3>
+            </div>
+            <div class="ranking-list">
+              <!-- 광역시도 랭킹 -->
+              <div v-if="currentMapLevel === 'ctprvn'">
+                <div v-if="regionRankings.length === 0" class="no-ranking-data">
+                  방문 데이터가 없습니다
+                </div>
+                <div v-else v-for="(region, index) in regionRankings" :key="index" class="ranking-item">
+                  <div class="ranking-position">{{ index + 1 }}위</div>
+                  <div class="ranking-name">{{ region.name }}</div>
+                  <div class="ranking-score">{{ region.percentage }}%</div>
+                </div>
+              </div>
+              
+              <!-- 시군구 랭킹 -->
+              <div v-else-if="currentMapLevel === 'sig' && activeRegion">
+                <div v-if="sigRankings.length === 0" class="no-ranking-data">
+                  방문 데이터가 없습니다
+                </div>
+                <div v-else v-for="(sig, index) in sigRankings" :key="index" class="ranking-item">
+                  <div class="ranking-position">{{ index + 1 }}위</div>
+                  <div class="ranking-name">{{ sig.name }}</div>
+                  <div class="ranking-score">{{ sig.count }}회</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <!-- 광역시도 지도 -->
           <div class="map-container" ref="mapContainer" v-show="currentMapLevel === 'ctprvn'"></div>
 
@@ -1672,6 +1704,70 @@ export default {
       return filteredTimeline.value.reduce((sum, year) => sum + year.trips.length, 0);
     });
 
+    // 광역시도 방문 랭킹 (전체 지도에서 표시)
+    const regionRankings = computed(() => {
+      // 지역별 방문 데이터 수집
+      const regionData = [];
+
+      // 각 광역시도에 대해 방문 비율 계산
+      Object.entries(travelStats.value.regions || {}).forEach(([regionCode, data]) => {
+        // 지역 이름 찾기
+        const regionInfo = propertiesData.find(r => r.CTPRVN_CD === regionCode);
+        if (!regionInfo) return;
+
+        // 해당 지역의 시군구 수 계산
+        const totalSigs = sigGeoJson.features.filter(f => 
+          f.properties && f.properties.SIG_CD && 
+          f.properties.SIG_CD.substring(0, 2) === regionCode
+        ).length;
+        
+        // 방문 비율 계산
+        const visitedCount = data.visitedSigs || 0;
+        const percentage = totalSigs > 0 ? Math.round((visitedCount / totalSigs) * 100) : 0;
+
+        regionData.push({
+          code: regionCode,
+          name: regionInfo.CTP_KOR_NM,
+          visitedCount,
+          totalCount: totalSigs,
+          percentage
+        });
+      });
+
+      // 방문 비율 기준으로 내림차순 정렬
+      return regionData.sort((a, b) => b.percentage - a.percentage).slice(0, 5);
+    });
+
+    // 시군구 방문 랭킹 (시군구 지도 선택 시 표시)
+    const sigRankings = computed(() => {
+      // 선택된 지역이 없으면 빈 배열 반환
+      if (!activeRegion.value || !travelStats.value.regions[activeRegion.value] || 
+          !travelStats.value.regions[activeRegion.value].sigs) {
+        return [];
+      }
+
+      const regionCode = activeRegion.value;
+      const sigData = travelStats.value.regions[regionCode].sigs;
+      
+      // 시군구별 방문 데이터 수집
+      const rankings = [];
+      
+      Object.entries(sigData).forEach(([sigCode, data]) => {
+        // 시군구 이름 찾기
+        const sigInfo = sigPropertiesData.find(s => s.SIG_CD === sigCode || s.SIG_CD.startsWith(sigCode));
+        if (!sigInfo) return;
+        
+        rankings.push({
+          code: sigCode,
+          name: sigInfo.SIG_KOR_NM,
+          count: data.count || 0
+        });
+      });
+      
+      // 방문 횟수 기준으로 내림차순 정렬
+      return rankings.sort((a, b) => b.count - a.count).slice(0, 5);
+    });
+
     return {
       // 기존 반환값과 함께 새로운 함수와 상태 포함
       // ...
@@ -1703,6 +1799,10 @@ export default {
       filteredTimeline,
       availableYears,
       timelineTitle,
+      
+      // 랭킹 데이터
+      regionRankings,
+      sigRankings,
 
       // 메서드
       selectRegion,
@@ -1729,6 +1829,83 @@ export default {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+/* 랭킹 패널 스타일 */
+.ranking-panel {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background-color: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 250px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.ranking-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+}
+
+.ranking-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2d3748;
+  text-align: center;
+}
+
+.ranking-list {
+  padding: 8px 16px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.ranking-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.ranking-item:last-child {
+  border-bottom: none;
+}
+
+.ranking-position {
+  width: 40px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #4299e1;
+}
+
+.ranking-name {
+  flex-grow: 1;
+  font-size: 0.9rem;
+  color: #4a5568;
+  margin-right: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ranking-score {
+  min-width: 50px;
+  text-align: right;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #2d3748;
+}
+
+.no-ranking-data {
+  padding: 12px 0;
+  color: #718096;
+  font-style: italic;
+  font-size: 0.9rem;
+  text-align: center;
 }
 
 /* 콘텐츠 래퍼 */
@@ -1895,11 +2072,13 @@ export default {
 .map-visualization {
   position: relative;
   height: 500px;
+  display: flex;
+  gap: 15px;
 }
 
 .map-container,
 .detail-map-container {
-  width: 100%;
+  flex: 1;
   height: 100%;
   background-color: #f8fafc;
 }
@@ -2416,6 +2595,62 @@ export default {
   .trip-item {
     width: calc(33.333% - 1.125rem); /* 중간 화면에서는 한 줄에 3개 */
   }
+  
+  .ranking-panel {
+    width: 220px;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 2rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1rem;
+  }
+
+  .map-controls {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .map-filter {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .map-visualization {
+    height: auto;
+    min-height: 600px;
+    flex-direction: column;
+  }
+  
+  .map-container,
+  .detail-map-container {
+    height: 450px;
+  }
+  
+  .ranking-panel {
+    position: relative;
+    top: 0;
+    left: 0;
+    width: 100%;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+  }
+
+  .trip-item {
+    width: calc(50% - 0.75rem); /* 작은 화면에서는 한 줄에 2개 */
+    min-width: unset;
+  }
+  
+  .trips-wrapper {
+    flex-direction: row; /* 행 방향 유지 */
+    gap: 1rem;
+  }
 }
 
 @media (max-width: 576px) {
@@ -2441,50 +2676,32 @@ export default {
     font-size: 1rem;
     margin-bottom: 1rem;
   }
-}
 
-@media (max-width: 768px) {
-  .hero-title {
-    font-size: 2rem;
-  }
-
-  .hero-subtitle {
-    font-size: 1rem;
-  }
-
-  .map-controls {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: flex-start;
-  }
-
-  .map-filter {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .map-visualization {
-    height: 400px;
-  }
-
-  .trip-item {
-    width: calc(50% - 0.75rem); /* 작은 화면에서는 한 줄에 2개 */
-    min-width: unset;
-  }
-  
-  .trips-wrapper {
-    flex-direction: row; /* 행 방향 유지 */
-    gap: 1rem;
-  }
-}
-
-@media (max-width: 576px) {
   .statistics-summary {
     grid-template-columns: 1fr;
   }
 
   .content-wrapper {
     padding: 1rem;
+  }
+  
+  .map-container,
+  .detail-map-container {
+    height: 350px;
+  }
+  
+  .ranking-panel {
+    width: 100%;
+  }
+  
+  .ranking-list {
+    max-height: none;
+  }
+  
+  .ranking-item {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px dashed #e2e8f0;
   }
   
   .trips-wrapper {
