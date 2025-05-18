@@ -1111,7 +1111,6 @@ export default {
 .upload-panel:hover,
 .analysis-panel:hover,
 .results-panel:hover {
-  transform: translateY(-5px);
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
 }
 
