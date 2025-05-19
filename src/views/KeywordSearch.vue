@@ -1969,14 +1969,6 @@ export default {
 }
 
 
-/* === 통계 섹션 스타일 === */
-.stats-section {
-  /* background-color: #ffffff; Use .detail-section style */
-  /* border-radius: 12px; Use .detail-section style */
-  /* box-shadow: 0 6px 12px rgba(0, 0, 0, 0.05); Use .detail-section style */
-  /* margin-top: 1.5rem; Use modal-content gap */
-}
-
 .stats-section h4 { /* Already styled by .detail-section h4 */
   /* font-family: 'Noto Sans KR', sans-serif; */
   /* font-size: 1.2rem; */
