@@ -18,7 +18,7 @@ module.exports = {
   
   // 개발 서버 설정
   devServer: {
-    port: 8080,
+    port: 8090,
     open: true,
     proxy: {
       // Ollama API 프록시 설정

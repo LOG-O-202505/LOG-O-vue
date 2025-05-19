@@ -610,6 +610,13 @@ export const saveToElasticsearch = async (
     console.log('최종 시군구 코드:', sigCode);
     console.log('최종 주소:', p_address);
 
+    // 영어 설명 추출 (light_2 모델을 통해 생성된 description)
+    let englishDescription = '';
+    if (analysisResult && analysisResult.imageDescription) {
+      englishDescription = analysisResult.imageDescription;
+      console.log('영어 설명(p_description_en):', englishDescription);
+    }
+
     // 새로운 형식으로 문서 구조 생성
     const document = {
       p_id: p_id, // 사용자 입력 p_id 사용
@@ -619,6 +626,7 @@ export const saveToElasticsearch = async (
       p_sig: sigCode, // 여행 시군구 코드 (숫자 5자리)
       p_tags: tags, // 이미지 키워드 분석 결과에서 추출
       p_description: description, // 이미지 내용 분석 결과에서 추출
+      p_description_en: englishDescription, // 영어 설명 (light_2 모델의 결과)
       p_image: base64Data, // 압축된 이미지 데이터
       p_vector: featuresVector, // 이미지 특성을 나타내는 10차원 벡터
       u_id: u_id, // 사용자 ID - 매개변수에서 가져옴
@@ -642,17 +650,12 @@ export const saveToElasticsearch = async (
       body: JSON.stringify(document)
     });
     
-    console.log('ES 응답 상태:', response.status, response.statusText);
-    
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error('ES 응답 에러 내용:', errorData);
-      throw new Error('Elasticsearch 오류: ' + JSON.stringify(errorData));
+      throw new Error(`Elasticsearch 저장 실패: ${response.status} ${response.statusText}`);
     }
     
-    const result = await response.json();
-    console.log('Elasticsearch 저장 완료:', result);
-    return result;
+    return await response.json();
+    
   } catch (error) {
     console.error('Elasticsearch 저장 오류 타입:', error.name);
     console.error('Elasticsearch 저장 오류 메시지:', error.message);
@@ -691,7 +694,7 @@ export const searchSimilarImages = async (featuresVector, limit = 10) => {
       body: JSON.stringify({
         size: limit,
         query: query,
-        _source: ["p_id", "p_name", "p_address", "p_region", "p_sig", "p_tags", "p_description", "p_image", "u_age", "u_gender"]
+        _source: ["p_id", "p_name", "p_address", "p_region", "p_sig", "p_tags", "p_description", "p_description_en", "p_image", "u_age", "u_gender"]
       })
     });
     
@@ -734,6 +737,7 @@ export const searchImagesByKeyword = async (keyword, size = 10, from = 0) => {
           "p_name", 
           "p_tags", 
           "p_description", 
+          "p_description_en",
           "p_address"
         ],
         type: "best_fields",
@@ -759,6 +763,7 @@ export const searchImagesByKeyword = async (keyword, size = 10, from = 0) => {
           "p_sig", 
           "p_tags", 
           "p_description", 
+          "p_description_en",
           "p_image", 
           "p_vector",
           "u_age", 
@@ -792,71 +797,130 @@ export const searchImagesByKeyword = async (keyword, size = 10, from = 0) => {
 };
 
 /**
- * 위도/경도를 주소로 변환 (역지오코딩)
+ * 위도/경도를 주소로 변환 (역지오코딩) - Google Geocoding API 사용
  * @param {number} latitude - 위도
  * @param {number} longitude - 경도
  * @returns {Promise<Object>} - 주소 정보
  */
 export const reverseGeocode = async (latitude, longitude) => {
   try {
-    console.log(`위도(${latitude}), 경도(${longitude})에 대한 역지오코딩 시작`);
+    console.log(`위도(${latitude}), 경도(${longitude})에 대한 역지오코딩 시작 (Google API)`);
     
-    // Nominatim API를 사용하여 역지오코딩 요청
-    // 참고: 실제 서비스에서는 요청 제한이 있으므로 주의 필요
-    const url = `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1&accept-language=ko`;
+    // Google Geocoding API 요청
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&language=ko&key=${config.GOOGLE_MAPS_API_KEY}`;
     
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'LOGO Travel App' // Nominatim API는 User-Agent 헤더를 요구함
-      }
-    });
+    const response = await fetch(url);
     
     if (!response.ok) {
-      throw new Error('역지오코딩 API 호출 실패');
+      throw new Error('Google 역지오코딩 API 호출 실패');
     }
     
     const data = await response.json();
-    console.log('역지오코딩 결과:', data);
+    console.log('Google 역지오코딩 결과:', data);
     
-    // 한국 주소 형식으로 결과 구성
-    // OSM API 응답 구조에서 필요한 필드 추출
-    let address = {
-      country: data.address.country || '',
-      // 주요 행정구역 정보 - 여러 표현 가능성을 고려해 다양한 필드 체크
-      province: data.address.province || data.address.state || data.address.city || '',
-      // borough는 한국에서는 주로 '구' (강남구, 서초구 등)
-      borough: data.address.borough || '',
-      // city는 한국에서는 주로 특별시/광역시 (서울, 부산 등)
-      city: data.address.city || data.address.town || data.address.village || '',
-      // quarter/suburb는 한국에서는 주로 '동' (역삼동, 잠실동 등)
-      quarter: data.address.quarter || '', 
-      suburb: data.address.suburb || data.address.neighbourhood || '',
-      road: data.address.road || '',
-      display_name: data.display_name || '',
+    // 결과가 없거나 상태가 OK가 아닌 경우
+    if (data.status !== 'OK' || !data.results || data.results.length === 0) {
+      throw new Error(`Google 역지오코딩 API 응답 오류: ${data.status}`);
+    }
+    
+    // 가장 관련성 높은 결과(첫 번째 결과) 사용
+    const result = data.results[0];
+    const addressComponents = result.address_components;
+    
+    // Google 응답에서 주소 컴포넌트 추출
+    const address = {
+      country: '',
+      province: '',  // 광역시/도 정보
+      city: '',      // 특별시/광역시/시 정보
+      borough: '',   // 구 정보
+      quarter: '',   // 동/읍/면 정보
+      suburb: '',    // 동네 정보
+      road: '',      // 도로명
+      display_name: result.formatted_address || ''
     };
+    
+    // 주소 컴포넌트 매핑
+    for (const component of addressComponents) {
+      const types = component.types;
+      
+      if (types.includes('country')) {
+        address.country = component.long_name;
+      }
+      else if (types.includes('administrative_area_level_1')) {
+        address.province = component.long_name; // 도/특별시/광역시
+      }
+      else if (types.includes('locality') || types.includes('administrative_area_level_2')) {
+        // 시/군/구 판별 (행정구역 레벨에 따라)
+        if (types.includes('locality')) {
+          address.city = component.long_name; // 시
+        } else {
+          // Seoul의 경우 administrative_area_level_1이면서 locality임
+          // 다른 경우 행정구역 레벨 2가 city 또는 borough일 수 있음
+          if (!address.city) {
+            address.city = component.long_name;
+          } else {
+            address.borough = component.long_name;
+          }
+        }
+      }
+      else if (types.includes('sublocality_level_1') || types.includes('administrative_area_level_3')) {
+        // 구/동 정보
+        if (!address.borough) {
+          address.borough = component.long_name;
+        } else {
+          address.quarter = component.long_name;
+        }
+      }
+      else if (types.includes('sublocality_level_2') || types.includes('administrative_area_level_4')) {
+        // 동/읍/면
+        address.quarter = component.long_name;
+      }
+      else if (types.includes('sublocality_level_3') || types.includes('administrative_area_level_5')) {
+        // 동네
+        address.suburb = component.long_name;
+      }
+      else if (types.includes('route')) {
+        // 도로명
+        address.road = component.long_name;
+      }
+    }
     
     console.log('추출된 주소 정보:', address);
     
+    // 특수 케이스 처리: 서울특별시, 부산광역시 등 특별/광역시는 province와 city가 동일할 수 있음
+    if (address.province && address.province.includes('특별시') || address.province.includes('광역시')) {
+      if (!address.city) {
+        address.city = address.province;
+      }
+    }
+    
     // 광역시/도 매핑을 위한 정보 설정
-    // 서울시의 경우 borough는 '강남구', city는 '서울'
-    const provinceForMapping = address.city || address.province; // 광역시/도
+    const provinceForMapping = address.province || address.city; // 광역시/도
     const cityForMapping = address.borough || address.quarter || address.suburb; // 구/동
     
     console.log('매핑용 광역시/도:', provinceForMapping);
     console.log('매핑용 구/동:', cityForMapping);
     
-    // 지역 코드 매핑 시도 (수정된 정보로 시도)
+    // 지역 코드 매핑
     const regionInfo = mapAddressToRegionCode({
       province: provinceForMapping,
       city: cityForMapping
     });
     
+    // 위치 데이터 추가
+    const locationData = {
+      latitude,
+      longitude,
+      googleMapsUrl: `https://www.google.com/maps?q=${latitude},${longitude}`
+    };
+    
     return {
       ...address,
-      regionInfo
+      regionInfo,
+      location_data: locationData
     };
   } catch (error) {
-    console.error('역지오코딩 오류:', error);
+    console.error('Google 역지오코딩 오류:', error);
     return null;
   }
 };
