@@ -9,20 +9,16 @@
       :heroHeight="heroHeight"
     />
 
-    <!-- 컨텐츠 영역 - 히어로 섹션과 겹치지 않게 여백 추가 -->
+    <!-- 컨텐츠 영역 -->
     <div class="content-wrapper">
-      <!-- 로딩 중일 때 로딩 스피너 표시 -->
-      
       <!-- 상단 두 컬럼 레이아웃: 이미지 업로드 | 분석 차트 -->
       <div class="top-section">
         <!-- 왼쪽: 이미지 업로드 패널 -->
-        <div class="upload-panel">
+        <div class="upload-panel panel-style"> <!-- Added panel-style for common styling -->
           <div class="panel-header">
-            <h3 class="panel-title">검색을 위한 이미지</h3>
+            <h3 class="panel-title">이미지 분석 요청</h3>
           </div>
-
           <div class="panel-content">
-            <!-- 이미지 미리보기 또는 업로드 안내 -->
             <div class="image-container">
               <img v-if="imagePreview" :src="imagePreview" alt="이미지 미리보기" class="preview-image">
               <div v-else class="upload-placeholder">
@@ -35,38 +31,22 @@
                 <p>이미지를 선택하면 여기에 표시됩니다</p>
               </div>
             </div>
-
-            <!-- 버튼 영역 -->
             <div class="button-group">
               <button v-if="isLoading" @click="cancelAnalysis" class="btn btn-danger btn-cancel-analysis">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
+                <!-- SVG for cancel -->
                 분석 취소하기
               </button>
-
               <button v-if="!analysisResult && !isLoading" @click="triggerFileInput" class="btn btn-primary">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="17 8 12 3 7 8"></polyline>
-                  <line x1="12" y1="3" x2="12" y2="15"></line>
-                </svg>
+                <!-- SVG for upload -->
                 이미지 선택하기
               </button>
-
               <button v-if="imageFile && !analysisResult && !isLoading" @click="analyzeCurrentImage"
                 class="btn btn-analyze">
                 이미지 분석하기
               </button>
-
               <button v-if="(imageFile || analysisResult) && !isLoading" @click="reset" class="btn btn-secondary">
                 초기화
               </button>
-
-              <!-- 분석 시간 정보 추가 -->
               <div v-if="analysisResult && !isLoading" class="analysis-timing">
                 <div class="timing-item">
                   <span class="timing-label">AI 이미지 분석:</span>
@@ -82,21 +62,18 @@
                 </div>
               </div>
             </div>
-
             <input type="file" ref="fileInput" @change="handleFileChange" accept="image/*" class="hidden-input">
           </div>
         </div>
 
         <!-- 오른쪽: 분석 차트 패널 -->
-        <div class="analysis-panel">
+        <div class="analysis-panel panel-style"> <!-- Added panel-style -->
           <div class="panel-header">
             <h3 class="panel-title">
               {{ isLoading ? '이미지 분석 중...' : (analysisResult ? '이미지 분석 결과' : '분석 데이터') }}
             </h3>
           </div>
-
           <div class="panel-content" :class="{ 'no-padding': isLoading }">
-            <!-- 로딩 중일 때 - 로딩 스피너 -->
             <div v-if="isLoading" class="loading-state">
               <div class="loading-spinner-container">
                 <LoadingSpinner 
@@ -107,29 +84,17 @@
                 />
               </div>
             </div>
-
-            <!-- 분석 결과가 없을 때 -->
             <div v-else-if="!analysisResult" class="guide-state">
               <div class="guide-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                  <circle cx="12" cy="13" r="4" />
-                </svg>
+                <!-- SVG for guide -->
               </div>
-
               <p class="guide-description">
                 원하는 분위기의 이미지를 업로드하면 AI가 분석하여 유사한 여행지를 추천해드립니다
               </p>
-
               <div class="steps-container">
-                <div class="step"><span>1</span> 이미지 선택</div>
-                <div class="step"><span>2</span> 분석 실행</div>
-                <div class="step"><span>3</span> 여행지 추천 확인</div>
+                <!-- Style for steps -->
               </div>
             </div>
-
-            <!-- 분석 결과 표 -->
             <div v-else class="analysis-table-container">
               <table class="analysis-table">
                 <thead>
@@ -140,10 +105,9 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <!-- Array format (p_vector) -->
                   <template v-if="Array.isArray(dimensionResults)">
                     <tr v-for="(score, index) in dimensionResults" :key="'dim-'+index">
-                      <td class="dimension-name">{{ getDimensionHeader(index) }}</td>
+                      <td class="dimension-name">{{ getDimensionLabel(index) }}</td>
                       <td class="dimension-score">{{ typeof score === 'number' ? score.toFixed(1) : score }}</td>
                       <td class="dimension-bar">
                         <div class="bar-container">
@@ -152,18 +116,7 @@
                       </td>
                     </tr>
                   </template>
-                  <!-- Object format (old style) -->
-                  <template v-else>
-                    <tr v-for="(score, dimension) in dimensionResults" :key="dimension">
-                      <td class="dimension-name">{{ getDimensionHeader(dimension) }}</td>
-                      <td class="dimension-score">{{ typeof score === 'number' ? score.toFixed(1) : score }}</td>
-                      <td class="dimension-bar">
-                        <div class="bar-container">
-                          <div class="bar" :style="{ width: `${typeof score === 'number' ? score * 100 : 0}%` }"></div>
-                        </div>
-                      </td>
-                    </tr>
-                  </template>
+                  <!-- Legacy object format can be removed if p_vector is always array -->
                 </tbody>
               </table>
             </div>
@@ -171,22 +124,22 @@
         </div>
       </div>
 
-      <!-- 중간 섹션: 분석 결과 (전체 너비) -->
-      <div v-if="analysisResult && !isLoading" class="middle-section">
-        <div class="results-panel">
+      <!-- 결과 영역 (전체 너비) -->
+      <div v-if="analysisResult && !isLoading && searchResults.length > 0" class="results-panel-container">
+        <div class="results-panel panel-style"> <!-- Added panel-style -->
           <div class="panel-header">
-            <h3 class="panel-title">유사한 여행지 추천</h3>
+            <h3 class="panel-title">
+              유사 여행지 추천 ({{ searchResults.length }}건)
+            </h3>
           </div>
-
           <div class="panel-content">
-            <div v-if="searchResults.length === 0" class="no-results">
-              <p>검색 결과가 없습니다</p>
-              <p class="hint">다른 이미지로 다시 시도해보세요</p>
-            </div>
-
-            <div v-else class="results-grid">
-              <div v-for="(result, index) in sortedSearchResults" :key="result._id" class="result-card"
-                @click="openDetailModal(result)">
+            <div class="results-grid">
+              <div 
+                v-for="(result, index) in sortedSearchResults" 
+                :key="result._id"
+                class="result-card"
+                @click="openDetailModal(result)"
+              >
                 <div class="result-rank" :class="{ 'with-heart': isInWishlist(result._id) }">
                   <span v-if="isInWishlist(result._id)" class="heart-indicator active">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -197,38 +150,39 @@
                   <span class="rank-number">{{ index + 1 }}</span>
                 </div>
                 <div class="result-image-container">
-                  <img v-if="result._source.p_image" :src="`data:image/jpeg;base64,${result._source.p_image}`" :alt="result._source.p_name"
-                    class="result-image">
+                  <img v-if="result._source.p_image" :src="`data:image/jpeg;base64,${result._source.p_image}`" :alt="result._source.p_name" class="result-image">
                   <div v-else class="placeholder-image">이미지 없음</div>
                 </div>
                 <div class="result-info">
                   <h4 class="result-name">{{ result._source.p_name }}</h4>
                   <div class="result-location">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
-                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                      <circle cx="12" cy="10" r="3"></circle>
-                    </svg>
+                    <span class="location-icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                      </svg>
+                    </span>
                     {{ result._source.p_address }}
                   </div>
-                  <div class="result-similarity">
-                    <span>유사도:</span>
-                    <div class="similarity-bar">
-                      <div class="similarity-fill"
-                        :style="{ width: `${formatSimilarityScore(result._score).percentage}%` }"></div>
-                    </div>
-                    <div class="similarity-info">
-                      <span class="similarity-percentage">{{ formatSimilarityScore(result._score).percentage }}%</span>
-                      <span class="similarity-description">{{ formatSimilarityScore(result._score).description }}</span>
-                    </div>
+                  <div class="result-visit-count" v-if="result._source.visitCount !== undefined">
+                    인증: {{ result._source.visitCount }}회
                   </div>
-                  <!-- 키워드 표시 영역 -->
+                  <div class="result-similarity">
+                    <span class="similarity-label">유사도:</span>
+                    <div class="similarity-bar-container">
+                      <div class="similarity-bar" :style="{ width: `${(result._score * 100)}%` }"></div>
+                    </div>
+                    <span class="similarity-value">{{ (result._score * 100).toFixed(0) }}%</span>
+                  </div>
                   <div v-if="result._source.p_tags && result._source.p_tags.length > 0" class="result-tags">
-                    <span v-for="(tag, tagIndex) in result._source.p_tags.slice(0, 5)" :key="tagIndex" class="result-tag">
+                    <span 
+                      v-for="(tag, tagIndex) in result._source.p_tags.slice(0, 5)" 
+                      :key="tagIndex" 
+                      class="result-tag"
+                    >
                       {{ tag }}
                     </span>
                   </div>
-                  <!-- 이미지 설명 -->
                   <div v-if="result._source.p_description" class="result-description">
                     <div class="description-title">설명:</div>
                     <p class="description-text">{{ result._source.p_description }}</p>
@@ -239,6 +193,25 @@
           </div>
         </div>
       </div>
+      <div v-else-if="analysisResult && !isLoading && searchResults.length === 0" class="results-panel-container">
+        <div class="results-panel panel-style">
+            <div class="panel-header">
+              <h3 class="panel-title">유사 여행지 추천</h3>
+            </div>
+            <div class="panel-content">
+              <div class="no-results">
+                <div class="no-results-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="8" y1="12" x2="16" y2="12"></line>
+                    </svg>
+                </div>
+                <p class="no-results-text">추천할 만한 유사 여행지가 없습니다.</p>
+                <p class="no-results-hint">다른 이미지로 다시 시도해보세요.</p>
+              </div>
+            </div>
+        </div>
+      </div>
     </div>
 
     <!-- 푸터 -->
@@ -246,7 +219,7 @@
       <p>© 2025 LOG:O - 당신의 여행을 기록하다</p>
     </footer>
 
-    <!-- 장소 상세 모달 -->
+    <!-- 장소 상세 모달 (KeywordSearch.vue 스타일 적용) -->
     <div v-if="showDetailModal" class="modal-overlay" @click="closeDetailModal">
       <div class="place-detail-modal" @click.stop>
         <div class="modal-header">
@@ -275,40 +248,41 @@
         </div>
                 
         <div class="modal-content">
-          <!-- 이미지와 지도 섹션 (수평 레이아웃) -->
           <div class="visual-section">
             <div class="detail-image-container">
               <img v-if="selectedDetail.p_image" :src="`data:image/jpeg;base64,${selectedDetail.p_image}`" :alt="selectedDetail.p_name"
                 class="detail-image">
               <div v-else class="placeholder-image">이미지 없음</div>
             </div>
-                
-            <!-- 지도 영역 -->
             <div class="detail-map-container">
               <div id="detailMap" class="detail-map"></div>
             </div>
           </div>
           
-          <!-- 태그 섹션 -->
           <div v-if="selectedDetail.p_tags && selectedDetail.p_tags.length > 0" class="detail-section">
             <h4>태그</h4>
             <div class="tag-list">
-              <span v-for="(tag, index) in selectedDetail.p_tags" :key="index" class="tag">{{ tag }}</span>
+              <span 
+                v-for="(tag, index) in selectedDetail.p_tags" 
+                :key="index" 
+                class="tag"
+              > <!-- Removed click event to avoid conflict if not searching by tag here -->
+                {{ tag }}
+              </span>
             </div>
           </div>
 
-          <!-- 설명 섹션 -->
           <div v-if="selectedDetail.p_description" class="detail-section">
             <h4>설명</h4>
             <p class="detail-description">{{ selectedDetail.p_description }}</p>
           </div>
           
-          <!-- 특성 분석 섹션 -->
+          <!-- 특성 분석 섹션 (p_vector 사용) -->
           <div v-if="selectedDetail.p_vector" class="detail-section">
-            <h4>특성 분석</h4>
+            <h4>이미지 특성 분석</h4>
             <div class="detail-dimensions">
               <div v-for="(value, index) in selectedDetail.p_vector" :key="index" class="dimension-item">
-                <span class="dimension-name">{{ getDimensionHeader(index) }}</span>
+                <span class="dimension-name">{{ getDimensionLabel(index) }}</span>
                 <div class="dimension-bar-small">
                   <div class="dimension-fill" :style="{ width: `${value * 100}%` }"></div>
                 </div>
@@ -316,8 +290,83 @@
               </div>
             </div>
           </div>
+
+          <!-- 연령대별/성별 방문 통계 섹션 (KeywordSearch.vue 참조) -->
+          <div v-if="!isLoadingStats" class="detail-section stats-section">
+            <h4>연령대별 방문 통계 (총 {{ totalStatsVisits }}건 인증)</h4>
+            <div v-if="ageStats.length > 0 || genderStats.length > 0" class="stats-charts">
+              <div class="chart-container">
+                <h5>연령대별 방문 비율</h5>
+                <div class="age-chart-wrapper">
+                  <div v-if="totalAgeVisits === 0" class="no-age-data">
+                    <p>연령대 데이터가 없습니다</p>
+                  </div>
+                  <canvas v-else ref="ageChartCanvas"></canvas>
+                </div>
+              </div>
+              <div class="chart-container">
+                <h5>성별 방문 비율</h5>
+                <div v-if="totalStatsVisits > 0" class="gender-chart-container">
+                  <div class="gender-icons-wrapper">
+                    <div class="gender-figure-container">
+                      <div class="gender-icon male">
+                        <div class="icon-container">
+                          <svg viewBox="0 0 158.66 332.54" class="male-icon-svg">
+                            <g>
+                              <path class="icon-background" d="M123.25,82.17H35.42C13.84,82.17-2.72,101.3.37,122.66l11.55,79.69c1.17,8.06,8.07,14.03,16.21,14.03h2.43l14.06,116.16h69.42l14.06-116.16h2.51c8.11,0,14.99-5.96,16.15-13.98l11.56-79.94c2.97-21.29-13.57-40.29-35.07-40.29Z" />
+                              <circle class="icon-background" cx="79.33" cy="37.42" r="37.42" transform="translate(-3.23 67.06) rotate(-45)" />
+                            </g>
+                            <g :style="{ mask: 'url(#male-mask-' + selectedDetail._id + ')' }">
+                              <path d="M123.25,82.17H35.42C13.84,82.17-2.72,101.3.37,122.66l11.55,79.69c1.17,8.06,8.07,14.03,16.21,14.03h2.43l14.06,116.16h69.42l14.06-116.16h2.51c8.11,0,14.99-5.96,16.15-13.98l11.56-79.94c2.97-21.29-13.57-40.29-35.07-40.29Z" fill="#4c7bd8"/>
+                              <circle cx="79.33" cy="37.42" r="37.42" transform="translate(-3.23 67.06) rotate(-45)" fill="#4c7bd8"/>
+                            </g>
+                            <mask :id="`male-mask-${selectedDetail._id}`">
+                              <rect x="0" y="0" width="100%" height="100%" fill="white"/>
+                              <rect x="0" y="0" :height="`calc(100% * (1 - (${malePercentage} / 100)))`" width="100%" fill="black"/>
+                            </mask>
+                          </svg>
+                        </div>
+                        <div class="gender-label-percent">남성 <span class="percent-value">{{ malePercentage }}%</span></div>
+                      </div>
+                      <div class="gender-icon female">
+                        <div class="icon-container">
+                          <svg viewBox="0 0 157.19 332.54" class="female-icon-svg">
+                            <g>
+                              <circle class="icon-background" cx="78.68" cy="37.42" r="37.42" transform="translate(24.18 105.4) rotate(-76.72)" />
+                              <path class="icon-background" d="M156.76,187.25l-24.97-94.01c-.03-.1-.06-.2-.09-.29-2.35-6.46-8.49-10.77-15.37-10.77H41.02c-6.89,0-13.03,4.31-15.37,10.77-.03.1-.06.19-.09.29L.59,187.25s-5.18,20.11,15.14,23.87h.31l-6.41,33.76h24.91l12.45,87.66h63.38l12.45-87.66h24.91l-6.41-33.76h.3c19.58-3.22,15.15-23.87,15.15-23.87Z" />
+                            </g>
+                            <g :style="{ mask: 'url(#female-mask-' + selectedDetail._id + ')' }">
+                              <circle cx="78.68" cy="37.42" r="37.42" transform="translate(24.18 105.4) rotate(-76.72)" fill="#e5518d"/>
+                              <path d="M156.76,187.25l-24.97-94.01c-.03-.1-.06-.2-.09-.29-2.35-6.46-8.49-10.77-15.37-10.77H41.02c-6.89,0-13.03,4.31-15.37,10.77-.03.1-.06.19-.09.29L.59,187.25s-5.18,20.11,15.14,23.87h.31l-6.41,33.76h24.91l12.45,87.66h63.38l12.45-87.66h24.91l-6.41-33.76h.3c19.58-3.22,15.15-23.87,15.15-23.87Z" fill="#e5518d"/>
+                            </g>
+                            <mask :id="`female-mask-${selectedDetail._id}`">
+                              <rect x="0" y="0" width="100%" height="100%" fill="white"/>
+                              <rect x="0" y="0" :height="`calc(100% * (1 - (${femalePercentage} / 100)))`" width="100%" fill="black"/>
+                            </mask>
+                          </svg>
+                        </div>
+                        <div class="gender-label-percent">여성 <span class="percent-value">{{ femalePercentage }}%</span></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="gender-percentage-bar">
+                    <div class="male-percentage" :style="{ width: `${malePercentage}%` }"></div>
+                    <div class="female-percentage" :style="{ width: `${femalePercentage}%` }"></div>
+                  </div>
+                </div>
+                <div v-else class="no-gender-data"><p>성별 데이터가 없습니다</p></div>
+              </div>
+            </div>
+            <div v-else class="no-stats-data"><p>방문 통계 데이터가 없습니다.</p></div>
+          </div>
+          <div v-if="isLoadingStats" class="detail-section stats-section">
+            <h4>연령대별 방문 통계</h4>
+            <div class="stats-loading">
+              <div class="spinner"></div>
+              <p>통계 데이터를 불러오는 중...</p>
+            </div>
+          </div>
           
-          <!-- 리뷰 섹션 (더미 데이터로 추가) -->
           <div v-if="selectedDetail.reviews && selectedDetail.reviews.length > 0" class="detail-section">
             <h4>방문자 리뷰 ({{ selectedDetail.reviews.length }})</h4>
             <div class="reviews-container">
@@ -355,9 +404,10 @@ import { ref, computed, onMounted, watch, nextTick } from "vue";
 import { useStore } from "vuex";
 import Header from "@/components/Header.vue";
 import LoadingSpinner from "@/components/LoadingSpinner.vue";
+import Chart from 'chart.js/auto'; // Import Chart.js
 import {
   searchSimilarImages,
-  createFeaturesVector,
+  createFeaturesVector, // Import createFeaturesVector
   imageToEngDescription,
   EngDescriptionToVector
 } from "@/services/api";
@@ -375,677 +425,410 @@ export default {
     const store = useStore();
     const fileInput = ref(null);
 
-    // 상태 관리
+    // Core state
     const imageFile = computed(() => store.state.image.file);
     const imagePreview = computed(() => store.state.image.preview);
     const isLoading = ref(false);
-    const analysisResult = ref(null);
+    const analysisResult = ref(null); // Stores { p_vector: [...] }
     const searchResults = ref([]);
     const abortController = ref(null);
-    const actionStatus = ref({ message: "", type: "" });
-    const isScrolled = ref(false);
+    const actionStatus = ref({ message: "", type: "" }); // For user feedback
     
-    // 추가된 헤더/히어로 섹션 속성
+    // Hero section properties
     const showHero = ref(true);
     const heroImageSrc = ref('https://images.unsplash.com/photo-1501785888041-af3ef285b470?q=80&w=1470');
     const heroTitle = ref('여행 이미지 분석');
     const heroSubtitle = ref('찾고 있는 분위기의 여행지를 발견하세요');
     const heroHeight = ref('320px');
 
-    // 추가된 API 단계 및 타이밍 상태
+    // Analysis timing
     const loadingPhase = ref('analysis');
     const imageAnalysisDuration = ref(null);
     const meaningAnalysisDuration = ref(null);
     const searchDuration = ref(null);
 
-    // 카카오 지도 관련 변수
+    // Modal related state (from KeywordSearch.vue)
+    const showDetailModal = ref(false);
+    const selectedDetail = ref({});
+    const wishlistItems = ref([]);
     let kakaoMap = null;
-    
-    // 카카오 지도 API 로드 함수
-    const loadKakaoMapsScript = () => {
-      return new Promise((resolve, reject) => {
-        // 이미 로드된 경우
-        if (window.kakao && window.kakao.maps) {
-          console.log("카카오 맵 API가 이미 로드되어 있습니다");
-          resolve();
-          return;
-        }
 
-        console.log("카카오 맵 API 로드 시작...");
-        const script = document.createElement('script');
-        script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${config.KAKAO_MAPS_API_KEY}&autoload=false`;
-        script.onload = () => {
-          window.kakao.maps.load(() => {
-            console.log("카카오 맵 API 로드 완료!");
-            resolve();
-          });
-        };
-        script.onerror = (error) => {
-          console.error("카카오 맵 API 로드 실패:", error);
-          reject(error);
-        };
+    // Stats related reactive variables (from KeywordSearch.vue)
+    const ageStats = ref([]);
+    const genderStats = ref([]);
+    const totalStatsVisits = ref(0);
+    const isLoadingStats = ref(false);
+    const ageChartCanvas = ref(null);
+    let ageChart = null;
 
-        document.head.appendChild(script);
-      });
+    // Dimension labels (consistent with KeywordSearch)
+    const dimensionLabels = [
+      "자연 요소", "도시 특성", "수경 요소", "계절적 매력", "휴식 잠재력",
+      "로맨틱한 분위기", "활동 기회", "역사/문화적 가치", "식도락 경험", "쇼핑 잠재력"
+    ];
+
+    const getDimensionLabel = (index) => {
+      return dimensionLabels[index] || `차원 ${index + 1}`;
     };
     
-    // 분석 결과에서 차원 데이터만 필터링
-    const dimensionResults = computed(() => {
-      if (!analysisResult.value) return null;
-
-      // 새 버전: p_vector 배열이 존재하는 경우
-      if (Array.isArray(analysisResult.value.p_vector)) {
-        return analysisResult.value.p_vector;
-      }
-      
-      // 기존 버전: 차원 데이터가 개별 키로 존재하는 경우
-      const dimensionKeys = [
-        "Natural Elements",
-        "Urban Character",
-        "Water Features",
-        "Seasonal Appeal",
-        "Relaxation Potential",
-        "Romantic Atmosphere",
-        "Activity Opportunities",
-        "Historical/Cultural Value",
-        "Food Experience",
-        "Shopping Potential"
-      ];
-
-      // 차원 데이터만 추출
-      const result = {};
-      dimensionKeys.forEach(key => {
-        if (key in analysisResult.value) {
-          result[key] = analysisResult.value[key];
-        }
-      });
-
-      return result;
+    const dimensionResults = computed(() => { // Renamed from getDimensionHeader
+      if (!analysisResult.value || !analysisResult.value.p_vector) return null;
+      return analysisResult.value.p_vector; // Expect p_vector to be an array
     });
 
-    // 검색 결과를 유사도 순으로 정렬
     const sortedSearchResults = computed(() => {
       return [...searchResults.value].sort((a, b) => b._score - a._score);
     });
 
-    // 차원 영어-한글 매핑
-    const dimensionLabels = [
-      "자연 요소",
-      "도시 특성",
-      "수경 요소",
-      "계절적 매력",
-      "휴식 잠재력",
-      "로맨틱한 분위기",
-      "활동 기회",
-      "역사/문화적 가치",
-      "식도락 경험",
-      "쇼핑 잠재력"
-    ];
-
-    // 차원 헤더 생성 - 이제 인덱스를 받아 해당 레이블 반환
-    const getDimensionHeader = (index) => {
-      if (typeof index === 'number') {
-        return dimensionLabels[index] || `차원 ${index + 1}`;
-      } else {
-        // 기존 차원 이름이 "Natural Elements" 같은 문자열인 경우 호환성 유지
-        const oldMapping = {
-          "Natural Elements": "자연 요소",
-          "Urban Character": "도시 특성",
-          "Water Features": "수경 요소",
-          "Seasonal Appeal": "계절적 매력",
-          "Relaxation Potential": "휴식 잠재력",
-          "Romantic Atmosphere": "로맨틱한 분위기",
-          "Activity Opportunities": "활동 기회",
-          "Historical/Cultural Value": "역사/문화적 가치",
-          "Food Experience": "식도락 경험",
-          "Shopping Potential": "쇼핑 잠재력"
-        };
-        
-        return oldMapping[index] || index;
-      }
-    };
-
-    // 더미 리뷰 데이터
     const dummyReviews = [
-      {
-        userName: "여행자김",
-        rating: 5,
-        date: "2025-03-15T09:30:00",
-        comment: "정말 아름다운 장소였습니다. 사진으로 보는 것보다 실제로 보면 훨씬 더 멋있어요. 특히 일몰 때 분위기가 환상적이었습니다."
-      },
-      {
-        userName: "배낭여행러",
-        rating: 4,
-        date: "2025-02-20T14:45:00",
-        comment: "전체적으로 좋은 경험이었습니다. 다만 주변에 음식점이 많지 않아서 식사 계획은 미리 세우는 것이 좋을 것 같아요."
-      },
-      {
-        userName: "사진작가이준",
-        rating: 5,
-        date: "2025-01-05T10:15:00",
-        comment: "사진 찍기에 최고의 장소입니다. 맑은 날 방문하시면 환상적인 풍경 사진을 얻을 수 있어요. 개인적으로는 아침 일찍 방문하는 것을 추천합니다."
-      }
+      { userName: "여행자김", rating: 5, date: "2025-03-15T09:30:00", comment: "정말 아름다운 장소였습니다." },
+      { userName: "배낭여행러", rating: 4, date: "2025-02-20T14:45:00", comment: "좋은 경험이었습니다." }
     ];
 
-    // 리뷰 날짜 포맷팅
     const formatReviewDate = (dateString) => {
       const date = new Date(dateString);
-      return date.toLocaleDateString('ko-KR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
+      return date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+    };
+
+    const formatSimilarityScore = (score) => {
+      const percentage = Math.max(0, Math.min(100, Math.round(score * 100)));
+      let description = "";
+      if (percentage >= 90) description = "매우 높음";
+      else if (percentage >= 75) description = "높음";
+      else if (percentage >= 60) description = "중상";
+      else if (percentage >= 40) description = "중간";
+      else if (percentage >= 25) description = "중하";
+      else description = "낮음";
+      return { percentage, description };
+    };
+
+    const loadKakaoMapsScript = () => {
+      return new Promise((resolve, reject) => {
+        if (window.kakao && window.kakao.maps) {
+          resolve(); return;
+        }
+        const script = document.createElement('script');
+        script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${config.KAKAO_MAPS_API_KEY}&autoload=false`;
+        script.onload = () => window.kakao.maps.load(resolve);
+        script.onerror = reject;
+        document.head.appendChild(script);
       });
     };
     
-    // 유사도 점수를 사용자 친화적인 형태로 변환 (0-100% 및 텍스트 설명 추가)
-    const formatSimilarityScore = (score) => {
-      // 0-1 사이의 점수를 0-100% 사이로 변환
-      const percentage = Math.round(score * 100);
-
-      // 점수에 따른 텍스트 설명 추가
-      let description = "";
-      if (percentage >= 90) {
-        description = "매우 높음";
-      } else if (percentage >= 75) {
-        description = "높음";
-      } else if (percentage >= 60) {
-        description = "중상";
-      } else if (percentage >= 40) {
-        description = "중간";
-      } else if (percentage >= 25) {
-        description = "중하";
-      } else {
-        description = "낮음";
-      }
-
-      return {
-        percentage,
-        description,
-      };
-    };
-
-    // 현재 단계에 따른 로딩 메시지
-    const getLoadingMessage = () => {
-      switch (loadingPhase.value) {
-        case "imageAnalysis":
-          return "이미지 분석 중";
-        case "meaningAnalysis":
-          return "의미 분석 중";
-        case "search":
-          return "유사한 여행지 검색 중";
-        case "completed":
-          return "분석 완료";
-        default:
-          return "처리 중";
-      }
-    };
-
-    // 단계 활성화 여부 확인
-    const isPhaseActive = (phase) => {
-      return loadingPhase.value === phase;
-    };
-
-    // 단계 완료 여부 확인
-    const isPhaseCompleted = (phase) => {
-      const phases = ["imageAnalysis", "meaningAnalysis", "search", "completed"];
-      const currentIndex = phases.indexOf(loadingPhase.value);
-      const phaseIndex = phases.indexOf(phase);
-
-      return phaseIndex < currentIndex || loadingPhase.value === "completed";
-    };
-
-    // 스크롤 이벤트 핸들러
-    const handleScroll = () => {
-      isScrolled.value = window.scrollY > 100;
-    };
-
-    // 상태 메시지 및 클래스
-    const statusMessage = computed(() => actionStatus.value.message || '');
-    const statusClass = computed(() => {
-      if (actionStatus.value.type === 'success') {
-        return 'status-success';
-      } else if (actionStatus.value.type === 'error') {
-        return 'status-error';
-      }
-      return '';
-    });
-
-    // 컴포넌트 마운트 시 실행
     onMounted(async () => {
       console.log("LogoSearch 컴포넌트 마운트");
-      
-      // 스크롤 이벤트 리스너 등록
-      window.addEventListener("scroll", handleScroll);
-
-      // 위시리스트 복원
       const savedWishlist = localStorage.getItem('logo_wishlist');
       if (savedWishlist) {
         try {
-          const wishlistIds = JSON.parse(savedWishlist);
-          console.log('저장된 위시리스트 ID:', wishlistIds);
-          
-          // 위시리스트 ID만 있는 경우 기본 객체로 변환하여 wishlistItems에 저장
-          wishlistItems.value = wishlistIds.map(id => ({
-            _id: id,
-            _source: {} // 기본 빈 객체 (검색 결과에서 매칭될 때 실제 데이터가 채워질 수 있음)
-          }));
-        } catch (error) {
-          console.error('위시리스트 데이터 로드 오류:', error);
-        }
+          wishlistItems.value = JSON.parse(savedWishlist).map(id => ({ _id: id, _source: {} }));
+        } catch (e) { console.error('위시리스트 로드 오류:', e); }
       }
-
-      // 카카오 지도 API 미리 로드
       try {
         await loadKakaoMapsScript();
-        console.log("카카오 지도 API 준비 완료");
+        console.log("카카오 맵 API 준비 완료 (LogoSearch)");
       } catch (error) {
-        console.error("카카오 지도 API 로드 실패:", error);
+        console.error("카카오 맵 API 로드 실패 (LogoSearch):", error);
       }
     });
     
-    // 컴포넌트 언마운트 시 실행 - 이벤트 리스너 제거
-    watch(() => {
-      return () => {
-        // 스크롤 이벤트 리스너 제거
-        window.removeEventListener("scroll", handleScroll);
-        
-        // 진행 중인 API 요청 취소
-        if (abortController.value) {
-          abortController.value.abort();
-        }
-      };
-    });
-
-    // 이미지 선택 시 자동으로 파일명을 이미지 이름으로 설정
     watch(imageFile, (newFile) => {
       if (newFile) {
-        // 기존 분석 결과 초기화 (새 이미지 선택 시)
         analysisResult.value = null;
         searchResults.value = [];
       }
     });
 
-    // 상세 모달 관련 상태
-    const showDetailModal = ref(false);
-    const selectedDetail = ref({});
-    const wishlistItems = ref([]);
-
-    // 검색 결과에서 차원 데이터 추출
-    const dimensionsFromDetail = computed(() => {
-      if (!selectedDetail.value || !selectedDetail.value.dimensions) return {};
-      return selectedDetail.value.dimensions;
-    });
-
-    // 상세 모달 열기
     const openDetailModal = (result) => {
-      // 리뷰 데이터 추가
-      const detailWithReviews = {
+      const detailData = {
         _id: result._id,
         _score: result._score,
-        ...result._source,
-        reviews: dummyReviews,
-        p_image: result._source.p_image || ''
+        ...result._source, // This should contain p_name, p_address, p_image, p_tags, p_description, p_vector, location_data, p_id
+        reviews: dummyReviews 
       };
-      
-      selectedDetail.value = detailWithReviews;
+      selectedDetail.value = detailData;
       showDetailModal.value = true;
-
-      // 모달이 열린 후 지도 초기화를 위해 nextTick 사용
+      
+      if (detailData.p_id) {
+        loadDestinationStats(detailData.p_id);
+      } else {
+        console.warn("p_id is missing for selectedDetail, cannot load stats:", detailData);
+        // Reset stats if p_id is missing
+        ageStats.value = [];
+        genderStats.value = [];
+        totalStatsVisits.value = 0;
+        isLoadingStats.value = false;
+      }
+      
       nextTick(() => {
-        // 약간의 지연 추가로 모달 애니메이션 완료 후 지도 초기화
-        setTimeout(() => {
-          initDetailMap();
-        }, 300);
+        setTimeout(() => initDetailMap(), 300);
       });
     };
 
-    // 상세 모달의 지도 초기화
     const initDetailMap = async () => {
-      console.log('지도 초기화 함수 호출됨');
-  
       const mapContainer = document.getElementById('detailMap');
-      if (!mapContainer) {
-        console.error('지도 컨테이너를 찾을 수 없습니다');
-        return;
-      }
-      
+      if (!mapContainer) return;
       try {
-        // 카카오맵 API 로드 확인
-        if (!window.kakao || !window.kakao.maps) {
-          console.log('카카오 맵 API 로드 필요');
-          await loadKakaoMapsScript();
+        if (!window.kakao || !window.kakao.maps) await loadKakaoMapsScript();
+        
+        let lat = 37.5665; let lng = 126.9780; // Default
+        if (selectedDetail.value?.location_data) {
+          lat = selectedDetail.value.location_data.latitude || lat;
+          lng = selectedDetail.value.location_data.longitude || lng;
         }
         
-        // 선택된 장소의 위치 정보 확인
-        let lat = 37.5665; // 기본값: 서울
-        let lng = 126.9780;
-        
-        if (selectedDetail.value && selectedDetail.value.location_data) {
-          // 위치 데이터가 있는 경우 실제 위치 표시
-          const locationData = selectedDetail.value.location_data;
-          lat = locationData.latitude || lat;
-          lng = locationData.longitude || lng;
-        }
-        
-        // 지도 옵션
-        const mapOption = {
-          center: new kakao.maps.LatLng(lat, lng),
-          level: 3 // 확대 레벨
-        };
-        
-        // 지도 생성
+        const mapOption = { center: new kakao.maps.LatLng(lat, lng), level: 3 };
         kakaoMap = new kakao.maps.Map(mapContainer, mapOption);
-        
-        // 마커 생성
-        const markerPosition = new kakao.maps.LatLng(lat, lng);
-        const marker = new kakao.maps.Marker({
-          position: markerPosition
-        });
-        
-        // 마커 지도에 표시
+        const marker = new kakao.maps.Marker({ position: new kakao.maps.LatLng(lat, lng) });
         marker.setMap(kakaoMap);
-        
-        // 인포윈도우 추가
-        const infoContent = `
-          <div style="padding: 5px; text-align: center;">
-            <span style="font-weight: bold;">${selectedDetail.value.p_name || '여행지'}</span>
-          </div>
-        `;
-        
-        const infoWindow = new kakao.maps.InfoWindow({
-          content: infoContent
-        });
-        
-        // 마커에 마우스 오버 시 인포윈도우 표시
-        kakao.maps.event.addListener(marker, 'mouseover', function() {
-          infoWindow.open(kakaoMap, marker);
-        });
-        
-        // 마커에 마우스 아웃 시 인포윈도우 숨김
-        kakao.maps.event.addListener(marker, 'mouseout', function() {
-          infoWindow.close();
-        });
-        
-        console.log('카카오 지도 초기화 완료');
+        // InfoWindow can be added if needed
       } catch (error) {
-        console.error('지도 초기화 오류:', error);
-        mapContainer.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; background-color: #f0f0f0; color: #666; text-align: center; padding: 20px;">지도를 로드할 수 없습니다.</div>';
+        console.error('지도 초기화 오류 (LogoSearch):', error);
+        mapContainer.innerHTML = '<div class="kakao-map-error">지도를 로드할 수 없습니다.</div>';
       }
     };
 
-    // 상세 모달 닫기
     const closeDetailModal = () => {
       showDetailModal.value = false;
+      ageStats.value = [];
+      genderStats.value = [];
+      totalStatsVisits.value = 0;
+      if (ageChart) {
+        ageChart.destroy();
+        ageChart = null;
+      }
     };
 
-    // 위시리스트 관리 함수
-    const isInWishlist = (id) => {
-      return wishlistItems.value.some(item => item._id === id);
-    };
+    const isInWishlist = (id) => wishlistItems.value.some(item => item._id === id);
 
     const toggleWishlist = (item) => {
-      // Get the name safely from either _source or directly
-      const itemName = item._source ? item._source.p_name : item.p_name;
-      
+      // const itemName = item.p_name || item._source?.p_name || '장소';
       if (isInWishlist(item._id)) {
-        // 위시리스트에서 제거
         wishlistItems.value = wishlistItems.value.filter(i => i._id !== item._id);
-        showActionStatus(`${itemName}이(가) 위시리스트에서 제거되었습니다.`, "success");
+        // showActionStatus(`${itemName}이(가) 위시리스트에서 제거되었습니다.`, "success"); // Assuming showActionStatus exists
       } else {
-        // 위시리스트에 추가
-        wishlistItems.value.push(item);
-        showActionStatus(`${itemName}이(가) 위시리스트에 추가되었습니다.`, "success");
+        wishlistItems.value.push({ _id: item._id, _source: item }); // Store the whole item for consistency
+        // showActionStatus(`${itemName}이(가) 위시리스트에 추가되었습니다.`, "success");
       }
-
-      // 로컬 스토리지에 저장
       localStorage.setItem('logo_wishlist', JSON.stringify(wishlistItems.value.map(i => i._id)));
     };
 
-    // 파일 선택 창 열기
-    const triggerFileInput = () => {
-      fileInput.value.click();
-    };
-
-    // 파일 선택 처리
+    const triggerFileInput = () => fileInput.value.click();
     const handleFileChange = (event) => {
       const file = event.target.files[0];
-      if (file) {
-        store.commit("image/setFile", file);
-      }
+      if (file) store.commit("image/setFile", file);
     };
 
-    // 이미지 분석 처리 - 각 단계별 시간 측정
     const analyzeCurrentImage = async () => {
-      if (!imageFile.value) {
-        alert("먼저 이미지를 선택해주세요.");
-        return;
-      }
+      if (!imageFile.value) return;
+      isLoading.value = true;
+      loadingPhase.value = 'imageAnalysis';
+      imageAnalysisDuration.value = null;
+      meaningAnalysisDuration.value = null;
+      searchDuration.value = null;
+      abortController.value = new AbortController();
 
       try {
-        // 상태 초기화 및 로딩 시작
-        isLoading.value = true;
-        loadingPhase.value = 'imageAnalysis';
-        imageAnalysisDuration.value = null;
-        meaningAnalysisDuration.value = null;
-        searchDuration.value = null;
+        const imageAnalysisStartTime = performance.now();
+        const engDescription = await imageToEngDescription(imageFile.value, abortController.value.signal);
+        imageAnalysisDuration.value = ((performance.now() - imageAnalysisStartTime) / 1000).toFixed(1);
+        
+        loadingPhase.value = 'meaningAnalysis';
+        const meaningAnalysisStartTime = performance.now();
+        // EngDescriptionToVector is expected to return { "Natural Elements": 0.7, ... }
+        const vectorResultObject = await EngDescriptionToVector(engDescription, abortController.value.signal);
+        meaningAnalysisDuration.value = ((performance.now() - meaningAnalysisStartTime) / 1000).toFixed(1);
+        
+        // Convert the object to a flat vector array
+        const featuresVector = createFeaturesVector(vectorResultObject);
 
-        // AbortController 설정
-        abortController.value = new AbortController();
+        analysisResult.value = {
+          p_vector: featuresVector, // Now an array [0.7, 0.3, ...]
+          imageDescription: vectorResultObject.imageDescription // Preserve description if needed
+        };
 
-        console.log("이미지 분석 시작:", imageFile.value.name);
+        loadingPhase.value = 'search';
+        const searchStartTime = performance.now();
+        await searchSimilarHandler(); // Uses analysisResult.value.p_vector
+        searchDuration.value = ((performance.now() - searchStartTime) / 1000).toFixed(1);
 
-        try {
-          // 1단계: 이미지 → 영어 설명 (light_2 모델)
-          const imageAnalysisStartTime = performance.now();
-          const engDescription = await imageToEngDescription(
-            imageFile.value, 
-            abortController.value.signal
-          );
-          const imageAnalysisEndTime = performance.now();
-          imageAnalysisDuration.value = ((imageAnalysisEndTime - imageAnalysisStartTime) / 1000).toFixed(1);
-          
-          // 단계 업데이트
-          loadingPhase.value = 'meaningAnalysis';
-          
-          // 2단계: 영어 설명 → 10차원 벡터 (ko_2 모델)
-          const meaningAnalysisStartTime = performance.now();
-          const result = await EngDescriptionToVector(
-            engDescription, 
-            abortController.value.signal
-          );
-          const meaningAnalysisEndTime = performance.now();
-          meaningAnalysisDuration.value = ((meaningAnalysisEndTime - meaningAnalysisStartTime) / 1000).toFixed(1);
-          
-          // 결과 저장
-          analysisResult.value = result;
-          console.log("최종 분석 결과:", result);
-
-          // 검색 단계로 전환
-          loadingPhase.value = 'search';
-
-          // 분석이 완료되면 자동으로 유사 이미지 검색 실행
-          const searchStartTime = performance.now();
-          await searchSimilarHandler();
-          const searchEndTime = performance.now();
-          searchDuration.value = ((searchEndTime - searchStartTime) / 1000).toFixed(1);
-
-        } catch (apiError) {
-          console.error("API 호출 오류:", apiError);
-
-          // 오류 발생 시 테스트 데이터 사용
-          if (!abortController.value.signal.aborted) {
-            console.log("테스트 데이터 사용");
-            analysisResult.value = {
-              "Natural Elements": 1.0,
-              "Urban Character": 0.2,
-              "Water Features": 0.9,
-              "Seasonal Appeal": 0.5,
-              "Relaxation Potential": 0.6,
-              "Romantic Atmosphere": 0.4,
-              "Activity Opportunities": 0.3,
-              "Historical/Cultural Value": 0.1,
-              "Food Experience": 0.0,
-              "Shopping Potential": 0.0
-            };
-
-            // 테스트 데이터용 시간 설정
-            imageAnalysisDuration.value = '0.3'; // 가상 시간
-            meaningAnalysisDuration.value = '0.2'; // 가상 시간
-
-            alert("API 연결 오류로 테스트 데이터를 사용합니다. 실제 서버 상태를 확인하세요.");
-
-            // 검색 단계로 전환
-            loadingPhase.value = 'search';
-
-            // 테스트 데이터로도 유사 이미지 검색 실행
-            const searchStartTime = performance.now();
-            await searchSimilarHandler();
-            const searchEndTime = performance.now();
-            searchDuration.value = ((searchEndTime - searchStartTime) / 1000).toFixed(1);
-          }
-        }
       } catch (error) {
-        if (error.name === "AbortError") {
-          console.log("사용자가 요청을 취소했습니다.");
-        } else {
-          console.error("오류:", error);
-          alert("오류: " + error.message);
-        }
+        if (error.name === "AbortError") console.log("분석 취소됨");
+        else console.error("분석 오류:", error);
+        // Fallback or error display logic
       } finally {
         loadingPhase.value = 'completed';
         isLoading.value = false;
         abortController.value = null;
       }
     };
-
-    // 초기화 처리
+    
     const reset = () => {
-      console.log("초기화");
       store.commit("image/reset");
       analysisResult.value = null;
       searchResults.value = [];
-      actionStatus.value = { message: "", type: "" };
+      // actionStatus.value = { message: "", type: "" };
     };
 
-    // 유사 이미지 검색 핸들러
     const searchSimilarHandler = async () => {
-      if (!analysisResult.value) {
-        showActionStatus("이미지를 먼저 분석해주세요.", "error");
+      if (!analysisResult.value || !analysisResult.value.p_vector) {
+        // showActionStatus("분석된 이미지 특성이 없습니다.", "error");
         return;
       }
-      
       try {
-        showActionStatus("유사한 이미지 검색 중...", "pending");
-
-        // 특성 벡터 생성
-        let featuresVector;
-        
-        // 새 버전: p_vector 배열이 있는 경우 그대로 사용
-        if (Array.isArray(analysisResult.value.p_vector)) {
-          console.log("p_vector 배열 사용:", analysisResult.value.p_vector);
-          featuresVector = analysisResult.value.p_vector;
-        } 
-        // 기존 버전: dimensions 객체로부터 벡터 생성
-        else {
-          console.log("createFeaturesVector 함수로 벡터 생성");
-          featuresVector = createFeaturesVector(analysisResult.value);
-        }
-
-        // Elasticsearch에서 유사 이미지 검색
-        const results = await searchSimilarImages(featuresVector, 10);
-        searchResults.value = results;
-
-        // 검색 결과 전체를 콘솔에 출력
-        console.log('===== Elasticsearch 검색 결과 시작 =====');
-        console.log('결과 수:', results.length);
-        console.log(results);
-        console.log('===== Elasticsearch 검색 결과 끝 =====');
-
-        showActionStatus("검색이 완료되었습니다!", "success");
+        // showActionStatus("유사 여행지 검색 중...", "pending");
+        // searchSimilarImages expects a flat array for featuresVector
+        const results = await searchSimilarImages(analysisResult.value.p_vector, 20); // Fetch more results
+        searchResults.value = results; // results is an array of hits
+        // showActionStatus(`검색 완료: ${results.length}개 결과`, "success");
       } catch (error) {
-        showActionStatus(
-          "검색 중 오류가 발생했습니다: " + error.message,
-          "error"
-        );
-        console.error("검색 오류:", error);
+        // showActionStatus(`검색 오류: ${error.message}`, "error");
+        console.error("유사 이미지 검색 오류:", error);
       }
+    };
+
+    const cancelAnalysis = () => {
+      if (abortController.value) abortController.value.abort();
+      reset();
+    };
+
+    // --- Statistics Functions (adapted from KeywordSearch.vue) ---
+    const totalAgeVisits = computed(() => ageStats.value.reduce((sum, stat) => sum + stat.value, 0));
+    const malePercentage = computed(() => {
+      if (totalStatsVisits.value === 0) return 0;
+      const maleCount = genderStats.value.find(s => s.gender === 'M')?.value || 0;
+      return Math.round((maleCount / totalStatsVisits.value) * 100);
+    });
+    const femalePercentage = computed(() => {
+      if (totalStatsVisits.value === 0) return 0;
+      const femaleCount = genderStats.value.find(s => s.gender === 'F')?.value || 0;
+      return Math.round((femaleCount / totalStatsVisits.value) * 100);
+    });
+    
+    const getColorForAge = (age) => {
+      const colorMap = {
+        10: '#f8b195', 20: '#f67280', 30: '#c06c84', 40: '#6c5b7c',
+        50: '#355c7d', 60: '#a8e6cf', 70: '#dcedc2', 80: '#ffd3b5', 90: '#ffaaa6'
+      };
+      return colorMap[age] || `hsl(${210 + age}, 70%, 60%)`;
+    };
+
+    const renderAgeChart = () => {
+      const canvas = ageChartCanvas.value;
+      if (!canvas || totalAgeVisits.value === 0) {
+        if (ageChart) { ageChart.destroy(); ageChart = null; }
+        return;
+      }
+      if (ageChart) ageChart.destroy();
+      
+      const filteredAgeStats = ageStats.value.filter(stat => stat.value > 0);
+      const data = filteredAgeStats.map(stat => stat.value);
+      const labels = filteredAgeStats.map(stat => `${stat.age}대`);
+      const colors = filteredAgeStats.map(stat => getColorForAge(stat.age));
+      const percentages = filteredAgeStats.map(stat => 
+        totalAgeVisits.value > 0 ? ((stat.value / totalAgeVisits.value) * 100).toFixed(1) : '0.0'
+      );
+      
+      ageChart = new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{ data: data, backgroundColor: colors, borderColor: '#ffffff', borderWidth: 2, hoverOffset: 15 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, cutout: '50%',
+          plugins: {
+            legend: {
+              position: 'right', labels: { font: { size: 12 }, padding: 25,
+                generateLabels: (chart) => chart.data.labels.map((label, i) => ({
+                  text: `${label} (${percentages[i]}%)`, fillStyle: chart.data.datasets[0].backgroundColor[i],
+                  strokeStyle: chart.data.datasets[0].borderColor, lineWidth: chart.data.datasets[0].borderWidth,
+                  hidden: false, index: i
+                }))
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: (context) => {
+                  const percentage = totalAgeVisits.value > 0 ? ((context.raw / totalAgeVisits.value) * 100).toFixed(1) : '0.0';
+                  return `${context.label}: ${context.raw}명 (${percentage}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    };
+
+    watch([ageStats, totalAgeVisits], () => { nextTick(renderAgeChart); }, { deep: true });
+
+    const loadDestinationStats = async (placeId) => {
+      if (!placeId) return;
+      isLoadingStats.value = true;
+      try {
+        const query = {
+          size: 0, query: { term: { p_id: parseInt(placeId) } },
+          aggs: {
+            age_distribution: { terms: { field: "u_age", size: 10, order: { "_key": "asc" } } },
+            gender_distribution: { terms: { field: "u_gender", size: 2 } },
+            total_visits: { value_count: { field: "p_id" } }
+          }
+        };
+        const response = await fetch(`${config.ES_API}/travel_places/_search`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(query)
+        });
+        if (!response.ok) throw new Error(`Elasticsearch API 오류: ${response.status}`);
+        const data = await response.json();
+        
+        if (data?.aggregations?.age_distribution?.buckets) {
+          ageStats.value = [10, 20, 30, 40, 50, 60, 70, 80, 90].map(age => {
+            const bucket = data.aggregations.age_distribution.buckets.find(b => b.key === age);
+            return { age: age, value: bucket ? bucket.doc_count : 0 };
+          });
+        } else { ageStats.value = []; }
+        
+        if (data?.aggregations?.gender_distribution?.buckets) {
+          genderStats.value = data.aggregations.gender_distribution.buckets.map(b => ({ gender: b.key, value: b.doc_count }));
+        } else { genderStats.value = []; }
+        
+        totalStatsVisits.value = data?.aggregations?.total_visits?.value || 0;
+      } catch (error) {
+        console.error('방문 통계 로드 오류 (LogoSearch):', error);
+        ageStats.value = []; genderStats.value = []; totalStatsVisits.value = 0;
+      } finally { isLoadingStats.value = false; }
     };
     
-    // 상태 메시지 표시 함수
-    const showActionStatus = (message, type) => {
-      actionStatus.value = { message, type };
-    };
-
-    // cancelAnalysis 함수 추가
-    const cancelAnalysis = () => {
-      if (abortController.value) {
-        abortController.value.abort();
-        // analyzeCurrentImage 함수의 catch(error) 블록에서 AbortError를 처리하고
-        // finally 블록에서 isLoading = false 및 abortController.value = null 등을 수행합니다.
-      }
-      reset(); // 상태를 초기화합니다.
-    };
-
     return {
-      imageFile,
-      imagePreview,
-      isLoading,
-      analysisResult,
-      searchResults,
-      sortedSearchResults,
-      statusMessage,
-      statusClass,
-      fileInput,
-      loadingPhase,
-      imageAnalysisDuration,
-      meaningAnalysisDuration,
-      searchDuration,
-      triggerFileInput,
-      handleFileChange,
-      analyzeCurrentImage,
-      reset,
-      getDimensionHeader,
-      dimensionResults,
-      cancelAnalysis,
-      showDetailModal,
-      selectedDetail,
-      wishlistItems,
-      dimensionsFromDetail,
-      openDetailModal,
-      closeDetailModal,
-      isInWishlist,
-      toggleWishlist,
-      initDetailMap,
-      formatReviewDate,
-      formatSimilarityScore,
-      isScrolled,
-      showHero,
-      heroImageSrc,
-      heroTitle,
-      heroSubtitle,
-      heroHeight,
-      getLoadingMessage,
-      isPhaseActive,
-      isPhaseCompleted
+      // Core
+      imageFile, imagePreview, isLoading, analysisResult, searchResults, sortedSearchResults,
+      fileInput, loadingPhase, imageAnalysisDuration, meaningAnalysisDuration, searchDuration,
+      triggerFileInput, handleFileChange, analyzeCurrentImage, reset, searchSimilarHandler, cancelAnalysis,
+      // Hero
+      showHero, heroImageSrc, heroTitle, heroSubtitle, heroHeight,
+      // Dimensions
+      dimensionResults, getDimensionLabel, // Keep getDimensionLabel from KeywordSearch
+      // Modal
+      showDetailModal, selectedDetail, wishlistItems, openDetailModal, closeDetailModal, 
+      isInWishlist, toggleWishlist, initDetailMap, formatReviewDate,
+      // Stats
+      ageStats, genderStats, totalStatsVisits, isLoadingStats, ageChartCanvas,
+      totalAgeVisits, malePercentage, femalePercentage, getColorForAge, // renderAgeChart is called by watch
+      // Misc
+      formatSimilarityScore, actionStatus // showActionStatus can be added if needed
     };
   }
 };
 </script>
 
-<style>
-/* Base styles */
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+<style scoped>
+/* Base styles from KeywordSearch.vue (with .keyword-search changed to .logo-search) */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Nunito:wght@400;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
-.logo-search {
+.logo-search { /* Changed from .keyword-search */
   min-height: 100vh;
   position: relative;
-  font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Noto Sans KR', 'Nunito', sans-serif;
   color: #333;
   overflow-x: hidden;
   background-color: #f8f9fa;
@@ -1053,7 +836,6 @@ export default {
   flex-direction: column;
 }
 
-/* 컨텐츠 영역 */
 .content-wrapper {
   position: relative;
   padding: 2rem 0.5rem 3rem;
@@ -1061,42 +843,12 @@ export default {
   max-width: 1400px;
   margin: 0 auto;
   width: 95%;
-  margin-top: 10px; /* 헤더 높이만큼 여백 추가 - 줄임 */
-  flex: 1; /* 남은 공간 모두 차지하도록 */
-  background-color: #f8f9fa;
+  margin-top: 10px;
+  flex: 1;
 }
 
-/* 상단 두 컬럼 레이아웃 */
-.top-section {
-  display: grid;
-  grid-template-columns: 400px 1fr;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-  opacity: 0;
-  transform: translateY(20px);
-  animation: fadeInUp 0.8s ease-out forwards;
-}
-
-@keyframes fadeInUp {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* 중간 및 하단 섹션 */
-.middle-section {
-  margin-bottom: 1.5rem;
-  opacity: 0;
-  transform: translateY(20px);
-  animation: fadeInUp 0.8s ease-out 0.2s forwards;
-}
-
-/* 패널 공통 스타일 - OnboardingPage 스타일로 업데이트 */
-.upload-panel,
-.analysis-panel,
-.results-panel,
-.details-panel {
+/* Panel common styles from KeywordSearch.vue (using .panel-style as a common class) */
+.panel-style { /* This class will be added to upload-panel, analysis-panel, results-panel */
   background-color: white;
   border-radius: 16px;
   overflow: hidden;
@@ -1105,66 +857,49 @@ export default {
   display: flex;
   flex-direction: column;
   transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 1px solid #eef2f7;
 }
 
-.upload-panel:hover,
-.analysis-panel:hover,
-.results-panel:hover {
+.panel-style:hover { /* Apply hover to .panel-style */
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
 }
 
 .panel-header {
   padding: 1.2rem 1.5rem;
-  background: linear-gradient(to right, #f8f9fa, #ffffff);
-  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
+  border-bottom: 1px solid #eef2f7;
   position: relative;
 }
 
 .panel-header::after {
   content: "";
   position: absolute;
-  bottom: 0;
+  bottom: -1px;
   left: 0;
   width: 100%;
   height: 2px;
-  background: linear-gradient(to right, #4285f4, #34a853);
+  background: linear-gradient(to right, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
   transform: scaleX(0);
   transform-origin: left;
   transition: transform 0.3s ease;
 }
 
-.upload-panel:hover .panel-header::after,
-.analysis-panel:hover .panel-header::after,
-.results-panel:hover .panel-header::after {
+.panel-style:hover .panel-header::after { /* Apply hover to .panel-style */
   transform: scaleX(1);
 }
 
 .panel-title {
   font-family: 'Noto Sans KR', sans-serif;
-  font-size: 1.3rem;
-  font-weight: 500;
+  font-size: 1.2rem;
+  font-weight: 600;
   margin: 0;
   text-align: center;
-  color: #2d3748;
-  letter-spacing: 0.5px;
+  color: #34495e;
+  letter-spacing: 0.3px;
   position: relative;
   display: inline-block;
   left: 50%;
   transform: translateX(-50%);
-}
-
-.panel-title::after {
-  content: "";
-  position: absolute;
-  bottom: -5px;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(to right, #4285f4, #34a853);
-  transform: scaleX(0.3);
-  transform-origin: center;
-  transition: transform 0.3s ease;
 }
 
 .panel-content {
@@ -1173,15 +908,30 @@ export default {
   display: flex;
   flex-direction: column;
 }
+.panel-content.no-padding { padding: 0; }
 
-/* 패널 콘텐츠 패딩 제거 (로딩 중일 때) */
-.panel-content.no-padding {
-  padding: 0;
+
+/* Styles for .top-section, .upload-panel, .analysis-panel from original LogoSearch */
+.top-section {
+  display: grid;
+  grid-template-columns: 400px 1fr; /* Original: 400px 1fr */
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.8s ease-out forwards;
 }
 
-/* 이미지 업로드 패널 - 개선된 디자인 */
+@keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
+
+/* Ensure upload-panel and analysis-panel use the .panel-style */
+.upload-panel, .analysis-panel {
+  /* panel-style will cover most of this */
+}
+
+/* Image Upload Panel Specifics (from original LogoSearch, ensure they blend) */
 .image-container {
-  background-color: #f8f9fa;
+  background-color: #f0f2f5; /* Slightly different from KS for distinction if needed */
   border-radius: 12px;
   height: 250px;
   display: flex;
@@ -1189,1301 +939,351 @@ export default {
   justify-content: center;
   overflow: hidden;
   margin-bottom: 1.5rem;
-  border: 2px dashed #ced4da;
+  border: 2px dashed #d1d8e0; /* Softer dash */
   transition: all 0.3s ease;
   position: relative;
 }
-
 .image-container:hover {
-  border-color: #4285f4;
-  background-color: rgba(66, 133, 244, 0.05);
+  border-color: var(--logo-blue, #48b0e4);
+  background-color: rgba(var(--logo-blue-rgb, 72, 176, 228), 0.05);
 }
+.upload-placeholder { display: flex; flex-direction: column; align-items: center; color: #6c757d; text-align: center; }
+.upload-placeholder svg { margin-bottom: 1rem; color: var(--logo-blue, #48b0e4); }
+.upload-placeholder p { margin: 0; font-size: 0.9rem; }
+.preview-image { max-width: 100%; max-height: 100%; object-fit: contain; }
 
-.image-container::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, rgba(66, 133, 244, 0.1), rgba(52, 168, 83, 0.1));
+.button-group { display: flex; flex-direction: column; gap: 0.75rem; }
+.btn { /* General button styling from KS */
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  padding: 0.75rem 1.25rem; border: none; border-radius: 25px; /* Pill shape */
+  font-family: 'Nunito', 'Noto Sans KR', sans-serif; font-weight: 600; font-size: 0.9rem;
+  cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+.btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+.btn-primary { background: linear-gradient(135deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d)); color: white; }
+.btn-primary:hover { background: linear-gradient(135deg, #3a9cd1, #67a58d); }
+.btn-analyze { /* Specific for analyze if needed, or use primary */
+  background: linear-gradient(135deg, var(--logo-green, #76b39d), var(--logo-blue, #48b0e4)); color: white;
+}
+.btn-analyze:hover { background: linear-gradient(135deg, #67a58d, #3a9cd1); }
+.btn-secondary { background-color: #e9ecef; color: #495057; border: 1px solid #ced4da; }
+.btn-secondary:hover { background-color: #dde2e6; }
+.btn-danger { background-color: #e74c3c; color: white; }
+.btn-danger:hover { background-color: #c0392b; }
+.hidden-input { display: none; }
+
+.analysis-timing { margin-top: 1rem; padding: 1rem; border-radius: 8px; background-color: #f8f9fa; border: 1px solid #eef2f7; }
+.timing-item { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.85rem; }
+.timing-item:last-child { margin-bottom: 0; }
+.timing-label { color: #5f6b7a; }
+.timing-value { font-weight: 600; color: var(--logo-blue, #48b0e4); }
+
+/* Analysis Panel Specifics (from original LogoSearch, adapt to KS panel style) */
+.loading-state { display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; min-height: 300px; }
+.loading-spinner-container { /* For LoadingSpinner component */ }
+.guide-state { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 100%; padding: 2rem; }
+.guide-icon svg { /* Style your guide icon */ }
+.guide-description { font-size: 1rem; line-height: 1.6; color: #495057; margin-bottom: 1.5rem; }
+.steps-container { /* Style for steps */ }
+.analysis-table-container { overflow: auto; border-radius: 8px; height: 100%; border: 1px solid #eef2f7; }
+.analysis-table { width: 100%; border-collapse: collapse; }
+.analysis-table th { background-color: #f8f9fa; color: #34495e; text-align: left; padding: 0.75rem 1rem; font-size: 0.9rem; font-weight: 600; border-bottom: 1px solid #dde2e7; }
+.analysis-table td { padding: 0.75rem 1rem; border-bottom: 1px solid #eef2f7; font-size: 0.85rem; }
+.analysis-table tr:last-child td { border-bottom: none; }
+.dimension-name { font-weight: 500; color: #5f6b7a; }
+.dimension-score { font-weight: 600; color: var(--logo-blue, #48b0e4); text-align: center; }
+.dimension-bar .bar-container { height: 10px; background-color: #e8eaed; border-radius: 5px; overflow: hidden; }
+.dimension-bar .bar { height: 100%; background: linear-gradient(90deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d)); border-radius: 5px; transition: width 0.6s ease-out; }
+
+/* Results Panel Container and Panel (from KeywordSearch.vue) */
+.results-panel-container {
+  margin-top: 1.5rem; /* Spacing from top section */
   opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
+  transform: translateY(20px);
+  animation: fadeInUp 0.8s ease-out 0.2s forwards; /* Delay this animation */
 }
+/* .results-panel is covered by .panel-style */
 
-.image-container:hover::before {
-  opacity: 1;
+/* No Results (from KeywordSearch.vue) */
+.no-results {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 4rem 1rem; color: #a0aec0; text-align: center;
+  background-color: #f9fafb; border-radius: 12px; margin: 1rem 0;
 }
+.no-results-icon svg { width: 50px; height: 50px; color: #cbd5e0; margin-bottom: 1.25rem; }
+.no-results-text { font-size: 1.1rem; color: #4a5568; margin: 0 0 0.5rem 0; font-weight: 500; }
+.no-results-hint { font-size: 0.9rem; color: #718096; margin: 0; }
 
-.upload-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  color: #6c757d;
-  padding: 2rem;
-  text-align: center;
-}
-
-.upload-placeholder svg {
-  margin-bottom: 1rem;
-  color: #4285f4;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
-  transition: transform 0.3s ease;
-}
-
-.image-container:hover .upload-placeholder svg {
-  transform: scale(1.1);
-}
-
-.upload-placeholder p {
-  margin: 0;
-  font-size: 0.9rem;
-}
-
-.preview-image {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  transition: transform 0.5s ease;
-}
-
-.image-container:hover .preview-image {
-  transform: scale(1.03);
-}
-
-/* 버튼 스타일 - 개선된 디자인 */
-.button-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border: none;
-  border-radius: 50px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-weight: 500;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.btn::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.7s ease;
-}
-
-.btn:hover::before {
-  left: 100%;
-}
-
-.btn svg {
-  flex-shrink: 0;
-  transition: transform 0.3s ease;
-}
-
-.btn:hover svg {
-  transform: scale(1.2);
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #4285f4, #34a853);
-  color: white;
-  box-shadow: 0 2px 5px rgba(66, 133, 244, 0.3);
-}
-
-.btn-primary:hover {
-  background: linear-gradient(135deg, #3367d6, #2e8b47);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(66, 133, 244, 0.4);
-}
-
-.btn-analyze {
-  background: linear-gradient(135deg, #34a853, #4285f4);
-  color: white;
-  box-shadow: 0 2px 5px rgba(52, 168, 83, 0.3);
-}
-
-.btn-analyze:hover {
-  background: linear-gradient(135deg, #2e8b47, #3367d6);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(52, 168, 83, 0.4);
-}
-
-.btn-secondary {
-  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-  border: 1px solid #ced4da;
-  color: #495057;
-}
-
-.btn-secondary:hover {
-  background: linear-gradient(135deg, #e9ecef, #dee2e6);
-  border-color: #adb5bd;
-  transform: translateY(-1px);
-}
-
-.btn-danger {
-  background: linear-gradient(135deg, #ea4335, #fbbc05);
-  color: white;
-  box-shadow: 0 2px 5px rgba(234, 67, 53, 0.3);
-}
-
-.btn-danger:hover {
-  background: linear-gradient(135deg, #d33426, #e8ae00);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(234, 67, 53, 0.4);
-}
-
-.hidden-input {
-  display: none;
-}
-
-/* 분석 패널 - 로딩 상태 */
-.loading-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  width: 100%;
-  padding: 0;
-  min-height: 300px;
-  background-color: transparent;
-}
-
-/* 로딩 스피너 스타일 */
-.loading-spinner-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  min-height: 300px;
-  padding: 2rem;
-}
-
-.spinner-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.5rem;
-}
-
-.spinner {
-  width: 50px;
-  height: 50px;
-  border: 3px solid rgba(66, 133, 244, 0.3);
-  border-radius: 50%;
-  border-top-color: #4285f4;
-  animation: spin 1s ease-in-out infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.loading-text {
-  font-size: 1.1rem;
-  color: #6c757d;
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-}
-
-.loading-text span {
-  display: inline-block;
-  animation: dots 1.5s infinite;
-}
-
-.loading-text span:nth-child(2) {
-  animation-delay: 0.3s;
-}
-
-.loading-text span:nth-child(3) {
-  animation-delay: 0.6s;
-}
-
-@keyframes dots {
-  0%,
-  100% {
-    opacity: 0;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-/* 진행 상태 표시 스타일 */
-.progress-container {
-  display: flex;
-  align-items: center;
-  margin-top: 1rem;
-  width: 100%;
-  max-width: 500px;
-}
-
-.progress-step {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-  flex: 1;
-}
-
-.step-indicator {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background-color: #e9ecef;
-  color: #6c757d;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  transition: all 0.3s ease;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-}
-
-.step-label {
-  font-size: 0.85rem;
-  color: #6c757d;
-  text-align: center;
-  transition: all 0.3s ease;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-}
-
-.step-timing {
-  font-size: 0.75rem;
-  color: #4285f4;
-  margin-top: 0.25rem;
-  font-weight: 600;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-}
-
-.progress-connector {
-  height: 2px;
-  background-color: #e9ecef;
-  flex-grow: 1;
-  margin: 0 -5px;
-  margin-bottom: 2rem;
-  transition: background-color 0.3s ease;
-}
-
-/* 활성 단계 스타일 */
-.progress-step.active .step-indicator {
-  background-color: #4285f4;
-  color: white;
-  box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.2);
-}
-
-.progress-step.active .step-label {
-  color: #4285f4;
-  font-weight: 600;
-}
-
-/* 완료된 단계 스타일 */
-.progress-step.completed .step-indicator {
-  background-color: #34a853;
-  color: white;
-}
-
-.progress-step.completed .step-label {
-  color: #34a853;
-}
-
-.progress-step.completed + .progress-connector,
-.progress-step.active + .progress-connector {
-  background-color: #4285f4;
-}
-
-.progress-step.completed + .progress-connector {
-  background-color: #34a853;
-}
-
-/* 분석 시간 정보 스타일 - 개선된 디자인 */
-.analysis-timing {
-  margin-top: 1.5rem;
-  padding: 1.2rem;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #f8f9fa, #ffffff);
-  border: 1px solid #e9ecef;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-}
-
-.timing-item {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 0.75rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px dashed #e9ecef;
-}
-
-.timing-item:last-child {
-  margin-bottom: 0;
-  padding-bottom: 0;
-  border-bottom: none;
-}
-
-.timing-label {
-  font-size: 0.9rem;
-  color: #6c757d;
-  font-weight: 500;
-}
-
-.timing-value {
-  font-weight: 600;
-  color: #4285f4;
-  background: linear-gradient(135deg, #4285f4, #34a853);
-  background-clip: text; /* 표준 속성 추가 */
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-/* 가이드 상태 - 개선된 디자인 */
-.guide-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  height: 100%;
-  min-height: 250px;
-  padding: 2rem;
-  background: linear-gradient(135deg, rgba(66, 133, 244, 0.03), rgba(52, 168, 83, 0.03));
-  border-radius: 12px;
-}
-
-.guide-icon {
-  color: #4285f4;
-  margin-bottom: 1.5rem;
-  animation: float 3s ease-in-out infinite;
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
-}
-
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-.guide-description {
-  font-size: 1rem;
-  line-height: 1.6;
-  color: #495057;
-  margin: 0 0 1.5rem 0;
-  max-width: 400px;
-}
-
-.steps-container {
-  display: flex;
-  justify-content: center;
-  gap: 2rem;
-  flex-wrap: wrap;
-}
-
-.step {
-  display: flex;
-  align-items: center;
-  color: #495057;
-  font-size: 0.95rem;
-  position: relative;
-}
-
-.step:not(:last-child)::after {
-  content: "";
-  position: absolute;
-  top: 12px;
-  right: -1.5rem;
-  width: 1rem;
-  height: 1px;
-  background: linear-gradient(to right, #4285f4, transparent);
-}
-
-.step span {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  background: linear-gradient(135deg, #4285f4, #34a853);
-  color: white;
-  border-radius: 50%;
-  margin-right: 0.5rem;
-  font-weight: 600;
-  font-size: 0.8rem;
-  box-shadow: 0 2px 5px rgba(66, 133, 244, 0.3);
-}
-
-/* 분석 결과 표 - 개선된 디자인 */
-.analysis-table-container {
-  overflow: auto;
-  border-radius: 12px;
-  height: 100%;
-  min-height: 250px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  border: 1px solid #e9ecef;
-}
-
-.analysis-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.analysis-table th {
-  background: linear-gradient(135deg, #f8f9fa, #ffffff);
-  color: #495057;
-  text-align: left;
-  padding: 0.85rem 1.2rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  border-bottom: 2px solid #e9ecef;
-}
-
-.analysis-table td {
-  padding: 0.85rem 1.2rem;
-  border-bottom: 1px solid #e9ecef;
-  vertical-align: middle;
-  color: #495057;
-  transition: background-color 0.2s ease;
-}
-
-.analysis-table tr:hover td {
-  background-color: rgba(66, 133, 244, 0.03);
-}
-
-.analysis-table tr:last-child td {
-  border-bottom: none;
-}
-
-.dimension-name {
-  font-weight: 500;
-  width: 20%;
-}
-
-.dimension-score {
-  color: #4285f4;
-  font-weight: 600;
-  text-align: center;
-  width: 10%;
-  background: linear-gradient(135deg, #4285f4, #34a853);
-  background-clip: text; /* 표준 속성 추가 */
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.dimension-bar {
-  padding-right: 1rem;
-  width: 70%;
-  background-color: transparent;
-}
-
-.bar-container {
-  height: 16px;
-  background-color: #e9ecef;
-  border-radius: 8px;
-  overflow: hidden;
-  position: relative;
-  width: 100%;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.bar {
-  height: 100%;
-  background: linear-gradient(90deg, #4285f4, #34a853);
-  border-radius: 8px;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 0;
-  transition: width 1s cubic-bezier(0.165, 0.84, 0.44, 1);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
 
-/* 결과 그리드 - 개선된 디자인 */
+/* Result Grid & Card styles from KeywordSearch.vue */
 .results-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1.8rem;
   padding: 0.5rem;
 }
-
 .result-card {
-  position: relative;
-  background-color: white;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-  cursor: pointer;
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  position: relative; background-color: white; border-radius: 12px; overflow: hidden;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.07);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  cursor: pointer; border: 1px solid #eef2f7;
 }
-
-.result-card:hover {
-  transform: translateY(-8px) scale(1.01);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
-}
-
+.result-card:hover { transform: translateY(-6px); box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); }
 .result-image-container {
-  height: 200px;
-  width: 100%;
-  overflow: hidden;
-  background-color: #f0f0f0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #666;
-  position: relative;
+  height: 200px; width: 100%; overflow: hidden; background-color: #f0f0f0;
+  display: flex; align-items: center; justify-content: center; color: #666; position: relative;
 }
-
 .result-image-container::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(to bottom, transparent 70%, rgba(0, 0, 0, 0.5));
-  z-index: 1;
-  opacity: 0;
-  transition: opacity 0.3s ease;
+  content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: linear-gradient(to bottom, transparent 60%, rgba(0, 0, 0, 0.6));
+  z-index: 1; opacity: 0; transition: opacity 0.3s ease;
 }
-
-.result-card:hover .result-image-container::before {
-  opacity: 1;
+.result-card:hover .result-image-container::before { opacity: 1; }
+.result-image { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1); }
+.result-card:hover .result-image { transform: scale(1.07); }
+.placeholder-image { /* from KS */ }
+.result-rank { /* from KS */
+  position: absolute; top: 12px; right: 12px; display: flex; align-items: center; justify-content: center;
+  gap: 5px; padding: 4px 10px; background: linear-gradient(135deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
+  color: white; border-radius: 16px; font-size: 0.75rem; font-weight: 600; z-index: 2; box-shadow: 0 2px 5px rgba(0,0,0,0.15);
 }
-
-.result-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
-}
-
-.result-card:hover .result-image {
-  transform: scale(1.1);
-}
-
-.placeholder-image {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  background-color: #f0f0f0;
-  color: #666;
-  font-size: 0.9rem;
-}
-
-/* 등수 아이콘 스타일 - 개선된 디자인 */
-.result-rank {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 3px 10px;
-  background: linear-gradient(135deg, #4285f4, #34a853);
-  color: white;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  z-index: 2;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-}
-
-.result-rank.with-heart {
-  padding-left: 10px;
-  gap: 7px;
-}
-
-.rank-number {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 14px;
-  text-align: center;
-  line-height: 1;
-}
-
-.heart-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(255, 255, 255, 0.6);
-  transition: all 0.3s ease;
-}
-
-.heart-indicator.active {
-  color: #ea4335;
-  animation: heartbeat 1s ease-in-out;
-}
-
-.heart-indicator svg {
-  fill: transparent;
-  transition: fill 0.3s ease;
-}
-
-.heart-indicator.active svg {
-  fill: #ea4335;
-}
-
-@keyframes heartbeat {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.2);
-  }
-}
-
-.result-info {
-  padding: 1.2rem;
-  position: relative;
-}
-
+.result-rank.with-heart { padding-left: 10px; gap: 7px; }
+.rank-number { /* from KS */ }
+.heart-indicator { /* from KS */ }
+.heart-indicator.active { /* from KS */ }
+.heart-indicator svg { /* from KS */ }
+.heart-indicator.active svg { /* from KS */ }
+.result-info { padding: 1rem 1.2rem; }
 .result-name {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #333;
-  margin: 0 0 0.5rem 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: color 0.3s ease;
+  font-size: 1.05rem; font-weight: 600; color: #34495e; margin: 0 0 0.4rem 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color 0.3s ease;
 }
-
-.result-card:hover .result-name {
-  color: #4285f4;
+.result-card:hover .result-name { color: var(--logo-blue, #48b0e4); }
+.result-location { display: flex; align-items: center; gap: 0.3rem; font-size: 0.8rem; color: #7f8c8d; margin-bottom: 0.6rem; }
+.location-icon svg { /* from KS */ }
+.result-similarity { /* from KS, .similarity-bar-container, .similarity-bar, .similarity-value */
+  display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: #7f8c8d; margin-bottom: 0.75rem;
 }
+.similarity-label { font-weight: 500; color: #7f8c8d; }
+.similarity-bar-container { flex-grow: 1; height: 7px; background-color: #e8eaed; border-radius: 4px; overflow: hidden; }
+.similarity-bar { height: 100%; background: linear-gradient(90deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d)); border-radius: 4px; transition: width 1s cubic-bezier(0.25, 0.8, 0.25, 1); }
+.similarity-value { font-weight: 600; color: var(--logo-blue, #48b0e4); font-size: 0.85rem; }
+.result-tags { /* from KS */ }
+.result-tag { /* from KS */ }
+.result-description { /* from KS */ }
+.description-title { /* from KS */ }
+.description-text { /* from KS */ }
 
-.result-location {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.85rem;
-  color: #6c757d;
-  margin-bottom: 0.75rem;
-}
-
-.result-location svg {
-  flex-shrink: 0;
-  color: #6c757d;
-}
-
-/* 유사도 표시 개선 */
-.result-similarity {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-  color: #6c757d;
-  margin-bottom: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.similarity-bar {
-  flex-grow: 1;
-  height: 8px;
-  background-color: #e9ecef;
+/* Visit count style from KeywordSearch.vue */
+.result-visit-count {
+  font-size: 0.8rem;
+  color: #27ae60; /* Greener */
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  background-color: #eafaf1;
+  padding: 2px 6px;
   border-radius: 4px;
-  overflow: hidden;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+  display: inline-block;
 }
 
-.similarity-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #4285f4, #34a853);
-  border-radius: 4px;
-  transition: width 1.2s cubic-bezier(0.165, 0.84, 0.44, 1);
-}
-
-.similarity-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.similarity-percentage {
-  font-weight: 600;
-  color: #4285f4;
-}
-
-.similarity-description {
-  color: #6c757d;
-  font-size: 0.8rem;
-}
-
-/* 결과 카드 태그 스타일 */
-.result-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-top: 0.5rem;
-}
-
-.result-tag {
-  font-size: 0.75rem;
-  padding: 0.2rem 0.5rem;
-  background-color: rgba(66, 133, 244, 0.1);
-  color: #4285f4;
-  border-radius: 12px;
-  transition: all 0.2s ease;
-}
-
-.result-tag:hover {
-  background-color: #4285f4;
-  color: white;
-}
-
-/* 결과 설명 스타일 */
-.result-description {
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid #e9ecef;
-}
-
-.description-title {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #495057;
-  margin-bottom: 0.25rem;
-}
-
-.description-text {
-  font-size: 0.8rem;
-  color: #6c757d;
-  margin: 0;
-  line-height: 1.4;
-  max-height: 4.2em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  -webkit-box-orient: vertical;
-}
-
-/* 푸터 */
+/* Footer from KeywordSearch.vue */
 .footer {
-  background: linear-gradient(135deg, #2d3748, #1a202c);
-  padding: 2rem;
-  text-align: center;
-  margin-top: auto;
-  border-top: 1px solid #2d3748;
+  background: #2c3e50; padding: 1.8rem 1rem; text-align: center; margin-top: auto; border-top: none;
 }
+.footer p { margin: 0; color: #ecf0f1; font-size: 0.9rem; letter-spacing: 0.3px; }
 
-.footer p {
-  margin: 0;
-  color: white;
-  font-size: 0.95rem;
-  letter-spacing: 0.5px;
-}
-
-.no-results {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  color: #a0aec0;
-  text-align: center;
-}
-
-.no-results p {
-  margin: 0.5rem 0;
-  font-size: 1.1rem;
-}
-
-.no-results .hint {
-  font-size: 0.9rem;
-  color: #cbd5e0;
-}
-
-/* 모달 오버레이 및 공통 모달 스타일 */
+/* Modal styles from KeywordSearch.vue */
 .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  overflow-y: auto;
-  padding: 2rem 0;
-  backdrop-filter: blur(5px);
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(30, 40, 50, 0.65);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; overflow-y: auto; padding: 2rem;
+  backdrop-filter: blur(4px);
 }
-
 .place-detail-modal {
-  background-color: white;
-  border-radius: 16px;
-  width: 95%;
-  max-width: 1200px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
-  display: flex;
-  flex-direction: column;
-  animation: modalFadeIn 0.3s ease-out;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: #ffffff; border-radius: 12px;
+  width: 95%; max-width: 1100px; max-height: calc(100vh - 4rem);
+  overflow-y: auto; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  display: flex; flex-direction: column;
+  animation: modalFadeIn 0.3s ease-out; border: none;
 }
-
-@keyframes modalFadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
+@keyframes modalFadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
 .modal-header {
-  display: flex;
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
-  position: sticky;
-  top: 0;
-  background-color: white;
-  z-index: 10;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 1.25rem 1.75rem; border-bottom: 1px solid #eef2f7;
+  position: sticky; top: 0; background-color: #ffffff; z-index: 10;
 }
-
 .modal-title-location {
-  display: flex;
-  align-items: center;
-  flex: 1;
+  display: flex; flex-direction: row; align-items: baseline;
+  flex: 1; margin-right: 1rem; gap: 0.75rem;
 }
-
 .modal-title-location h3 {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #2d3748;
-  font-family: Georgia, 'Times New Roman', Times, serif;
+  margin: 0; font-size: 1.4rem; font-weight: 600; color: #2c3e50;
+  font-family: 'Noto Sans KR', sans-serif; line-height: 1.3;
 }
-
 .modal-location {
-  margin-left: 1.5rem;
-  color: #718096;
-  font-size: 1rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 300px;
+  color: #7f8c8d; font-size: 0.9rem; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; max-width: 100%;
 }
-
-.modal-actions {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+.modal-actions { display: flex; align-items: center; gap: 0.75rem; }
+.close-btn, .heart-btn {
+  background: none; border: none; cursor: pointer; padding: 0.6rem;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; transition: all 0.25s ease; color: #95a5a6;
 }
+.close-btn:hover, .heart-btn:hover { background-color: #f4f6f8; color: #52616B; }
+.heart-btn svg { width: 22px; height: 22px; }
+.close-btn svg { width: 20px; height: 20px; }
+.heart-btn.active { color: var(--logo-coral, #ff715e); }
+.heart-btn.active:hover { background-color: #fff0ee; }
 
-.close-btn {
-  background: none;
-  border: none;
-  color: #718096;
-  cursor: pointer;
-  padding: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: all 0.2s;
-}
-
-.close-btn:hover {
-  background-color: #f7fafc;
-  color: #4a5568;
-}
-
-.heart-btn {
-  background: none;
-  border: none;
-  color: #cbd5e0;
-  cursor: pointer;
-  padding: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: all 0.2s;
-}
-
-.heart-btn:hover {
-  color: #ea4335;
-  transform: scale(1.1);
-}
-
-.heart-btn.active {
-  color: #ea4335;
-  animation: heartbeat 1s ease-in-out;
-}
-
-/* 모달 콘텐츠 영역 */
 .modal-content {
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
+  padding: 1.75rem; display: flex; flex-direction: column;
+  gap: 1.75rem; overflow-y: auto;
 }
-
-/* 이미지와 지도를 수평으로 나란히 배치 */
-.visual-section {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 1.5rem;
-}
-
+.visual-section { display: flex; gap: 1.75rem; }
 .detail-image-container, .detail-map-container {
-  flex: 1;
-  height: 400px;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  flex: 1; height: 380px; border-radius: 10px; overflow: hidden;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); background-color: #f0f2f5;
 }
+.detail-image, .detail-map { width: 100%; height: 100%; object-fit: cover; }
+.detail-map .kakao-map-error { /* from KS */ }
 
-.detail-image, .detail-map {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* 각 섹션 스타일 */
 .detail-section {
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  border-radius: 12px;
-  background-color: #f8fafc;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  padding: 1.5rem; border-radius: 10px; background-color: #fdfdfe;
+  border: 1px solid #eef2f7;
 }
-
-.detail-section:last-child {
-  margin-bottom: 0;
-}
-
+.detail-section:last-child { margin-bottom: 0; }
 .detail-section h4 {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: #2d3748;
-  margin: 0 0 1rem 0;
-  border-bottom: 2px solid #e2e8f0;
-  padding-bottom: 0.5rem;
-  font-family: Georgia, 'Times New Roman', Times, serif;
+  font-size: 1.15rem; font-weight: 600; color: #34495e;
+  margin: 0 0 1rem 0; border-bottom: 1px solid #dde2e7;
+  padding-bottom: 0.75rem; font-family: 'Noto Sans KR', sans-serif;
 }
-
-/* 태그 리스트 */
-.tag-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-}
-
+.tag-list { display: flex; flex-wrap: wrap; gap: 0.6rem; }
 .tag {
-  background-color: rgba(66, 133, 244, 0.1);
-  color: #4285f4;
-  font-size: 0.9rem;
-  padding: 0.35rem 0.85rem;
-  border-radius: 50px;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  background-color: #eaf6ff; color: #2979ff; font-size: 0.85rem;
+  padding: 0.4rem 0.9rem; border-radius: 16px; cursor: pointer;
+  transition: all 0.2s ease; font-weight: 500;
 }
+.tag:hover { background-color: #d1e7fd; color: #1a63d4; transform: translateY(-1px); }
+.detail-description { font-size: 0.95rem; line-height: 1.75; color: #52616B; margin: 0; }
 
-.tag:hover {
-  background-color: #4285f4;
-  color: white;
-}
+/* Dimension styles from KeywordSearch.vue modal */
+.detail-dimensions { display: flex; flex-direction: column; gap: 0.8rem; }
+.dimension-item { display: flex; align-items: center; gap: 1rem; }
+.dimension-name { width: 130px; font-size: 0.9rem; color: #52616B; font-weight: 500; }
+.dimension-bar-small { flex: 1; height: 8px; background-color: #e8eaed; border-radius: 4px; overflow: hidden; }
+.dimension-fill { height: 100%; background: linear-gradient(90deg, var(--logo-blue, #4fc3f7), var(--logo-green, #81c784)); border-radius: 4px; transition: width 0.6s ease-out; }
+.dimension-value { width: 35px; font-size: 0.85rem; font-weight: 500; color: #52616B; text-align: right; }
 
-/* 설명 텍스트 */
-.detail-description {
-  font-size: 1rem;
-  line-height: 1.7;
-  color: #4a5568;
-  margin: 0;
-}
-
-/* 특성 분석 */
-.detail-dimensions {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.dimension-item {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.dimension-name {
-  width: 140px;
-  font-size: 0.95rem;
-  color: #4a5568;
-}
-
-.dimension-bar-small {
-  flex: 1;
-  height: 10px;
-  background-color: #e2e8f0;
-  border-radius: 5px;
-  overflow: hidden;
-}
-
-.dimension-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #4285f4, #34a853);
-  border-radius: 5px;
-}
-
-.dimension-value {
-  width: 40px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #4a5568;
-  text-align: right;
-}
-
-/* 리뷰 섹션 */
-.reviews-container {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.review-item {
-  padding: 1.25rem;
-  background-color: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.review-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.75rem;
-}
-
-.reviewer-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.reviewer-name {
-  font-weight: 600;
-  color: #2d3748;
-  font-size: 1rem;
-}
-
-.review-date {
-  font-size: 0.85rem;
-  color: #718096;
-}
-
-.review-rating {
-  color: #a0aec0;
-  font-size: 1.25rem;
-}
-
-.star-filled {
-  color: #fbbc05;
-}
-
-.star-empty {
-  color: #e2e8f0;
-}
-
-.review-content {
-  font-size: 0.95rem;
-  line-height: 1.6;
-  color: #4a5568;
-}
+/* Review styles from KeywordSearch.vue modal */
+.reviews-container { display: flex; flex-direction: column; gap: 1.25rem; }
+.review-item { padding: 1.25rem; background-color: #ffffff; border-radius: 8px; border: 1px solid #eef2f7; }
+.review-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.6rem; }
+.reviewer-info { display: flex; flex-direction: column; }
+.reviewer-name { font-weight: 600; color: #34495e; font-size: 0.95rem; margin-bottom: 0.1rem; }
+.review-date { font-size: 0.8rem; color: #95a5a6; }
+.review-rating { font-size: 1.1rem; line-height: 1; }
+.star-filled { color: var(--logo-yellow, #fbc02d); }
+.star-empty { color: #e0e0e0; }
+.review-content { font-size: 0.9rem; line-height: 1.65; color: #52616B; }
 
 .modal-footer {
-  padding: 1.25rem 1.5rem;
-  border-top: 1px solid #e2e8f0;
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  position: sticky;
-  bottom: 0;
-  background-color: white;
-  z-index: 1;
+  padding: 1.25rem 1.75rem; border-top: 1px solid #eef2f7;
+  display: flex; justify-content: flex-end; gap: 0.75rem;
+  position: sticky; bottom: 0; background-color: #f9fafb; z-index: 1;
 }
-
 .cancel-btn {
-  padding: 0.75rem 1.5rem;
-  border-radius: 50px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  background-color: #fff;
-  color: #4a5568;
-  border: 1px solid #e2e8f0;
+  padding: 0.6rem 1.25rem; border-radius: 20px; font-size: 0.9rem;
+  font-weight: 500; cursor: pointer; transition: all 0.2s ease;
+  background-color: #e9ecef; color: #495057; border: none;
 }
+.cancel-btn:hover { background-color: #dee2e6; color: #343a40; }
 
-.cancel-btn:hover {
-  background-color: #f7fafc;
+/* Stats section styles from KeywordSearch.vue */
+.stats-section h4 { text-align: left; }
+.stats-charts { display: flex; gap: 1.75rem; justify-content: space-around; align-items: flex-start; padding: 0.5rem 0 0; flex-wrap: wrap; }
+.chart-container {
+  flex: 1 1 45%; min-width: 280px; display: flex; flex-direction: column; align-items: center;
+  padding: 1rem; background-color: transparent; border-radius: 8px; min-height: 372px;
 }
-
-.result-card:nth-child(1) .result-rank {
-  background: linear-gradient(135deg, #ffca2c, #ffab00);
+.chart-container h5 { font-size: 0.95rem; font-weight: 500; color: #495057; margin-bottom: 1rem; text-align: center; }
+.age-chart-wrapper { width: 100%; max-width: 308px; height: 308px; position: relative; }
+.age-chart-wrapper canvas { width: 100% !important; height: 100% !important; }
+.no-age-data, .no-gender-data, .no-stats-data {
+  display: flex; justify-content: center; align-items: center; height: 120px; width: 100%;
+  color: #7f8c8d; font-size: 0.85rem; background-color: #f0f2f5;
+  border-radius: 6px; padding: 1rem; text-align: center; margin-top: 0.5rem;
 }
-
-.result-card:nth-child(2) .result-rank {
-  background: linear-gradient(135deg, #e0e0e0, #b0b0b0);
+.gender-chart-container { display: flex; flex-direction: column; align-items: center; width: 100%; padding-top: 40px; }
+.gender-icons-wrapper { display: flex; justify-content: center; gap: 2rem; margin-bottom: 1.25rem; width: 100%; }
+.gender-figure-container { display: flex; gap: 1.5rem; }
+.gender-icon { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.icon-container { width: 80px; height: auto; margin-bottom: 0.5rem; }
+.icon-container svg { width: 100%; height: auto; }
+.male-icon-svg .icon-background, .female-icon-svg .icon-background { fill: #eef2f7; }
+.gender-label-percent { font-size: 0.85rem; font-weight: 500; color: #343a40; }
+.gender-label-percent .percent-value { font-weight: 700; }
+.gender-percentage-bar {
+  width: 100%; max-width: 250px; height: 10px; display: flex;
+  border-radius: 5px; overflow: hidden; background-color: #eef2f7;
 }
+.male-percentage { background-color: #4c7bd8; height: 100%; transition: width 0.5s ease-in-out; }
+.female-percentage { background-color: #e5518d; height: 100%; transition: width 0.5s ease-in-out; }
+.stats-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; color: #6c757d; }
 
-.result-card:nth-child(3) .result-rank {
-  background: linear-gradient(135deg, #d98936, #b0732f);
-}
 
-/* 반응형 조정 */
+/* Responsive adjustments from KeywordSearch.vue (simplified) */
 @media (max-width: 1100px) {
-  .visual-section {
-    flex-direction: column;
-  }
-  
-  .detail-image-container, 
-  .detail-map-container {
-    width: 100%;
-    height: 350px;
-  }
-  
-  .dimension-name {
-    width: 120px;
-  }
+  .top-section { grid-template-columns: 1fr; } /* Stack top sections earlier */
+  .visual-section { flex-direction: column; gap: 1.5rem; }
+  .detail-image-container, .detail-map-container { width: 100%; height: 320px; }
+  .dimension-name { width: 110px; }
 }
-
-@media (max-width: 900px) {
-  .navbar-container {
-    flex-direction: column;
-    gap: 1rem;
-    padding: 0 1rem;
-  }
-  
-  .nav-center {
-    position: relative;
-    left: 0;
-    transform: none;
-    margin-bottom: 1rem;
-    order: -1;
-  }
-  
-  .nav-group {
-    gap: 1.5rem;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-  
-  .logo-text {
-    font-size: 1.8rem;
-  }
-  
-  .top-section {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-  }
-}
-
 @media (max-width: 768px) {
-  .modal-title-location {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .modal-location {
-    margin: 0.25rem 0 0 0;
-  }
-  
-  .review-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
-  
-  .dimension-name {
-    width: 100px;
-    font-size: 0.85rem;
-  }
-  
-  .results-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  }
+  .modal-header { padding: 1rem 1.25rem; }
+  .modal-title-location h3 { font-size: 1.25rem; }
+  .modal-location { font-size: 0.85rem; }
+  .modal-content, .detail-section { padding: 1.25rem; gap: 1.25rem; }
+  .visual-section { gap: 1.25rem; }
+  .detail-image-container, .detail-map-container { height: 280px; }
+  .detail-section h4 { font-size: 1.1rem; padding-bottom: 0.6rem; margin-bottom: 0.8rem; }
+  .tag { font-size: 0.8rem; padding: 0.35rem 0.8rem; }
+  .dimension-name { width: 100px; font-size: 0.85rem; }
+  .results-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  .stats-charts { flex-direction: column; align-items: center; gap: 1.25rem; }
+  .chart-container { flex-basis: 100%; max-width: 100%; padding: 0.75rem; min-height: 342px; }
+  .age-chart-wrapper { max-width: 286px; height: 286px; }
 }
-
 @media (max-width: 600px) {
-  .navbar {
-    padding: 2rem 0;
-  }
-  
-  .navbar.scrolled {
-    padding: 1rem 0;
-  }
-  
-  .nav-group {
-    gap: 1rem;
-  }
-  
-  .nav-item {
-    font-size: 0.9rem;
-  }
-  
-  .logo-text {
-    font-size: 1.6rem;
-  }
-  
-  .hero-title-internal {
-    font-size: 2.5rem;
-  }
-  
-  .hero-subtitle-internal {
-    font-size: 1rem;
-  }
+  .results-grid { grid-template-columns: 1fr; }
+  .modal-overlay { padding: 1rem; }
+  .place-detail-modal { max-height: calc(100vh - 2rem); }
+  .modal-header { padding: 0.75rem 1rem; }
+  .modal-title-location h3 { font-size: 1.1rem; }
+  .modal-content, .detail-section { padding: 1rem; gap: 1rem; }
+  .visual-section { gap: 1rem; }
+  .detail-image-container, .detail-map-container { height: 220px; }
+  .dimension-item { flex-direction: column; align-items: flex-start; gap: 0.3rem; }
+  .dimension-name { width: auto; margin-bottom: 0.2rem; }
+  .dimension-bar-small { width: 100%; }
+  .dimension-value { width: auto; text-align: left; margin-top: 0.1rem; }
 }
 
-@media (max-width: 480px) {
-  .dimension-item {
-    flex-wrap: wrap;
-  }
-  
-  .dimension-name {
-    width: 100%;
-    margin-bottom: 0.25rem;
-  }
-  
-  .dimension-value {
-    width: 40px;
-  }
-  
-  .results-grid {
-    grid-template-columns: 1fr;
-  }
+/* Original LogoSearch specific responsive (keep if needed, or merge) */
+/* @media (max-width: 900px) { ... } */
+/* @media (max-width: 480px) { ... } */
+
+/* Ensure active hearts are filled red */
+.heart-indicator.active svg {
+  fill: #e53e3e; /* Red fill for active card heart */
+  stroke: #e53e3e; /* Red stroke for active card heart */
 }
+
+.heart-btn.active svg {
+  fill: #e53e3e; /* Red fill for active modal heart */
+  stroke: #e53e3e; /* Red stroke for active modal heart */
+}
+
 </style>

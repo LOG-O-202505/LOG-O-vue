@@ -210,7 +210,7 @@
           
           <!-- 연령대별 방문 통계 섹션 (새로 추가) -->
           <div v-if="!isLoadingStats" class="detail-section stats-section">
-            <h4>연령대별 방문 통계</h4>
+            <h4>연령대별 방문 통계 (총 {{ totalStatsVisits }}건 인증)</h4>
             <div v-if="ageStats.length > 0" class="stats-charts">
               <!-- 연령대별 원형 그래프 -->
               <div class="chart-container">
