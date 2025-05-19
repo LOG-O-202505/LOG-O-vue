@@ -99,9 +99,10 @@ export const fileToBase64 = (file) => {
  * 이미지를 영어 설명으로 변환하는 함수 (light_2 모델 사용)
  * @param {File} imageFile - 처리할 이미지 파일
  * @param {AbortSignal} signal - 요청 취소를 위한 AbortSignal
+ * @param {string} englishLocationName - 영어 지역 이름 (선택적)
  * @returns {Promise<string>} - 영어 설명 텍스트
  */
-export const imageToEngDescription = async (imageFile, signal) => {
+export const imageToEngDescription = async (imageFile, signal, englishLocationName = '') => {
   try {
     console.log('영어 설명 추출 시작:', imageFile ? imageFile.name : 'No file');
     
@@ -120,10 +121,17 @@ export const imageToEngDescription = async (imageFile, signal) => {
     // 영문 설명 생성
     console.log("이미지 설명 생성 API 호출 시작...");
     
+    // 지역 이름이 있으면 프롬프트에 포함
+    let prompt = 'Describe this travel destination in detail according to your instructions.';
+    if (englishLocationName) {
+      prompt = `Describe this travel destination in ${englishLocationName} in detail according to your instructions.`;
+      console.log('영어 지역 이름이 포함된 프롬프트 사용:', prompt);
+    }
+    
     // Ollama API 형식으로 요청 구성
     const descriptionRequestBody = {
       model: 'light_2', // 영어 설명 생성 모델
-      prompt: 'Describe this travel destination in detail according to your instructions.',
+      prompt: prompt,
       images: [base64Image.split(',')[1]], // Base64 이미지 데이터만 추출
       stream: false // 스트리밍 비활성화
     };
@@ -1021,18 +1029,40 @@ const mapAddressToRegionCode = (address) => {
 const matchCityCode = (province, cityName, result) => {
   if (!cityName || !province.children) return;
   
+  console.log(`매칭 시도: "${cityName}" in ${province.name}`);
+  
   for (const cityInfo of province.children) {
-    // 서울 강남구 -> 강남구, 서울 역삼동 -> 역삼동 등으로 정규화
-    const normalizedCityName = cityName.replace(/^(.+)(시|구|군|동)$/, '$1$2');
+    // 정규화 - 문자열 정규화 로직 개선
+    // 기존 정규식이 '서귀포시'와 같은 패턴을 제대로 인식하지 못하는 문제 수정
+    const normalizedCityName = cityName.trim();
+    const normalizedInfoName = cityInfo.name.trim();
     
-    if (normalizedCityName === cityInfo.name || 
-        normalizedCityName.includes(cityInfo.name) || 
-        cityInfo.name.includes(normalizedCityName)) {
+    // 정확히 일치하거나 포함 관계인 경우 (양방향 확인)
+    if (normalizedCityName === normalizedInfoName || 
+        normalizedCityName.includes(normalizedInfoName) || 
+        normalizedInfoName.includes(normalizedCityName)) {
       console.log(`시/군/구 매칭 성공: ${cityInfo.name} (코드: ${cityInfo.code})`);
       result.city_code = cityInfo.code;
       result.city_name = cityInfo.name;
       break;
     }
+    
+    // '시', '구', '군' 등의 접미사 제거 후 비교
+    const cleanCityName = normalizedCityName.replace(/(시|구|군|동)$/g, '').trim();
+    const cleanInfoName = normalizedInfoName.replace(/(시|구|군|동)$/g, '').trim();
+    
+    if (cleanCityName === cleanInfoName) {
+      console.log(`시/군/구 매칭 성공 (접미사 제거 후): ${cityInfo.name} (코드: ${cityInfo.code})`);
+      result.city_code = cityInfo.code;
+      result.city_name = cityInfo.name;
+      break;
+    }
+  }
+  
+  // 디버깅용: 매칭 실패 시 상세 정보 출력
+  if (!result.city_code) {
+    console.log(`매칭 실패: "${cityName}"에 대한 시/군/구 코드를 찾을 수 없습니다.`);
+    console.log('사용 가능한 시/군/구 목록:', province.children.map(c => c.name).join(', '));
   }
 };
 
@@ -1460,6 +1490,545 @@ export const getUserTravelStatistics = async (userId = 1) => {
       totalVisits: 0
     };
   }
+};
+
+/**
+ * 위치 데이터에서 영어 지역 이름을 직접 추출하는 함수
+ * @param {Object} locationData - 위치 데이터 (reverseGeocode 결과)
+ * @returns {string} - 영어 지역 이름
+ */
+export const getEnglishLocationName = (locationData) => {
+  if (!locationData) return '';
+  
+  console.log('영어 지역 이름 추출 시작:', locationData);
+  
+  // 결과 변수
+  let englishName = '';
+  
+  // 1. 직접 매핑 테이블 - 구분하여 관리
+  const provinceEngMapping = {
+    // 광역시/도
+    '서울특별시': 'Seoul',
+    '서울': 'Seoul',
+    '부산광역시': 'Busan',
+    '부산': 'Busan',
+    '대구광역시': 'Daegu',
+    '대구': 'Daegu', 
+    '인천광역시': 'Incheon',
+    '인천': 'Incheon',
+    '광주광역시': 'Gwangju',
+    '광주': 'Gwangju',
+    '대전광역시': 'Daejeon',
+    '대전': 'Daejeon',
+    '울산광역시': 'Ulsan',
+    '울산': 'Ulsan',
+    '세종특별자치시': 'Sejong',
+    '세종': 'Sejong',
+    '경기도': 'Gyeonggi-do',
+    '경기': 'Gyeonggi-do',
+    '강원특별자치도': 'Gangwon-do',
+    '강원도': 'Gangwon-do',
+    '강원': 'Gangwon-do',
+    '충청북도': 'Chungcheongbuk-do',
+    '충북': 'Chungcheongbuk-do',
+    '충청남도': 'Chungcheongnam-do', 
+    '충남': 'Chungcheongnam-do',
+    '전라북도': 'Jeollabuk-do',
+    '전북': 'Jeollabuk-do',
+    '전라남도': 'Jeollanam-do',
+    '전남': 'Jeollanam-do',
+    '경상북도': 'Gyeongsangbuk-do',
+    '경북': 'Gyeongsangbuk-do',
+    '경상남도': 'Gyeongsangnam-do',
+    '경남': 'Gyeongsangnam-do',
+    '제주특별자치도': 'Jeju-do',
+    '제주도': 'Jeju-do',
+    '제주': 'Jeju-do'
+  };
+  
+  const seoulDistrictEngMapping = {
+    '종로구': 'Jongno-gu',
+    '중구': 'Jung-gu',
+    '용산구': 'Yongsan-gu',
+    '성동구': 'Seongdong-gu',
+    '광진구': 'Gwangjin-gu',
+    '동대문구': 'Dongdaemun-gu',
+    '중랑구': 'Jungnang-gu',
+    '성북구': 'Seongbuk-gu',
+    '강북구': 'Gangbuk-gu',
+    '도봉구': 'Dobong-gu',
+    '노원구': 'Nowon-gu',
+    '은평구': 'Eunpyeong-gu',
+    '서대문구': 'Seodaemun-gu',
+    '마포구': 'Mapo-gu',
+    '양천구': 'Yangcheon-gu',
+    '강서구': 'Gangseo-gu',
+    '구로구': 'Guro-gu',
+    '금천구': 'Geumcheon-gu',
+    '영등포구': 'Yeongdeungpo-gu',
+    '동작구': 'Dongjak-gu',
+    '관악구': 'Gwanak-gu',
+    '서초구': 'Seocho-gu',
+    '강남구': 'Gangnam-gu',
+    '송파구': 'Songpa-gu',
+    '강동구': 'Gangdong-gu'
+  };
+  
+  const cityEngMapping = {
+    // 제주
+    '제주시': 'Jeju-si',
+    '서귀포시': 'Seogwipo-si',
+    
+    // 경기도 주요 도시
+    '수원시': 'Suwon-si',
+    '성남시': 'Seongnam-si',
+    '고양시': 'Goyang-si',
+    '용인시': 'Yongin-si',
+    '부천시': 'Bucheon-si',
+    '안산시': 'Ansan-si',
+    '안양시': 'Anyang-si',
+    '남양주시': 'Namyangju-si',
+    '화성시': 'Hwaseong-si',
+    '시흥시': 'Siheung-si',
+    '파주시': 'Paju-si',
+    '의정부시': 'Uijeongbu-si',
+    '김포시': 'Gimpo-si',
+    '광주시': 'Gwangju-si',
+    '광명시': 'Gwangmyeong-si',
+    
+    // 다른 주요 도시
+    '춘천시': 'Chuncheon-si',
+    '원주시': 'Wonju-si',
+    '강릉시': 'Gangneung-si',
+    '청주시': 'Cheongju-si',
+    '천안시': 'Cheonan-si',
+    '아산시': 'Asan-si',
+    '전주시': 'Jeonju-si',
+    '군산시': 'Gunsan-si',
+    '목포시': 'Mokpo-si',
+    '여수시': 'Yeosu-si',
+    '순천시': 'Suncheon-si',
+    '포항시': 'Pohang-si',
+    '경주시': 'Gyeongju-si',
+    '구미시': 'Gumi-si',
+    '안동시': 'Andong-si',
+    '창원시': 'Changwon-si',
+    '김해시': 'Gimhae-si',
+    '양산시': 'Yangsan-si',
+    '진주시': 'Jinju-si'
+  };
+  
+  // 특수지역 영어 이름
+  const specialLocationMapping = {
+    '안덕면': 'Andeok-myeon',
+    '사계리': 'Sagye-ri',
+    '상도동': 'Sangdo-dong',
+    '상도로': 'Sangdo-ro'
+  };
+  
+  // 2. 지역 구조 확인
+  const province = locationData.province;
+  const city = locationData.city;
+  const borough = locationData.borough || '';
+  const quarter = locationData.quarter || locationData.suburb || '';
+  const road = locationData.road || '';
+  
+  console.log('위치 구성 요소:', { province, city, borough, quarter, road });
+  
+  // 2.1 광역시/도 영어 이름 찾기
+  let provinceEng = '';
+  if (province && provinceEngMapping[province]) {
+    provinceEng = provinceEngMapping[province];
+    console.log(`광역시/도 영어 매핑: ${province} -> ${provinceEng}`);
+  } else if (locationData.regionInfo && locationData.regionInfo.province_code) {
+    const provinceCode = locationData.regionInfo.province_code;
+    if (regionMapping[provinceCode]) {
+      provinceEng = regionMapping[provinceCode].engName;
+      console.log(`광역시/도 코드 기반 영어 매핑: ${province} (${provinceCode}) -> ${provinceEng}`);
+    }
+  }
+  
+  // 2.2 시/군/구 영어 이름 찾기
+  let cityOrDistrictEng = '';
+  
+  // 서울의 구 처리
+  if (province && (province.includes('서울') || (locationData.regionInfo && locationData.regionInfo.province_code === '11'))) {
+    // 구(borough) 확인
+    if (borough && seoulDistrictEngMapping[borough]) {
+      cityOrDistrictEng = seoulDistrictEngMapping[borough];
+      console.log(`서울 구 영어 매핑: ${borough} -> ${cityOrDistrictEng}`);
+    }
+    // city에서 확인
+    else if (city && city !== province && seoulDistrictEngMapping[city]) {
+      cityOrDistrictEng = seoulDistrictEngMapping[city];
+      console.log(`서울 구(city) 영어 매핑: ${city} -> ${cityOrDistrictEng}`);
+    }
+    // 이름 유추 (동작구, 관악구 등)
+    else if ((borough && borough.includes('구')) || (city && city !== province && city.includes('구'))) {
+      const districtName = borough.includes('구') ? borough : city;
+      for (const [korName, engName] of Object.entries(seoulDistrictEngMapping)) {
+        if (districtName.includes(korName) || korName.includes(districtName)) {
+          cityOrDistrictEng = engName;
+          console.log(`서울 구 유사 매핑: ${districtName} -> ${engName}`);
+          break;
+        }
+      }
+    }
+  }
+  // 다른 도시 처리
+  else if (!cityOrDistrictEng) {
+    // 직접 매핑
+    if (city && cityEngMapping[city]) {
+      cityOrDistrictEng = cityEngMapping[city];
+      console.log(`도시 영어 매핑: ${city} -> ${cityOrDistrictEng}`);
+    }
+    // regionInfo 사용
+    else if (locationData.regionInfo && locationData.regionInfo.city_code && locationData.regionInfo.city_name) {
+      const provinceCode = locationData.regionInfo.province_code;
+      const cityCode = locationData.regionInfo.city_code;
+      
+      if (regionMapping[provinceCode] && regionMapping[provinceCode].children) {
+        const cityInfo = regionMapping[provinceCode].children.find(c => c.code === cityCode);
+        if (cityInfo && cityInfo.engName) {
+          cityOrDistrictEng = cityInfo.engName;
+          console.log(`도시 코드 기반 영어 매핑: ${locationData.regionInfo.city_name} (${cityCode}) -> ${cityOrDistrictEng}`);
+        }
+      }
+    }
+    // 이름 유추 (비슷한 이름)
+    else if (city) {
+      for (const [korName, engName] of Object.entries(cityEngMapping)) {
+        if (city.includes(korName) || korName.includes(city)) {
+          cityOrDistrictEng = engName;
+          console.log(`도시 유사 매핑: ${city} -> ${engName}`);
+          break;
+        }
+      }
+    }
+    
+    // 여전히 못 찾은 경우 borough 시도
+    if (!cityOrDistrictEng && borough) {
+      for (const [korName, engName] of Object.entries(cityEngMapping)) {
+        if (borough.includes(korName) || korName.includes(borough)) {
+          cityOrDistrictEng = engName;
+          console.log(`도시(borough) 유사 매핑: ${borough} -> ${engName}`);
+          break;
+        }
+      }
+    }
+  }
+  
+  // 읍/면/동 등 상세 지역 영어 이름
+  let detailLocationEng = '';
+  if (quarter && specialLocationMapping[quarter]) {
+    detailLocationEng = specialLocationMapping[quarter];
+    console.log(`상세 지역 매핑: ${quarter} -> ${detailLocationEng}`);
+  } else if (road && specialLocationMapping[road]) {
+    detailLocationEng = specialLocationMapping[road];
+    console.log(`도로명 매핑: ${road} -> ${detailLocationEng}`);
+  }
+  
+  // 3. 최종 영어 지역 이름 생성
+  // 3.1 서울은 특별 처리 (서울 + 구 이름)
+  if (provinceEng === 'Seoul' && cityOrDistrictEng) {
+    englishName = `${provinceEng} ${cityOrDistrictEng}`;
+  } 
+  // 3.2 기본 형식: 도 + 시
+  else if (provinceEng && cityOrDistrictEng) {
+    // 예외: 도시 이름이 이미 도/광역시 포함하는 경우
+    if (cityOrDistrictEng.includes(provinceEng)) {
+      englishName = cityOrDistrictEng;
+    } else {
+      englishName = `${provinceEng} ${cityOrDistrictEng}`;
+    }
+  }
+  // 3.3 광역시/도만 있는 경우
+  else if (provinceEng) {
+    englishName = provinceEng;
+  }
+  // 3.4 시/군/구만 있는 경우
+  else if (cityOrDistrictEng) {
+    englishName = cityOrDistrictEng;
+  }
+  
+  // 3.5 상세 지역 이름 추가 (옵션)
+  if (detailLocationEng && englishName) {
+    englishName = `${englishName} ${detailLocationEng}`;
+  }
+  
+  // 4. 특수 케이스 강제 처리
+  if (province && province.includes('제주')) {
+    if (city && city.includes('서귀포')) {
+      englishName = 'Jeju-do Seogwipo-si';
+    } else if (city && city.includes('제주시')) {
+      englishName = 'Jeju-do Jeju-si';
+    }
+    
+    // 상세 지역 추가
+    if (quarter && quarter.includes('안덕면')) {
+      englishName += ' Andeok-myeon';
+    } else if (quarter && quarter.includes('사계리')) {
+      englishName += ' Sagye-ri';
+    }
+  }
+  
+  // 서울 동작구 강제 처리
+  if (province && province.includes('서울') && ((city && city.includes('동작')) || (borough && borough.includes('동작')))) {
+    englishName = 'Seoul Dongjak-gu';
+    
+    // 상도동 추가
+    if (quarter && quarter.includes('상도')) {
+      englishName += ' Sangdo-dong';
+    }
+  }
+  
+  console.log(`최종 영어 지역 이름: ${englishName}`);
+  return englishName;
+};
+
+/**
+ * 위치 데이터에서 지역 코드를 직접 추출하는 함수
+ * @param {Object} locationData - 위치 데이터 (reverseGeocode 결과)
+ * @returns {Object} - 지역 코드 정보 (province_code, city_code)
+ */
+export const getLocationCodes = (locationData) => {
+  if (!locationData) return { province_code: null, city_code: null };
+  
+  console.log('지역 코드 직접 추출 시작:', locationData);
+  
+  // 결과 객체
+  const result = {
+    province_code: null,
+    province_name: null,
+    city_code: null,
+    city_name: null
+  };
+  
+  // 1. 직접 코드 매핑 테이블 - 구분하여 관리 (광역시/도와 시/군/구 분리)
+  const provinceCodeMapping = {
+    // 광역시/도 코드
+    '서울특별시': '11',
+    '서울': '11',
+    '부산광역시': '26',
+    '부산': '26',
+    '대구광역시': '27',
+    '대구': '27',
+    '인천광역시': '28',
+    '인천': '28',
+    '광주광역시': '29', 
+    '광주': '29',
+    '대전광역시': '30',
+    '대전': '30',
+    '울산광역시': '31',
+    '울산': '31',
+    '세종특별자치시': '36',
+    '세종': '36',
+    '경기도': '41',
+    '경기': '41',
+    '강원특별자치도': '42',
+    '강원도': '42',
+    '강원': '42',
+    '충청북도': '43',
+    '충북': '43',
+    '충청남도': '44',
+    '충남': '44',
+    '전라북도': '45',
+    '전북': '45',
+    '전라남도': '46',
+    '전남': '46',
+    '경상북도': '47',
+    '경북': '47',
+    '경상남도': '48',
+    '경남': '48',
+    '제주특별자치도': '50',
+    '제주도': '50',
+    '제주': '50'
+  };
+  
+  // 특정 도시/군/구에 대한 직접 매핑 (문제가 되는 지역들)
+  const cityCodeMapping = {
+    // 제주도 도시
+    '제주시': '50110',
+    '서귀포시': '50130',
+    
+    // 서울 구
+    '종로구': '11110',
+    '중구': '11140',
+    '용산구': '11170',
+    '성동구': '11200',
+    '광진구': '11215',
+    '동대문구': '11230',
+    '중랑구': '11260',
+    '성북구': '11290',
+    '강북구': '11305',
+    '도봉구': '11320',
+    '노원구': '11350',
+    '은평구': '11380',
+    '서대문구': '11410',
+    '마포구': '11440',
+    '양천구': '11470',
+    '강서구': '11500',
+    '구로구': '11530',
+    '금천구': '11545',
+    '영등포구': '11560',
+    '동작구': '11590',
+    '관악구': '11620',
+    '서초구': '11650',
+    '강남구': '11680',
+    '송파구': '11710',
+    '강동구': '11740'
+  };
+  
+  // 2. 지역 정보 확인
+  const province = locationData.province;
+  const city = locationData.city;
+  const borough = locationData.borough || '';
+  const quarter = locationData.quarter || '';
+  
+  // 로깅
+  console.log('지역 정보:', { province, city, borough, quarter });
+  
+  // 3. 광역시/도 코드 매핑
+  // 3.1 직접 매핑에서 province_code 찾기
+  if (province && provinceCodeMapping[province]) {
+    result.province_code = provinceCodeMapping[province];
+    result.province_name = province;
+    console.log(`광역시/도 직접 코드 매핑 성공: ${province} -> ${result.province_code}`);
+  }
+  // 3.2 regionInfo가 이미 있는 경우 활용
+  else if (locationData.regionInfo && locationData.regionInfo.province_code) {
+    result.province_code = locationData.regionInfo.province_code;
+    result.province_name = locationData.regionInfo.province_name || province;
+    console.log(`광역시/도 코드 regionInfo 매핑 성공: ${result.province_name} -> ${result.province_code}`);
+  }
+  // 3.3 이름 기반으로 regionMapping에서 찾기
+  else if (province) {
+    for (const provinceCode in regionMapping) {
+      const provinceInfo = regionMapping[provinceCode];
+      if (province === provinceInfo.name || 
+          province.includes(provinceInfo.name) || 
+          provinceInfo.name.includes(province)) {
+        result.province_code = provinceCode;
+        result.province_name = provinceInfo.name;
+        console.log(`광역시/도 이름 기반 코드 매핑 성공: ${province} -> ${result.province_code}`);
+        break;
+      }
+    }
+  }
+  
+  // 4. 시/군/구 코드 매핑
+  // 우선순위: 구(borough) > 시(city) > 읍/면/동(quarter)
+  
+  // 4.1 구(borough) 처리 - 서울, 부산 등의 구
+  if (borough) {
+    // 직접 매핑에서 찾기
+    if (cityCodeMapping[borough]) {
+      result.city_code = cityCodeMapping[borough];
+      result.city_name = borough;
+      console.log(`구(borough) 직접 코드 매핑 성공: ${borough} -> ${result.city_code}`);
+    } 
+    // regionMapping에서 찾기
+    else if (result.province_code) {
+      const provinceInfo = regionMapping[result.province_code];
+      if (provinceInfo && provinceInfo.children) {
+        const cityInfo = provinceInfo.children.find(c => 
+          borough === c.name || 
+          borough.includes(c.name) || 
+          c.name.includes(borough)
+        );
+        
+        if (cityInfo) {
+          result.city_code = cityInfo.code;
+          result.city_name = cityInfo.name;
+          console.log(`구(borough) 이름 기반 코드 매핑 성공: ${borough} -> ${result.city_code}`);
+        }
+      }
+    }
+  }
+  
+  // 4.2 city가 있고 아직 city_code가 없는 경우 처리
+  if (city && !result.city_code) {
+    // 직접 매핑에서 찾기
+    if (cityCodeMapping[city]) {
+      result.city_code = cityCodeMapping[city];
+      result.city_name = city;
+      console.log(`시/군(city) 직접 코드 매핑 성공: ${city} -> ${result.city_code}`);
+    }
+    // regionMapping에서 찾기
+    else if (result.province_code) {
+      const provinceInfo = regionMapping[result.province_code];
+      if (provinceInfo && provinceInfo.children) {
+        const cityInfo = provinceInfo.children.find(c => 
+          city === c.name || 
+          city.includes(c.name) || 
+          c.name.includes(city)
+        );
+        
+        if (cityInfo) {
+          result.city_code = cityInfo.code;
+          result.city_name = cityInfo.name;
+          console.log(`시/군(city) 이름 기반 코드 매핑 성공: ${city} -> ${result.city_code}`);
+        }
+      }
+    }
+  }
+  
+  // 4.3 읍/면/동(quarter) 정보로 상위 시/군/구 찾기 (보조 수단)
+  if (quarter && !result.city_code && result.province_code) {
+    // 각 시/군/구의 이름이 읍/면/동 이름에 포함되어 있는지 확인
+    const provinceInfo = regionMapping[result.province_code];
+    if (provinceInfo && provinceInfo.children) {
+      // quarter 이름으로부터 상위 시/군/구 유추 (예: '역삼동'에서 '강남구' 유추)
+      for (const cityInfo of provinceInfo.children) {
+        // 예: '강남구 역삼동'에서 '강남구' 추출
+        if (quarter.includes(cityInfo.name)) {
+          result.city_code = cityInfo.code;
+          result.city_name = cityInfo.name;
+          console.log(`읍/면/동(quarter)에서 상위 시/군/구 유추 성공: ${quarter} -> ${cityInfo.name} (${cityInfo.code})`);
+          break;
+        }
+      }
+    }
+  }
+  
+  // 5. 특수 케이스 처리
+  // 5.1 제주 서귀포시 케이스를 위한 특별 처리
+  if (province && province.includes('제주') && !result.city_code) {
+    if (city && city.includes('서귀포')) {
+      result.province_code = '50';  // 제주특별자치도 코드
+      result.city_code = '50130';   // 서귀포시 코드
+      result.province_name = '제주특별자치도';
+      result.city_name = '서귀포시';
+      console.log('제주 서귀포시 특수 케이스 처리 완료');
+    } else if (city && city.includes('제주시')) {
+      result.province_code = '50';
+      result.city_code = '50110';   // 제주시 코드
+      result.province_name = '제주특별자치도';
+      result.city_name = '제주시';
+      console.log('제주 제주시 특수 케이스 처리 완료');
+    }
+  }
+  
+  // 5.2 서울 특별시의 구 처리
+  if (province && (province.includes('서울') || result.province_code === '11') && !result.city_code) {
+    // 동작구 케이스
+    if (borough && borough.includes('동작')) {
+      result.city_code = '11590';
+      result.city_name = '동작구';
+      console.log('서울 동작구 특수 케이스 처리 완료');
+    }
+    // 다른 구들도 필요시 추가
+  }
+  
+  // 5.3 regionInfo에서 city_code 있는데 사용 안된 경우
+  if (!result.city_code && locationData.regionInfo && locationData.regionInfo.city_code) {
+    result.city_code = locationData.regionInfo.city_code;
+    result.city_name = locationData.regionInfo.city_name || city;
+    console.log(`마지막 시도: regionInfo 시/군/구 코드 사용: ${result.city_name} -> ${result.city_code}`);
+  }
+  
+  console.log('최종 지역 코드 결과:', result);
+  return result;
 };
 
 /*

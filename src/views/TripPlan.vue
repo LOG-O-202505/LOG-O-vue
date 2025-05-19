@@ -726,7 +726,9 @@ import {
   EngDescriptionToVector,
   saveToElasticsearch, 
   createFeaturesVector,
-  reverseGeocode
+  reverseGeocode,
+  getEnglishLocationName,
+  getLocationCodes
 } from '@/services/api';
 
 export default {
@@ -2675,10 +2677,64 @@ export default {
         // 요청 취소를 위한 AbortController 생성
         const abortController = new AbortController();
         
-        // 1단계: 이미지 → 영어 설명 (light_2 모델)
-        console.log('1. 이미지 분석 시작 (light_2 모델 - 영문 설명 추출)...');
+        // 먼저 좌표로부터 지오 데이터 가져오기 (light_2 전에 실행)
+        let locationInfo = null;
+        let locationText = '';
+        let englishLocationName = ''; // 영어 지역 이름을 저장할 변수
+        
+        // 아이템의 좌표가 있으면 역지오코딩 실행
+        if (item.coords && item.coords.lat && item.coords.lng) {
+          try {
+            // 좌표로부터 주소 정보 가져오기
+            const geoData = await reverseGeocode(item.coords.lat, item.coords.lng);
+            console.log('역지오코딩 결과:', geoData);
+            
+            if (geoData) {
+              // 주소 문자열 생성
+              locationText = [
+                geoData.country,
+                geoData.province,
+                geoData.city,
+                geoData.borough,
+                geoData.quarter
+              ].filter(Boolean).join(' ');
+              
+              // 지역 코드 정보 직접 추출 (하드코딩된 매핑 포함)
+              const locationCodes = getLocationCodes(geoData);
+              
+              // 지역 정보 저장 - 더 신뢰할 수 있는 코드로 업데이트
+              locationInfo = {
+                full_text: locationText,
+                province_code: locationCodes.province_code,
+                province_name: locationCodes.province_name || geoData.province,
+                city_code: locationCodes.city_code,
+                city_name: locationCodes.city_name || geoData.city || geoData.borough
+              };
+              
+              console.log('추출된 지역 코드 정보:', 
+                `province(${locationInfo.province_code}:${locationInfo.province_name}) ` +
+                `city(${locationInfo.city_code}:${locationInfo.city_name})`
+              );
+              
+              // 영어 지역 이름 추출 - 개선된 함수 사용
+              englishLocationName = getEnglishLocationName(geoData);
+              console.log('추출된 영어 지역 이름:', englishLocationName);
+            }
+          } catch (geoError) {
+            console.error('역지오코딩 오류:', geoError);
+            throw new Error('위치 정보 가져오기 실패: ' + geoError.message);
+          }
+        }
+        
+        // 위치 정보가 없으면 기본값 사용
+        if (!locationText) {
+          locationText = item.location || verifyingItemInfo.value.location || '장소 정보 없음';
+        }
+        
+        // 1단계: 이미지 → 영어 설명 (light_2 모델) - 이제 영어 지역 이름을 전달
+        console.log('1. 이미지 분석 시작 (light_2 모델 - 영문 설명 추출)...', englishLocationName);
         const imageAnalysisStartTime = performance.now();
-        const engDescription = await imageToEngDescription(imageFile, abortController.signal);
+        const engDescription = await imageToEngDescription(imageFile, abortController.signal, englishLocationName);
         const imageAnalysisEndTime = performance.now();
         imageAnalysisDuration.value = Number(((imageAnalysisEndTime - imageAnalysisStartTime) / 1000).toFixed(1));
         
@@ -2770,47 +2826,6 @@ export default {
         // 고유 ID 생성
         const imageId = `trip-verification-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
         
-        // 좌표로부터 지오 데이터 가져오기
-        let locationInfo = null;
-        let locationText = '';
-        
-        // 아이템의 좌표가 있으면 역지오코딩 실행
-        if (item.coords && item.coords.lat && item.coords.lng) {
-          try {
-            // 좌표로부터 주소 정보 가져오기
-            const geoData = await reverseGeocode(item.coords.lat, item.coords.lng);
-            console.log('역지오코딩 결과:', geoData);
-            
-            if (geoData) {
-              // 주소 문자열 생성
-              locationText = [
-                geoData.country,
-                geoData.province,
-                geoData.city,
-                geoData.district,
-                geoData.road
-              ].filter(Boolean).join(' ');
-              
-              // 지역 정보 저장
-              locationInfo = {
-                full_text: locationText,
-                province_code: geoData.regionInfo?.province_code || null,
-                province_name: geoData.regionInfo?.province_name || geoData.province || null,
-                city_code: geoData.regionInfo?.city_code || null,
-                city_name: geoData.regionInfo?.city_name || geoData.city || null
-              };
-            }
-          } catch (geoError) {
-            console.error('역지오코딩 오류:', geoError);
-            throw new Error('위치 정보 가져오기 실패: ' + geoError.message);
-          }
-        }
-        
-        // 위치 정보가 없으면 기본값 사용
-        if (!locationText) {
-          locationText = item.location || verifyingItemInfo.value.location || '장소 정보 없음';
-        }
-        
         // 태그 생성 (장소 정보와 추출된 키워드 포함)
         const baseTags = [
           item.activity, 
@@ -2827,12 +2842,18 @@ export default {
         console.log('4. Elasticsearch에 저장할 데이터:');
         console.log('- 이미지 ID:', imageId);
         console.log('- 위치:', locationText);
+        console.log('- 영어 위치:', englishLocationName);
         console.log('- 태그:', tags);
         console.log('- 설명:', description);
         console.log('- 10차원 벡터:', featuresVector);
         
         // Elasticsearch에 저장 시작 시간
         const saveStartTime = performance.now();
+        
+        // locationInfo에 영어 지역 이름 추가
+        if (locationInfo && englishLocationName) {
+          locationInfo.englishLocationName = englishLocationName;
+        }
         
         // Elasticsearch에 저장
         const esResponse = await saveToElasticsearch(
@@ -2844,7 +2865,7 @@ export default {
           verificationPhotoPreview.value,
           analysisResult,
           featuresVector,
-          locationInfo, // 지오코딩으로 얻은 구조화된 위치 정보
+          locationInfo, // 지오코딩으로 얻은 구조화된 위치 정보 (영어 지역 이름 포함)
           testDataInputs.value.p_id,
           testDataInputs.value.u_id,
           testDataInputs.value.u_age,
