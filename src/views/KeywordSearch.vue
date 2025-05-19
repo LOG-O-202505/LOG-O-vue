@@ -64,7 +64,7 @@
         <div class="results-panel">
           <div class="panel-header">
             <h3 class="panel-title">
-              '{{ lastSearchKeyword }}' 검색 결과 ({{ searchResults.length }}건)
+              '{{ lastSearchKeyword }}' 검색 결과 ({{ searchResults.length }}건 중 {{ totalResults }} 개)
             </h3>
           </div>
           
@@ -110,6 +110,9 @@
                       </svg>
                     </span>
                     {{ result._source.p_address }}
+                  </div>
+                  <div class="result-visit-count">
+                    인증: {{ result._source.visitCount }}회
                   </div>
                   <div class="result-similarity">
                     <span class="similarity-label">유사도:</span>
@@ -205,7 +208,8 @@
                 v-for="(tag, index) in selectedDetail.p_tags" 
                 :key="index" 
                 class="tag" 
-                @click="applyKeyword(tag)">
+                @click="applyKeyword(tag); closeDetailModal();"
+              >
                 {{ tag }}
               </span>
             </div>
@@ -228,6 +232,90 @@
                 </div>
                 <span class="dimension-value">{{ value.toFixed(1) }}</span>
               </div>
+            </div>
+          </div>
+
+          <!-- 연령대별 방문 통계 섹션 (LookAround.vue 참조) -->
+          <div v-if="!isLoadingStats" class="detail-section stats-section">
+            <h4>연령대별 방문 통계 (총 {{ totalStatsVisits }}건 인증)</h4>
+            <div v-if="ageStats.length > 0 || genderStats.length > 0" class="stats-charts">
+              <!-- 연령대별 원형 그래프 -->
+              <div class="chart-container">
+                <h5>연령대별 방문 비율</h5>
+                <div class="age-chart-wrapper">
+                  <div v-if="totalAgeVisits === 0" class="no-age-data">
+                    <p>연령대 데이터가 없습니다</p>
+                  </div>
+                  <canvas v-else ref="ageChartCanvas"></canvas>
+                </div>
+              </div>
+              
+              <!-- 성별 아이콘 그래프 -->
+              <div class="chart-container">
+                <h5>성별 방문 비율</h5>
+                <div v-if="totalStatsVisits > 0" class="gender-chart-container">
+                  <div class="gender-icons-wrapper">
+                    <div class="gender-figure-container">
+                      <!-- 남성 아이콘 -->
+                      <div class="gender-icon male">
+                        <div class="icon-container">
+                          <svg viewBox="0 0 158.66 332.54" class="male-icon-svg">
+                            <g>
+                              <path class="icon-background" d="M123.25,82.17H35.42C13.84,82.17-2.72,101.3.37,122.66l11.55,79.69c1.17,8.06,8.07,14.03,16.21,14.03h2.43l14.06,116.16h69.42l14.06-116.16h2.51c8.11,0,14.99-5.96,16.15-13.98l11.56-79.94c2.97-21.29-13.57-40.29-35.07-40.29Z" />
+                              <circle class="icon-background" cx="79.33" cy="37.42" r="37.42" transform="translate(-3.23 67.06) rotate(-45)" />
+                            </g>
+                            <g :style="{ mask: 'url(#male-mask-' + selectedDetail._id + ')' }">
+                              <path d="M123.25,82.17H35.42C13.84,82.17-2.72,101.3.37,122.66l11.55,79.69c1.17,8.06,8.07,14.03,16.21,14.03h2.43l14.06,116.16h69.42l14.06-116.16h2.51c8.11,0,14.99-5.96,16.15-13.98l11.56-79.94c2.97-21.29-13.57-40.29-35.07-40.29Z" fill="#4c7bd8"/>
+                              <circle cx="79.33" cy="37.42" r="37.42" transform="translate(-3.23 67.06) rotate(-45)" fill="#4c7bd8"/>
+                            </g>
+                            <!-- Path with fill="#fff" for male icon removed -->
+                            <mask :id="`male-mask-${selectedDetail._id}`">
+                              <rect x="0" y="0" width="100%" height="100%" fill="white"/>
+                              <rect x="0" y="0" :height="`calc(100% * (1 - (${malePercentage} / 100)))`" width="100%" fill="black"/>
+                            </mask>
+                          </svg>
+                        </div>
+                        <div class="gender-label-percent">남성 <span class="percent-value">{{ malePercentage }}%</span></div>
+                      </div>
+                      <!-- 여성 아이콘 -->
+                      <div class="gender-icon female">
+                        <div class="icon-container">
+                          <svg viewBox="0 0 157.19 332.54" class="female-icon-svg">
+                            <g>
+                              <circle class="icon-background" cx="78.68" cy="37.42" r="37.42" transform="translate(24.18 105.4) rotate(-76.72)" />
+                              <path class="icon-background" d="M156.76,187.25l-24.97-94.01c-.03-.1-.06-.2-.09-.29-2.35-6.46-8.49-10.77-15.37-10.77H41.02c-6.89,0-13.03,4.31-15.37,10.77-.03.1-.06.19-.09.29L.59,187.25s-5.18,20.11,15.14,23.87h.31l-6.41,33.76h24.91l12.45,87.66h63.38l12.45-87.66h24.91l-6.41-33.76h.3c19.58-3.22,15.15-23.87,15.15-23.87Z" />
+                            </g>
+                            <g :style="{ mask: 'url(#female-mask-' + selectedDetail._id + ')' }">
+                              <circle cx="78.68" cy="37.42" r="37.42" transform="translate(24.18 105.4) rotate(-76.72)" fill="#e5518d"/>
+                              <path d="M156.76,187.25l-24.97-94.01c-.03-.1-.06-.2-.09-.29-2.35-6.46-8.49-10.77-15.37-10.77H41.02c-6.89,0-13.03,4.31-15.37,10.77-.03.1-.06.19-.09.29L.59,187.25s-5.18,20.11,15.14,23.87h.31l-6.41,33.76h24.91l12.45,87.66h63.38l12.45-87.66h24.91l-6.41-33.76h.3c19.58-3.22,15.15-23.87,15.15-23.87Z" fill="#e5518d"/>
+                            </g>
+                            <!-- Path with fill="#fff" for female icon removed -->
+                            <mask :id="`female-mask-${selectedDetail._id}`">
+                              <rect x="0" y="0" width="100%" height="100%" fill="white"/>
+                              <rect x="0" y="0" :height="`calc(100% * (1 - (${femalePercentage} / 100)))`" width="100%" fill="black"/>
+                            </mask>
+                          </svg>
+                        </div>
+                        <div class="gender-label-percent">여성 <span class="percent-value">{{ femalePercentage }}%</span></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="gender-percentage-bar">
+                    <div class="male-percentage" :style="{ width: `${malePercentage}%` }"></div>
+                    <div class="female-percentage" :style="{ width: `${femalePercentage}%` }"></div>
+                  </div>
+                </div>
+                <div v-else class="no-gender-data"><p>성별 데이터가 없습니다</p></div>
+              </div>
+            </div>
+            <div v-else class="no-stats-data"><p>방문 통계 데이터가 없습니다.</p></div>
+          </div>
+          <!-- 통계 로딩 중 -->
+          <div v-if="isLoadingStats" class="detail-section stats-section">
+            <h4>연령대별 방문 통계</h4>
+            <div class="stats-loading">
+              <div class="spinner"></div>
+              <p>통계 데이터를 불러오는 중...</p>
             </div>
           </div>
           
@@ -265,10 +353,11 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, nextTick } from "vue";
+import { ref, computed, onMounted, nextTick, watch } from "vue";
 import Header from "@/components/Header.vue";
 import { searchImagesByKeyword } from "@/services/api";
 import config from "@/config.js";
+import Chart from 'chart.js/auto';
 
 export default {
   name: "KeywordSearch",
@@ -291,6 +380,14 @@ export default {
     const showDetailModal = ref(false);
     const selectedDetail = ref({});
     const wishlistItems = ref([]);
+
+    // Stats related reactive variables (copied from LookAround.vue)
+    const ageStats = ref([]);
+    const genderStats = ref([]);
+    const totalStatsVisits = ref(0);
+    const isLoadingStats = ref(false);
+    const ageChartCanvas = ref(null);
+    let ageChart = null; // Chart instance
     
     // 히어로 섹션 속성
     const showHero = ref(true);
@@ -553,11 +650,13 @@ export default {
         reviews: dummyReviews
       };
       
-      // 기존 'dimensions' 객체 대신 'p_vector' 배열로 직접 사용
-      // dimensionValues computed 속성에서 이 데이터를 사용함
-      
       selectedDetail.value = detailData;
       showDetailModal.value = true;
+      
+      // Load stats for the selected place
+      if (result._source && result._source.p_id) {
+        loadDestinationStats(result._source.p_id);
+      }
       
       // 모달이 열린 후 지도 초기화를 위해 nextTick 사용
       nextTick(() => {
@@ -645,6 +744,182 @@ export default {
     // 상세 모달 닫기
     const closeDetailModal = () => {
       showDetailModal.value = false;
+      // Reset stats when modal closes
+      ageStats.value = [];
+      genderStats.value = [];
+      totalStatsVisits.value = 0;
+      if (ageChart) {
+        ageChart.destroy();
+        ageChart = null;
+      }
+    };
+
+    // --- Statistics Functions (adapted from LookAround.vue) ---
+
+    const totalAgeVisits = computed(() => {
+      return ageStats.value.reduce((sum, stat) => sum + stat.value, 0);
+    });
+
+    const malePercentage = computed(() => {
+      if (totalStatsVisits.value === 0) return 0;
+      const maleCount = genderStats.value.find(s => s.gender === 'M')?.value || 0;
+      return Math.round((maleCount / totalStatsVisits.value) * 100);
+    });
+
+    const femalePercentage = computed(() => {
+      if (totalStatsVisits.value === 0) return 0;
+      const femaleCount = genderStats.value.find(s => s.gender === 'F')?.value || 0;
+      return Math.round((femaleCount / totalStatsVisits.value) * 100);
+    });
+    
+    const getColorObject = (age) => {
+      const colorMap = {
+        10: { color: '#f8b195', isDark: false }, 20: { color: '#f67280', isDark: false },
+        30: { color: '#c06c84', isDark: true },  40: { color: '#6c5b7c', isDark: true },
+        50: { color: '#355c7d', isDark: true },  60: { color: '#a8e6cf', isDark: false },
+        70: { color: '#dcedc2', isDark: false }, 80: { color: '#ffd3b5', isDark: false },
+        90: { color: '#ffaaa6', isDark: false }
+      };
+      return colorMap[age] || { color: `hsl(${210 + age}, 70%, 60%)`, isDark: false };
+    };
+
+    const getColorForAge = (age) => {
+      return getColorObject(age).color;
+    };
+
+    const renderAgeChart = () => {
+      const canvas = ageChartCanvas.value;
+      if (!canvas || totalAgeVisits.value === 0) {
+        if (ageChart) {
+          ageChart.destroy();
+          ageChart = null;
+        }
+        return;
+      }
+      
+      if (ageChart) {
+        ageChart.destroy();
+      }
+      
+      const filteredAgeStats = ageStats.value.filter(stat => stat.value > 0);
+      const data = filteredAgeStats.map(stat => stat.value);
+      const labels = filteredAgeStats.map(stat => `${stat.age}대`);
+      const colors = filteredAgeStats.map(stat => getColorForAge(stat.age));
+      const percentages = filteredAgeStats.map(stat => 
+        totalAgeVisits.value > 0 ? ((stat.value / totalAgeVisits.value) * 100).toFixed(1) : '0.0'
+      );
+      
+      ageChart = new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            backgroundColor: colors,
+            borderColor: '#ffffff',
+            borderWidth: 2,
+            hoverOffset: 15
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: '50%',
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: {
+                font: { size: 12 },
+                padding: 25, // Increase space between doughnut and legend
+                generateLabels: (chart) => {
+                  const datasets = chart.data.datasets;
+                  return chart.data.labels.map((label, i) => ({
+                    text: `${label} (${percentages[i]}%)`,
+                    fillStyle: datasets[0].backgroundColor[i],
+                    strokeStyle: datasets[0].borderColor,
+                    lineWidth: datasets[0].borderWidth,
+                    hidden: false, index: i
+                  }));
+                }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: (context) => {
+                  const percentage = totalAgeVisits.value > 0 ? ((context.raw / totalAgeVisits.value) * 100).toFixed(1) : '0.0';
+                  return `${context.label}: ${context.raw}명 (${percentage}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    };
+
+    watch([ageStats, totalAgeVisits], () => {
+      nextTick(() => {
+        renderAgeChart();
+      });
+    }, { deep: true });
+
+    const loadDestinationStats = async (placeId) => {
+      if (!placeId) return;
+      try {
+        isLoadingStats.value = true;
+        const query = {
+          size: 0,
+          query: { term: { p_id: parseInt(placeId) } },
+          aggs: {
+            age_distribution: {
+              terms: { field: "u_age", size: 10, order: { "_key": "asc" } }
+            },
+            gender_distribution: {
+              terms: { field: "u_gender", size: 2 }
+            },
+            total_visits: { value_count: { field: "p_id" } }
+          }
+        };
+        
+        const response = await fetch(`${config.ES_API}/travel_places/_search`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(query)
+        });
+        
+        if (!response.ok) throw new Error(`Elasticsearch API 오류: ${response.status}`);
+        
+        const data = await response.json();
+        
+        if (data?.aggregations?.age_distribution?.buckets) {
+          const allAgeBuckets = [10, 20, 30, 40, 50, 60, 70, 80, 90].map(age => {
+            const foundBucket = data.aggregations.age_distribution.buckets.find(b => b.key === age);
+            return { age: age, label: `${age}대`, value: foundBucket ? foundBucket.doc_count : 0 };
+          });
+          ageStats.value = allAgeBuckets;
+        } else {
+          ageStats.value = [];
+        }
+        
+        if (data?.aggregations?.gender_distribution?.buckets) {
+          genderStats.value = data.aggregations.gender_distribution.buckets.map(bucket => ({
+            gender: bucket.key,
+            label: bucket.key === 'M' ? '남성' : '여성',
+            value: bucket.doc_count
+          }));
+        } else {
+          genderStats.value = [{ gender: 'M', label: '남성', value: 0 }, { gender: 'F', label: '여성', value: 0 }];
+        }
+        
+        totalStatsVisits.value = data?.aggregations?.total_visits?.value || 0;
+        
+      } catch (error) {
+        console.error('연령별 방문 통계 로드 오류:', error);
+        ageStats.value = [];
+        genderStats.value = [];
+        totalStatsVisits.value = 0;
+      } finally {
+        isLoadingStats.value = false;
+      }
     };
     
     return {
@@ -675,7 +950,17 @@ export default {
       getDimensionLabel,
       dimensionValues,
       formatReviewDate,
-      initDetailMap
+      initDetailMap,
+      // Stats related
+      ageStats,
+      genderStats,
+      totalStatsVisits,
+      isLoadingStats,
+      ageChartCanvas,
+      totalAgeVisits,
+      malePercentage,
+      femalePercentage,
+      getColorForAge,
     };
   }
 };
@@ -695,7 +980,7 @@ export default {
   font-family: 'Noto Sans KR', 'Nunito', sans-serif;
   color: #333;
   overflow-x: hidden;
-  background-color: #f8f9fa;
+  background-color: #f8f9fa; /* Softer background */
   display: flex;
   flex-direction: column;
 }
@@ -710,7 +995,7 @@ export default {
   width: 95%;
   margin-top: 10px;
   flex: 1;
-  background-color: #f8f9fa;
+  /* background-color: #f8f9fa; Remove if keyword-search has it */
 }
 
 /* 검색 패널 및 결과 패널 컨테이너 */
@@ -739,12 +1024,12 @@ export default {
   background-color: white;
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08); /* Softer shadow */
   height: 100%;
   display: flex;
   flex-direction: column;
   transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 1px solid #eef2f7; /* Lighter border */
 }
 
 .search-panel:hover,
@@ -754,15 +1039,15 @@ export default {
 
 .panel-header {
   padding: 1.2rem 1.5rem;
-  background: linear-gradient(to right, #f8f9fa, #ffffff);
-  border-bottom: 1px solid #e2e8f0;
+  background: #fff; /* Clean white background */
+  border-bottom: 1px solid #eef2f7; /* Lighter border */
   position: relative;
 }
 
 .panel-header::after {
   content: "";
   position: absolute;
-  bottom: 0;
+  bottom: -1px; /* Align with border */
   left: 0;
   width: 100%;
   height: 2px;
@@ -779,12 +1064,12 @@ export default {
 
 .panel-title {
   font-family: 'Noto Sans KR', sans-serif;
-  font-size: 1.3rem;
-  font-weight: 500;
+  font-size: 1.2rem; /* Adjusted size */
+  font-weight: 600; /* Slightly bolder */
   margin: 0;
   text-align: center;
-  color: #2d3748;
-  letter-spacing: 0.5px;
+  color: #34495e; /* Darker, more neutral color */
+  letter-spacing: 0.3px;
   position: relative;
   display: inline-block;
   left: 50%;
@@ -792,16 +1077,18 @@ export default {
 }
 
 .panel-title::after {
+  /* Optional: remove this if the header ::after is preferred */
   content: "";
   position: absolute;
-  bottom: -5px;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(to right, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
-  transform: scaleX(0.3);
+  bottom: -6px; /* Adjusted position */
+  left: 10%; /* Shorter underline */
+  width: 80%;
+  height: 2.5px;
+  background: var(--logo-blue, #48b0e4);
+  border-radius: 1px;
+  transform: scaleX(0.5);
   transform-origin: center;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease-out;
 }
 
 .panel-content {
@@ -826,13 +1113,13 @@ export default {
 }
 
 .search-input-container:focus-within {
-  box-shadow: 0 6px 16px rgba(72, 176, 228, 0.15);
+  box-shadow: 0 5px 15px rgba(var(--logo-blue-rgb, 72, 176, 228), 0.2);
 }
 
 .search-input {
   flex: 1;
-  padding: 12px;
-  border: 1px solid #e9ecef;
+  padding: 12px 15px; /* Increased padding */
+  border: 1px solid #dde2e7; /* Softer border */
   border-right: none;
   border-radius: 8px 0 0 8px;
   font-family: 'Nunito', 'Noto Sans KR', sans-serif;
@@ -845,6 +1132,7 @@ export default {
 .search-input:focus {
   outline: none;
   border-color: var(--logo-blue, #48b0e4);
+  background-color: #fcfdff;
 }
 
 .btn-search {
@@ -862,9 +1150,9 @@ export default {
 }
 
 .btn-search:hover {
-  background: linear-gradient(135deg, var(--primary-dark, #3283ad), var(--logo-green, #5a9d87));
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(72, 176, 228, 0.25);
+  background: linear-gradient(135deg, #3a9cd1, #67a58d); /* Darken on hover */
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .btn-search:active {
@@ -882,9 +1170,9 @@ export default {
 }
 
 .search-tag-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #495057;
+  font-size: 0.9rem; /* Adjusted size */
+  font-weight: 500;
+  color: #5f6b7a;
   margin-right: 0.75rem;
 }
 
@@ -895,14 +1183,14 @@ export default {
 }
 
 .tag-chip {
-  background-color: rgba(72, 176, 228, 0.1);
-  color: var(--logo-blue, #48b0e4);
+  background-color: #edf6ff; /* Lighter, softer blue */
+  color: #3a8bcd; /* Darker blue text for contrast */
   padding: 0.4rem 1rem;
   border-radius: 20px;
-  font-size: 0.9rem;
+  font-size: 0.85rem; /* Adjusted size */
   cursor: pointer;
   transition: all 0.3s ease;
-  border: 1px solid transparent;
+  border: 1px solid #d0e6f8; /* Subtle border */
 }
 
 .tag-chip:hover {
@@ -910,7 +1198,7 @@ export default {
   color: white;
   border-color: var(--logo-blue, #48b0e4);
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(72, 176, 228, 0.2);
+  box-shadow: 0 3px 7px rgba(var(--logo-blue-rgb, 72, 176, 228), 0.25);
 }
 
 /* 로딩 상태 */
@@ -925,12 +1213,12 @@ export default {
 }
 
 .spinner {
-  width: 60px;
-  height: 60px;
-  border: 3px solid rgba(72, 176, 228, 0.1);
+  width: 50px; /* Adjusted size */
+  height: 50px;
+  border: 4px solid rgba(var(--logo-blue-rgb, 72, 176, 228), 0.15); /* Thicker border, adjusted color */
   border-radius: 50%;
   border-top-color: var(--logo-blue, #48b0e4);
-  animation: spin 1s ease-in-out infinite;
+  animation: spin 0.8s linear infinite; /* Faster spin */
   margin-bottom: 1.5rem;
 }
 
@@ -941,7 +1229,7 @@ export default {
 }
 
 .loading-text {
-  font-size: 1.2rem;
+  font-size: 1.1rem; /* Adjusted size */
   color: #495057;
   font-weight: 500;
 }
@@ -971,29 +1259,36 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 4rem 0;
+  padding: 4rem 1rem; /* Added horizontal padding */
   color: #a0aec0;
   text-align: center;
+  background-color: #f9fafb; /* Light background */
+  border-radius: 12px;
+  margin: 1rem 0;
 }
 
 .no-results-icon {
-  color: #a0aec0;
-  margin-bottom: 1rem;
+  color: #cbd5e0; /* Lighter icon color */
+  margin-bottom: 1.25rem;
+}
+.no-results-icon svg {
+  width: 50px; /* Adjusted size */
+  height: 50px;
 }
 
 .no-results-text {
   font-family: 'Noto Sans KR', sans-serif;
-  font-size: 1rem;
-  color: #e2e8f0;
+  font-size: 1.1rem; /* Slightly larger */
+  color: #4a5568; /* Darker text */
   margin: 0 0 0.5rem 0;
+  font-weight: 500;
 }
 
 .no-results-hint {
   font-family: 'Noto Sans KR', sans-serif;
-  font-size: 0.85rem;
-  color: #a0aec0;
+  font-size: 0.9rem;
+  color: #718096; /* Slightly darker hint */
   margin: 0;
-  font-style: italic;
 }
 
 /* 결과 그리드 */
@@ -1007,17 +1302,17 @@ export default {
 .result-card {
   position: relative;
   background-color: white;
-  border-radius: 16px;
+  border-radius: 12px; /* Softer radius */
   overflow: hidden;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.07); /* Refined shadow */
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   cursor: pointer;
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 1px solid #eef2f7; /* Lighter border */
 }
 
 .result-card:hover {
-  transform: translateY(-8px) scale(1.01);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+  transform: translateY(-6px); /* Subtler lift */
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
 
 .result-image-container {
@@ -1039,7 +1334,7 @@ export default {
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(to bottom, transparent 70%, rgba(0, 0, 0, 0.5));
+  background: linear-gradient(to bottom, transparent 60%, rgba(0, 0, 0, 0.6)); /* Darker gradient */
   z-index: 1;
   opacity: 0;
   transition: opacity 0.3s ease;
@@ -1053,11 +1348,11 @@ export default {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
+  transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .result-card:hover .result-image {
-  transform: scale(1.1);
+  transform: scale(1.07); /* Subtler zoom */
 }
 
 .placeholder-image {
@@ -1074,20 +1369,20 @@ export default {
 /* 등수 아이콘 스타일 */
 .result-rank {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 12px; /* Adjusted position */
+  right: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
-  padding: 3px 10px;
+  padding: 4px 10px; /* Adjusted padding */
   background: linear-gradient(135deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
   color: white;
-  border-radius: 12px;
-  font-size: 0.8rem;
+  border-radius: 16px; /* More rounded */
+  font-size: 0.75rem; /* Adjusted size */
   font-weight: 600;
   z-index: 2;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
 }
 
 .result-rank.with-heart {
@@ -1108,13 +1403,13 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.7); /* Slightly more visible */
   transition: all 0.3s ease;
 }
 
 .heart-indicator.active {
   color: var(--logo-coral, #ff8e7f);
-  animation: heartbeat 1s ease-in-out;
+  animation: heartbeat 0.8s ease-in-out;
 }
 
 .heart-indicator svg {
@@ -1127,24 +1422,21 @@ export default {
 }
 
 @keyframes heartbeat {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.2);
-  }
+  0%, 100% { transform: scale(1); }
+  30% { transform: scale(1.25); }
+  60% { transform: scale(1.1); }
 }
 
 .result-info {
-  padding: 1.2rem;
+  padding: 1rem 1.2rem; /* Adjusted padding */
   position: relative;
 }
 
 .result-name {
-  font-size: 1.1rem;
+  font-size: 1.05rem; /* Adjusted size */
   font-weight: 600;
-  color: #333;
-  margin: 0 0 0.5rem 0;
+  color: #34495e; /* Darker, more neutral */
+  margin: 0 0 0.4rem 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1158,10 +1450,21 @@ export default {
 .result-location {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  font-size: 0.85rem;
-  color: #6c757d;
-  margin-bottom: 0.75rem;
+  gap: 0.3rem; /* Adjusted gap */
+  font-size: 0.8rem; /* Adjusted size */
+  color: #7f8c8d; /* Softer grey */
+  margin-bottom: 0.6rem;
+}
+
+.result-visit-count {
+  font-size: 0.8rem;
+  color: #27ae60; /* Greener */
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  background-color: #eafaf1;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
 }
 
 .location-icon {
@@ -1173,36 +1476,37 @@ export default {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.85rem;
-  color: #6c757d;
+  font-size: 0.8rem;
+  color: #7f8c8d;
   margin-bottom: 0.75rem;
   flex-wrap: wrap;
 }
 
 .similarity-label {
   font-weight: 500;
-  color: #6c757d;
+  color: #7f8c8d;
 }
 
 .similarity-bar-container {
   flex-grow: 1;
-  height: 8px;
-  background-color: #e9ecef;
+  height: 7px; /* Slightly thinner */
+  background-color: #e8eaed; /* Lighter background */
   border-radius: 4px;
   overflow: hidden;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+  /* box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05); Removed for flatter look */
 }
 
 .similarity-bar {
   height: 100%;
   background: linear-gradient(90deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
   border-radius: 4px;
-  transition: width 1.2s cubic-bezier(0.165, 0.84, 0.44, 1);
+  transition: width 1s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .similarity-value {
   font-weight: 600;
   color: var(--logo-blue, #48b0e4);
+  font-size: 0.85rem;
 }
 
 /* 결과 카드 태그 */
@@ -1210,23 +1514,23 @@ export default {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
-  margin-top: 0.5rem;
+  margin-top: 0.6rem; /* Adjusted margin */
 }
 
 .result-tag {
-  font-size: 0.75rem;
-  padding: 0.2rem 0.5rem;
-  background-color: rgba(72, 176, 228, 0.1);
-  color: var(--logo-blue, #48b0e4);
+  font-size: 0.7rem; /* Smaller tags */
+  padding: 0.25rem 0.6rem;
+  background-color: #eef2f7; /* Lighter grey */
+  color: #5f6b7a; /* Darker grey text */
   border-radius: 12px;
   transition: all 0.2s ease;
   cursor: pointer;
 }
 
 .result-tag:hover {
-  background-color: var(--logo-blue, #48b0e4);
-  color: white;
-  transform: translateY(-2px);
+  background-color: #dde2e7;
+  color: #34495e;
+  transform: translateY(-1px);
 }
 
 /* 더 불러오기 버튼 */
@@ -1237,49 +1541,49 @@ export default {
 }
 
 .load-more-btn {
-  padding: 12px 24px;
-  background: linear-gradient(135deg, var(--logo-blue, #48b0e4), var(--primary-dark, #3283ad));
+  padding: 10px 24px; /* Adjusted padding */
+  background: linear-gradient(135deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
   color: white;
   border: none;
-  border-radius: 50px;
+  border-radius: 25px; /* More rounded */
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.95rem;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 8px rgba(72, 176, 228, 0.25);
+  box-shadow: 0 4px 10px rgba(var(--logo-blue-rgb, 72, 176, 228), 0.2);
 }
 
 .load-more-btn:hover {
-  background: linear-gradient(135deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
+  background: linear-gradient(135deg, #3a9cd1, #67a58d);
   transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(72, 176, 228, 0.3);
+  box-shadow: 0 6px 12px rgba(var(--logo-blue-rgb, 72, 176, 228), 0.25);
 }
 
 .no-more-results {
-  color: #a0aec0;
-  font-size: 0.95rem;
+  color: #95a5a6; /* Softer grey */
+  font-size: 0.9rem;
 }
 
 /* 결과 카드 설명 영역 */
 .result-description {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px solid #e9ecef;
+  border-top: 1px solid #eef2f7; /* Lighter border */
 }
 
 .description-title {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #495057;
+  color: #5f6b7a; /* Darker grey */
   margin-bottom: 0.25rem;
 }
 
 .description-text {
   font-size: 0.8rem;
-  color: #6c757d;
+  color: #7f8c8d; /* Softer grey */
   margin: 0;
-  line-height: 1.4;
-  max-height: 4.2em;
+  line-height: 1.5; /* Improved line height */
+  max-height: 4.5em; /* 3 lines with 1.5 line height */
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -1290,18 +1594,18 @@ export default {
 
 /* 푸터 */
 .footer {
-  background: linear-gradient(135deg, #2d3748, #1a202c);
-  padding: 2rem;
+  background: #2c3e50; /* Solid dark color */
+  padding: 1.8rem 1rem; /* Adjusted padding */
   text-align: center;
   margin-top: auto;
-  border-top: 1px solid #2d3748;
+  border-top: none; /* Removed border */
 }
 
 .footer p {
   margin: 0;
-  color: white;
-  font-size: 0.95rem;
-  letter-spacing: 0.5px;
+  color: #ecf0f1; /* Lighter text */
+  font-size: 0.9rem;
+  letter-spacing: 0.3px;
 }
 
 /* 모달 오버레이 및 공통 모달 스타일 */
@@ -1311,143 +1615,139 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: rgba(30, 40, 50, 0.65); /* Slightly darker overlay */
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   overflow-y: auto;
-  padding: 2rem 0;
-  backdrop-filter: blur(5px);
+  padding: 2rem; /* Add padding for smaller screens */
+  backdrop-filter: blur(4px); /* Softer blur */
 }
 
+/* --- START: place-detail-modal CSS Refactor --- */
 .place-detail-modal {
-  background-color: white;
-  border-radius: 16px;
+  background-color: #ffffff;
+  border-radius: 12px; /* Softer radius */
   width: 95%;
-  max-width: 1200px;
-  max-height: 90vh;
+  max-width: 1100px; /* Slightly reduced max-width for better proportions */
+  max-height: calc(100vh - 4rem); /* Ensure padding is respected */
   overflow-y: auto;
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); /* Refined shadow */
   display: flex;
   flex-direction: column;
   animation: modalFadeIn 0.3s ease-out;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-@keyframes modalFadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  border: none; /* Removed border for a cleaner look */
 }
 
 .modal-header {
   display: flex;
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  justify-content: space-between; /* Ensure actions are to the right */
+  align-items: center;
+  padding: 1.25rem 1.75rem; /* Adjusted padding */
+  border-bottom: 1px solid #eef2f7; /* Lighter border */
   position: sticky;
   top: 0;
-  background-color: white;
+  background-color: #ffffff;
   z-index: 10;
 }
 
 .modal-title-location {
   display: flex;
-  align-items: center;
+  /* flex-direction: column; */ /* Changed from column */
+  flex-direction: row; /* Stack title and location horizontally */
+  /* align-items: flex-start; */ /* Changed from flex-start */
+  align-items: baseline; /* Align to baseline of text */
   flex: 1;
+  margin-right: 1rem; /* Space before action buttons */
+  gap: 0.75rem; /* Add gap between title and address */
 }
 
 .modal-title-location h3 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.4rem; /* Slightly larger title */
   font-weight: 600;
-  color: #2d3748;
-  font-family: Georgia, 'Times New Roman', Times, serif;
+  color: #2c3e50; /* Dark blue-grey */
+  font-family: 'Noto Sans KR', sans-serif; /* Consistent font */
+  line-height: 1.3;
 }
 
 .modal-location {
-  margin-left: 1.5rem;
-  color: #718096;
-  font-size: 1rem;
+  /* margin-left: 0; Removed as it's stacked now */
+  /* margin-top: 0.25rem; */ /* Removed top margin, gap will handle spacing */
+  color: #7f8c8d; /* Softer grey */
+  font-size: 0.9rem; /* Adjusted size */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 300px;
+  max-width: 100%; /* Allow full width within its container */
 }
 
 .modal-actions {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem; /* Reduced gap */
 }
 
-.close-btn {
+.close-btn, .heart-btn { /* Combined common styles */
   background: none;
   border: none;
-  color: #718096;
   cursor: pointer;
-  padding: 0.5rem;
+  padding: 0.6rem; /* Uniform padding */
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
+  color: #95a5a6; /* Muted icon color */
 }
 
-.close-btn:hover {
-  background-color: #f7fafc;
-  color: #4a5568;
+.close-btn:hover, .heart-btn:hover {
+  background-color: #f4f6f8; /* Subtle hover background */
+  color: #52616B; /* Darker icon on hover */
 }
 
-.heart-btn {
-  background: none;
-  border: none;
-  color: #cbd5e0;
-  cursor: pointer;
-  padding: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: all 0.2s;
+.heart-btn svg {
+  width: 22px; /* Consistent icon size */
+  height: 22px;
 }
-
-.heart-btn:hover {
-  color: var(--logo-coral, #ff8e7f);
-  transform: scale(1.1);
+.close-btn svg {
+  width: 20px; /* Consistent icon size */
+  height: 20px;
 }
 
 .heart-btn.active {
-  color: var(--logo-coral, #ff8e7f);
-  animation: heartbeat 1s ease-in-out;
+  color: var(--logo-coral, #ff715e); /* Brighter coral */
+  /* animation: heartbeat 1s ease-in-out; Already defined elsewhere */
 }
+.heart-btn.active:hover {
+  background-color: #fff0ee; /* Light coral background on hover when active */
+}
+
 
 /* 모달 콘텐츠 영역 */
 .modal-content {
-  padding: 1.5rem;
+  padding: 1.75rem; /* Increased padding */
   display: flex;
   flex-direction: column;
+  gap: 1.75rem; /* Consistent gap between sections */
   overflow-y: auto;
 }
 
 /* 이미지와 지도를 수평으로 나란히 배치 */
 .visual-section {
   display: flex;
-  gap: 20px;
-  margin-bottom: 1.5rem;
+  gap: 1.75rem; /* Consistent gap */
+  /* margin-bottom: 1.5rem; Removed, using gap in modal-content */
 }
 
 .detail-image-container, .detail-map-container {
   flex: 1;
-  height: 400px;
-  border-radius: 12px;
+  height: 380px; /* Adjusted height */
+  border-radius: 10px; /* Softer radius */
   overflow: hidden;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); /* Softer shadow */
+  background-color: #f0f2f5; /* Placeholder background */
 }
 
 .detail-image, .detail-map {
@@ -1455,14 +1755,27 @@ export default {
   height: 100%;
   object-fit: cover;
 }
+.detail-map .kakao-map-error { /* Style for map error message */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background-color: #f0f2f5;
+  color: #666;
+  text-align: center;
+  padding: 20px;
+  font-size: 0.9rem;
+}
+
 
 /* 각 섹션 스타일 */
 .detail-section {
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  border-radius: 12px;
-  background-color: #f8fafc;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  padding: 1.5rem; /* Consistent padding */
+  /* margin-bottom: 1.5rem; Removed, using gap in modal-content */
+  border-radius: 10px; /* Softer radius */
+  background-color: #fdfdfe; /* Slightly off-white background */
+  border: 1px solid #eef2f7; /* Subtle border */
+  /* box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03); Removed for a flatter look, border is enough */
 }
 
 .detail-section:last-child {
@@ -1470,13 +1783,13 @@ export default {
 }
 
 .detail-section h4 {
-  font-size: 1.2rem;
+  font-size: 1.15rem; /* Adjusted size */
   font-weight: 600;
-  color: #2d3748;
+  color: #34495e; /* Dark blue-grey */
   margin: 0 0 1rem 0;
-  border-bottom: 2px solid #e2e8f0;
-  padding-bottom: 0.5rem;
-  font-family: Georgia, 'Times New Roman', Times, serif;
+  border-bottom: 1px solid #dde2e7; /* Lighter, thinner border */
+  padding-bottom: 0.75rem; /* Adjusted padding */
+  font-family: 'Noto Sans KR', sans-serif;
 }
 
 /* 태그 리스트 */
@@ -1487,26 +1800,27 @@ export default {
 }
 
 .tag {
-  background-color: rgba(72, 176, 228, 0.1);
-  color: var(--logo-blue, #48b0e4);
-  font-size: 0.9rem;
-  padding: 0.35rem 0.85rem;
-  border-radius: 50px;
+  background-color: #eaf6ff; /* Lighter blue */
+  color: #2979ff; /* Brighter blue text */
+  font-size: 0.85rem; /* Adjusted size */
+  padding: 0.4rem 0.9rem; /* Adjusted padding */
+  border-radius: 16px; /* Pill shape */
   cursor: pointer;
   transition: all 0.2s ease;
+  font-weight: 500;
 }
 
 .tag:hover {
-  background-color: var(--logo-blue, #48b0e4);
-  color: white;
-  transform: translateY(-2px);
+  background-color: #d1e7fd;
+  color: #1a63d4;
+  transform: translateY(-1px);
 }
 
 /* 설명 텍스트 */
 .detail-description {
-  font-size: 1rem;
-  line-height: 1.7;
-  color: #4a5568;
+  font-size: 0.95rem; /* Adjusted size */
+  line-height: 1.75; /* Improved readability */
+  color: #52616B; /* Softer black */
   margin: 0;
 }
 
@@ -1514,7 +1828,7 @@ export default {
 .detail-dimensions {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.8rem; /* Reduced gap */
 }
 
 .dimension-item {
@@ -1524,30 +1838,32 @@ export default {
 }
 
 .dimension-name {
-  width: 140px;
-  font-size: 0.95rem;
-  color: #4a5568;
+  width: 130px; /* Adjusted width */
+  font-size: 0.9rem;
+  color: #52616B;
+  font-weight: 500;
 }
 
 .dimension-bar-small {
   flex: 1;
-  height: 10px;
-  background-color: #e2e8f0;
-  border-radius: 5px;
+  height: 8px; /* Thinner bar */
+  background-color: #e8eaed; /* Lighter grey */
+  border-radius: 4px;
   overflow: hidden;
 }
 
 .dimension-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
-  border-radius: 5px;
+  background: linear-gradient(90deg, var(--logo-blue, #4fc3f7), var(--logo-green, #81c784)); /* Lighter gradient */
+  border-radius: 4px;
+  transition: width 0.6s ease-out;
 }
 
 .dimension-value {
-  width: 40px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #4a5568;
+  width: 35px; /* Adjusted width */
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #52616B;
   text-align: right;
 }
 
@@ -1555,21 +1871,22 @@ export default {
 .reviews-container {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem; /* Adjusted gap */
 }
 
 .review-item {
   padding: 1.25rem;
-  background-color: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  background-color: #ffffff; /* White background for reviews */
+  border-radius: 8px; /* Softer radius */
+  border: 1px solid #eef2f7; /* Subtle border */
+  /* box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);  Removed shadow */
 }
 
 .review-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.75rem;
+  align-items: flex-start; /* Align items to top for multi-line names */
+  margin-bottom: 0.6rem; /* Reduced margin */
 }
 
 .reviewer-info {
@@ -1579,157 +1896,432 @@ export default {
 
 .reviewer-name {
   font-weight: 600;
-  color: #2d3748;
-  font-size: 1rem;
+  color: #34495e; /* Dark blue-grey */
+  font-size: 0.95rem; /* Adjusted size */
+  margin-bottom: 0.1rem;
 }
 
 .review-date {
-  font-size: 0.85rem;
-  color: #718096;
+  font-size: 0.8rem; /* Adjusted size */
+  color: #95a5a6; /* Muted grey */
 }
 
 .review-rating {
-  color: #a0aec0;
-  font-size: 1.25rem;
+  font-size: 1.1rem; /* Adjusted star size */
+  line-height: 1; /* Ensure stars align well */
 }
 
 .star-filled {
-  color: var(--logo-yellow, #ffd166);
+  color: var(--logo-yellow, #fbc02d); /* Brighter yellow */
 }
 
 .star-empty {
-  color: #e2e8f0;
+  color: #e0e0e0; /* Lighter empty star */
 }
 
 .review-content {
-  font-size: 0.95rem;
-  line-height: 1.6;
-  color: #4a5568;
+  font-size: 0.9rem; /* Adjusted size */
+  line-height: 1.65; /* Improved readability */
+  color: #52616B; /* Softer black */
 }
 
 .modal-footer {
-  padding: 1.25rem 1.5rem;
-  border-top: 1px solid #e2e8f0;
+  padding: 1.25rem 1.75rem; /* Consistent padding */
+  border-top: 1px solid #eef2f7; /* Lighter border */
   display: flex;
   justify-content: flex-end;
-  gap: 1rem;
+  gap: 0.75rem; /* Adjusted gap */
   position: sticky;
   bottom: 0;
-  background-color: white;
+  background-color: #f9fafb; /* Slightly off-white footer */
   z-index: 1;
 }
 
 .cancel-btn {
-  padding: 0.75rem 1.5rem;
-  border-radius: 50px;
+  padding: 0.6rem 1.25rem; /* Adjusted padding */
+  border-radius: 20px; /* Pill shape */
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
-  background-color: #fff;
-  color: #4a5568;
-  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+  background-color: #e9ecef; /* Light grey button */
+  color: #495057; /* Darker text */
+  border: none;
 }
 
 .cancel-btn:hover {
-  background-color: #f7fafc;
+  background-color: #dee2e6; /* Darken on hover */
+  color: #343a40;
 }
+/* --- END: place-detail-modal CSS Refactor --- */
 
 /* 등수 랭킹 컬러 */
 .result-card:nth-child(1) .result-rank {
-  background: linear-gradient(135deg, #ffca2c, #ffab00);
+  background: linear-gradient(135deg, #ffdf70, #ffc107); /* Gold */
 }
 
 .result-card:nth-child(2) .result-rank {
-  background: linear-gradient(135deg, #e0e0e0, #b0b0b0);
+  background: linear-gradient(135deg, #e0e0e0, #b0b0b0); /* Silver */
 }
 
 .result-card:nth-child(3) .result-rank {
-  background: linear-gradient(135deg, #d98936, #b0732f);
+  background: linear-gradient(135deg, #e09b5b, #cd7f32); /* Bronze */
 }
 
+
+/* === 통계 섹션 스타일 === */
+.stats-section {
+  /* background-color: #ffffff; Use .detail-section style */
+  /* border-radius: 12px; Use .detail-section style */
+  /* box-shadow: 0 6px 12px rgba(0, 0, 0, 0.05); Use .detail-section style */
+  /* margin-top: 1.5rem; Use modal-content gap */
+}
+
+.stats-section h4 { /* Already styled by .detail-section h4 */
+  /* font-family: 'Noto Sans KR', sans-serif; */
+  /* font-size: 1.2rem; */
+  /* font-weight: 600; */
+  /* color: #343a40; */
+  /* margin-bottom: 1.5rem; */
+  /* padding-bottom: 0.75rem; */
+  /* border-bottom: 2px solid #e9ecef; */
+  text-align: left; /* Align with other section titles */
+}
+
+.stats-charts {
+  display: flex;
+  gap: 1.75rem; /* Consistent gap */
+  justify-content: space-around;
+  align-items: flex-start;
+  padding: 0.5rem 0 0; /* Reduced top padding as h4 has bottom margin */
+  flex-wrap: wrap;
+}
+
+.chart-container {
+  flex: 1 1 45%;
+  min-width: 280px; /* Adjusted min-width */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  background-color: transparent; /* Changed from #f8f9fa */
+  border-radius: 8px;
+  /* box-shadow: inset 0 1px 3px rgba(0,0,0,0.04); */ /* Subtle inset shadow */
+  /* border: 1px solid #eef2f7; Removed border */
+  min-height: 372px; /* Equalize height with sibling chart container */
+}
+
+.chart-container h5 {
+  font-size: 0.95rem; /* Adjusted size */
+  font-weight: 500;
+  color: #495057;
+  margin-bottom: 1rem; /* Adjusted margin */
+  text-align: center;
+}
+
+.age-chart-wrapper {
+  width: 100%;
+  max-width: 308px; /* Increased from 280px by 10% */
+  height: 308px; /* Increased from 280px by 10% */
+  position: relative;
+}
+
+.age-chart-wrapper canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+
+.no-age-data, .no-gender-data, .no-stats-data {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 120px; /* Reduced height */
+  width: 100%;
+  color: #7f8c8d; /* Softer grey */
+  font-size: 0.85rem;
+  background-color: #f0f2f5; /* Lighter background */
+  border-radius: 6px;
+  padding: 1rem;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+.gender-chart-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding-top: 40px; /* Increased from 20px to push content down further */
+}
+
+.gender-icons-wrapper {
+  display: flex;
+  justify-content: center;
+  gap: 2rem; /* Adjusted gap */
+  margin-bottom: 1.25rem; /* Adjusted margin */
+  width: 100%;
+}
+
+.gender-figure-container {
+  display: flex;
+  gap: 1.5rem; /* Adjusted gap */
+}
+
+.gender-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.icon-container {
+  width: 80px; /* Adjusted size */
+  height: auto;
+  margin-bottom: 0.5rem;
+}
+
+.icon-container svg {
+  width: 100%;
+  height: auto;
+}
+
+.male-icon-svg .icon-background,
+.female-icon-svg .icon-background {
+  fill: #eef2f7; /* Lighter background */
+}
+
+.gender-label-percent {
+  font-size: 0.85rem; /* Adjusted size */
+  font-weight: 500;
+  color: #343a40;
+}
+
+.gender-label-percent .percent-value {
+  font-weight: 700;
+}
+
+.gender-percentage-bar {
+  width: 100%;
+  max-width: 250px; /* Adjusted max width */
+  height: 10px; /* Adjusted height */
+  display: flex;
+  border-radius: 5px;
+  overflow: hidden;
+  background-color: #eef2f7; /* Lighter background */
+  /* box-shadow: inset 0 1px 2px rgba(0,0,0,0.04); */
+}
+
+.male-percentage {
+  background-color: #4c7bd8;
+  height: 100%;
+  transition: width 0.5s ease-in-out;
+}
+
+.female-percentage {
+  background-color: #e5518d;
+  height: 100%;
+  transition: width 0.5s ease-in-out;
+}
+
+.stats-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: #6c757d;
+}
+/* === END 통계 섹션 스타일 === */
+
+
 /* 반응형 조정 */
-@media (max-width: 1100px) {
+@media (max-width: 1100px) { /* Keep this for visual section and dimension name specifically */
   .visual-section {
     flex-direction: column;
+    gap: 1.5rem; /* Gap when stacked */
   }
   
   .detail-image-container, 
   .detail-map-container {
     width: 100%;
-    height: 350px;
+    height: 320px; /* Adjust height when stacked */
   }
   
   .dimension-name {
-    width: 120px;
+    width: 110px; /* Further adjust for medium screens */
   }
 }
 
-@media (max-width: 900px) {
-  .top-section {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-  }
-}
+/* @media (max-width: 900px) { */
+  /* .top-section { */ /* This class is not in KeywordSearch.vue */
+    /* grid-template-columns: 1fr; */
+    /* gap: 1.5rem; */
+  /* } */
+/* } */
 
 @media (max-width: 768px) {
-  .modal-title-location {
-    flex-direction: column;
-    align-items: flex-start;
+  .modal-header {
+    padding: 1rem 1.25rem; /* Smaller padding on mobile */
   }
-  
+  .modal-title-location h3 {
+    font-size: 1.25rem; /* Smaller title on mobile */
+  }
   .modal-location {
-    margin: 0.25rem 0 0 0;
+    font-size: 0.85rem;
   }
-  
-  .review-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
+  .modal-content {
+    padding: 1.25rem; /* Smaller padding */
+    gap: 1.25rem;
   }
-  
+  .visual-section {
+    gap: 1.25rem;
+  }
+  .detail-image-container, .detail-map-container {
+    height: 280px; /* Adjust height for smaller screens */
+  }
+  .detail-section {
+    padding: 1.25rem;
+  }
+  .detail-section h4 {
+    font-size: 1.1rem;
+    padding-bottom: 0.6rem;
+    margin-bottom: 0.8rem;
+  }
+  .tag {
+    font-size: 0.8rem;
+    padding: 0.35rem 0.8rem;
+  }
+  .detail-description {
+    font-size: 0.9rem;
+  }
   .dimension-name {
     width: 100px;
     font-size: 0.85rem;
   }
-  
-  .results-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  .dimension-item {
+    gap: 0.75rem;
+  }
+
+  .results-grid { /* Existing rule, keep */
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); /* Smaller cards on mobile */
+  }
+
+  .stats-charts {
+    flex-direction: column; 
+    align-items: center; 
+    gap: 1.25rem;
+  }
+
+  .chart-container {
+    flex-basis: 100%; /* Full width for each chart container */
+    max-width: 100%; /* Allow full width on mobile */
+    padding: 0.75rem;
+    min-height: 342px; /* Equalize height for mobile */
+  }
+
+  .age-chart-wrapper {
+    max-width: 286px; /* Increased from 260px by 10% */
+    height: 286px; /* Increased from 260px by 10% */
+  }
+
+  .gender-icons-wrapper {
+    gap: 1.5rem; 
+  }
+
+  .icon-container {
+    width: 70px; /* Smaller icons */
+  }
+  .modal-footer {
+    padding: 1rem 1.25rem;
+  }
+  .cancel-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
   }
 }
 
 @media (max-width: 600px) {
-  .results-grid {
+  .results-grid { /* Existing rule, keep */
     grid-template-columns: 1fr;
   }
   
-  .search-input-container {
+  .search-input-container { /* Existing rule, keep */
     flex-direction: column;
   }
   
-  .search-input {
+  .search-input { /* Existing rule, keep */
     border-radius: 8px;
     border-right: 1px solid #e9ecef;
   }
   
-  .btn-search {
+  .btn-search { /* Existing rule, keep */
     border-radius: 8px;
     margin-top: 0.5rem;
+    justify-content: center; /* Center button content */
+  }
+  .modal-overlay {
+    padding: 1rem; /* Reduce overlay padding for small screens */
+  }
+  .place-detail-modal {
+    max-height: calc(100vh - 2rem);
+  }
+  .modal-header {
+    padding: 0.75rem 1rem;
+  }
+  .modal-title-location h3 {
+    font-size: 1.1rem;
+  }
+  .modal-location {
+    font-size: 0.8rem;
+  }
+  .modal-content {
+    padding: 1rem;
+    gap: 1rem;
+  }
+  .visual-section {
+    gap: 1rem;
+  }
+  .detail-image-container, .detail-map-container {
+    height: 220px;
+  }
+  .detail-section {
+    padding: 1rem;
+  }
+  .detail-section h4 {
+    font-size: 1rem;
+  }
+  .dimension-item {
+    flex-direction: column; /* Stack dimension items */
+    align-items: flex-start;
+    gap: 0.3rem;
+  }
+  .dimension-name {
+    width: auto; /* Allow full width */
+    margin-bottom: 0.2rem;
+  }
+  .dimension-bar-small {
+    width: 100%;
+  }
+  .dimension-value {
+    width: auto; /* Allow full width */
+    text-align: left;
+    margin-top: 0.1rem;
   }
 }
 
-@media (max-width: 480px) {
-  .dimension-item {
-    flex-wrap: wrap;
-  }
+/* @media (max-width: 480px) { */ /* Consolidated into 600px or other existing queries */
+  /* .dimension-item { */
+    /* flex-wrap: wrap; */
+  /* } */
   
-  .dimension-name {
-    width: 100%;
-    margin-bottom: 0.25rem;
-  }
+  /* .dimension-name { */
+    /* width: 100%; */
+    /* margin-bottom: 0.25rem; */
+  /* } */
   
-  .dimension-value {
-    width: 40px;
-  }
-}
+  /* .dimension-value { */
+    /* width: 40px; */
+  /* } */
+/* } */
 </style>

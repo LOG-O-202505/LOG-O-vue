@@ -737,12 +737,12 @@ export const searchImagesByKeyword = async (keyword, size = 10, from = 0) => {
     console.log('키워드 검색 시작:', keyword);
     console.log('검색 API 주소:', `${config.ES_API}/travel_places/_search`);
     
-    // 검색 쿼리 구성
+    // 검색 쿼리 구성 - 가중치 적용
     const query = {
       multi_match: {
         query: keyword,
         fields: [
-          "p_name", 
+          "p_name^2",  // 가중치 2 적용
           "p_tags", 
           "p_description", 
           "p_description_en",
@@ -753,6 +753,12 @@ export const searchImagesByKeyword = async (keyword, size = 10, from = 0) => {
       }
     };
     
+    // 중복 필터링을 위해 더 많은 결과 가져오기
+    // from 파라미터를 고려하여 fetchSize 조정 (페이지네이션된 데이터셋 전체를 가져와야 함)
+    // 예를 들어, from = 10, size = 10 이면, 최소 20개의 고유 결과를 확보해야 함
+    // 안전하게 요청된 size의 5배 또는 최소 50개를 가져오도록 설정
+    // const fetchSize = Math.max(size * 5, 50 + from); 
+    
     // config에서 Elasticsearch API URL 사용
     const response = await fetch(`${config.ES_API}/travel_places/_search`, {
       method: 'POST',
@@ -760,8 +766,9 @@ export const searchImagesByKeyword = async (keyword, size = 10, from = 0) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        size: size,
-        from: from,
+        // size: fetchSize, // 여기서는 전체 결과를 가져와서 처리하므로 from은 0으로 고정
+        // from: 0, 
+        size: 10000, // 충분히 큰 값을 설정하여 모든 잠재적 결과 가져오기 (Elasticsearch 기본 한도는 10000)
         query: query,
         _source: [
           "p_id", 
@@ -775,7 +782,8 @@ export const searchImagesByKeyword = async (keyword, size = 10, from = 0) => {
           "p_image", 
           "p_vector",
           "u_age", 
-          "u_gender"
+          "u_gender",
+          "location_data" // 지도 표시에 필요할 수 있는 위치 데이터 포함
         ]
       })
     });
@@ -789,12 +797,113 @@ export const searchImagesByKeyword = async (keyword, size = 10, from = 0) => {
     }
     
     const result = await response.json();
-    console.log('검색 결과 수:', result.hits.hits.length, '총 결과 수:', result.hits.total?.value || 0);
+    let hits = result.hits.hits;
+    
+    // 1. 중복 p_id 제거 (가장 높은 스코어만 유지)
+    const uniqueResultsById = new Map();
+    
+    for (const hit of hits) {
+      const p_id = hit._source.p_id;
+      // p_id가 없거나 유효하지 않은 경우 건너뛰기
+      if (p_id === undefined || p_id === null) {
+        console.warn('유효하지 않은 p_id를 가진 결과 건너뜀:', hit);
+        continue;
+      }
+      
+      if (!uniqueResultsById.has(p_id) || hit._score > uniqueResultsById.get(p_id)._score) {
+        uniqueResultsById.set(p_id, hit);
+      }
+    }
+    
+    // Map에서 값들만 추출하여 배열로 변환
+    const uniqueResults = Array.from(uniqueResultsById.values());
+    
+    // 점수 기준 내림차순 정렬
+    uniqueResults.sort((a, b) => b._score - a._score);
+
+    // 각 unique p_id에 대한 총 방문 횟수 가져오기
+    const pIdsToFetchCountsFor = uniqueResults.map(hit => hit._source.p_id).filter(id => id !== undefined && id !== null);
+
+    if (pIdsToFetchCountsFor.length > 0) {
+      const countQuery = {
+        size: 0, // 집계만 필요
+        query: {
+          terms: {
+            p_id: pIdsToFetchCountsFor
+          }
+        },
+        aggs: {
+          visits_per_pid: {
+            terms: {
+              field: "p_id",
+              size: pIdsToFetchCountsFor.length // 모든 p_id 커버
+            }
+          }
+        }
+      };
+
+      try {
+        const countResponse = await fetch(`${config.ES_API}/travel_places/_search`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(countQuery)
+        });
+
+        if (countResponse.ok) {
+          const countData = await countResponse.json();
+          const visitCountsMap = new Map();
+          if (countData.aggregations && countData.aggregations.visits_per_pid && countData.aggregations.visits_per_pid.buckets) {
+            countData.aggregations.visits_per_pid.buckets.forEach(bucket => {
+              visitCountsMap.set(bucket.key, bucket.doc_count);
+            });
+          }
+          // uniqueResults에 visitCount 추가
+          uniqueResults.forEach(hit => {
+            const p_id = hit._source.p_id;
+            hit._source.visitCount = visitCountsMap.get(p_id) || 0;
+          });
+        } else {
+          console.error('p_id별 방문 횟수 조회 실패:', await countResponse.text());
+          uniqueResults.forEach(hit => { hit._source.visitCount = 0; }); // 실패 시 0으로 초기화
+        }
+      } catch (aggError) {
+        console.error('p_id별 방문 횟수 집계 중 오류:', aggError);
+        uniqueResults.forEach(hit => { hit._source.visitCount = 0; }); // 오류 시 0으로 초기화
+      }
+    } else {
+      // p_id가 없는 경우 (이론적으로 uniqueResults가 비어있을 때)
+      uniqueResults.forEach(hit => {
+        hit._source.visitCount = 0;
+      });
+    }
+    
+    // 2. 점수 정규화 (0-1 범위로)
+    if (uniqueResults.length > 0) {
+      const maxScore = uniqueResults[0]._score; // 이미 정렬되어 있으므로 첫 항목이 최대값
+      if (maxScore > 0) { // 0으로 나누는 것 방지
+        uniqueResults.forEach(hit => {
+          hit._score = hit._score / maxScore; // 정규화
+        });
+      } else {
+        // 모든 점수가 0이거나 음수인 경우 (실제로는 드묾)
+        uniqueResults.forEach(hit => {
+          hit._score = 0; // 안전하게 0으로 설정
+        });
+      }
+    }
+    
+    const totalUniqueResults = uniqueResults.length;
+    
+    // 페이지네이션 적용 (from과 size를 이용하여 해당 페이지의 결과만 반환)
+    const paginatedResults = uniqueResults.slice(from, from + size);
+    
+    console.log('중복 제거 및 정규화 후 반환될 결과 수 (페이지네이션 적용):', paginatedResults.length);
+    console.log('총 고유 결과 수 (페이지네이션 전):', totalUniqueResults);
     
     // 결과와 함께 총 결과 수 반환
     return {
-      hits: result.hits.hits,
-      total: result.hits.total?.value || result.hits.hits.length
+      hits: paginatedResults,
+      total: totalUniqueResults // 고유 p_id 기준 총 개수
     };
   } catch (error) {
     console.error('키워드 검색 오류 타입:', error.name);
