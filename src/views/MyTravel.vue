@@ -169,9 +169,7 @@
           <!-- 시군구 상세 지도 -->
           <div class="detail-map-container" ref="detailMapContainer" v-show="currentMapLevel === 'sig'">
             <div class="detail-map-header">
-              <button class="back-button" @click="resetToCtprvnMap">
-                <span class="back-icon">←</span> 이전 지도로 돌아가기
-              </button>
+              <!-- 뒤로가기 버튼 제거 -->
             </div>
 
             <!-- 방문 빈도 범례 -->
@@ -204,6 +202,11 @@
                 </div>
               </div>
             </div>
+            
+            <!-- 뒤로가기 버튼을 왼쪽 하단에 배치 -->
+            <button class="back-button bottom-left-back-button" @click="resetToCtprvnMap">
+              <span class="back-icon">←</span> 이전 지도로 돌아가기
+            </button>
           </div>
 
           <!-- 지역 호버 툴팁 -->
@@ -2951,5 +2954,13 @@ export default {
   font-size: 1.1rem;
   color: #4299e1;
   text-align: center;
+}
+
+/* 뒤로가기 버튼 왼쪽 하단 스타일 */
+.bottom-left-back-button {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  z-index: 10;
 }
 </style>
