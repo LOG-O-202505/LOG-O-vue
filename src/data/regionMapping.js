@@ -207,6 +207,32 @@ const regionMapping = {
     ]
   },
 
+  // 강원특별자치도
+  "42": {
+    name: "강원특별자치도",
+    engName: "Gangwon-do",
+    code: "42",
+    children: [
+      { code: "42110", name: "춘천시", engName: "Chuncheon-si" },
+      { code: "42130", name: "원주시", engName: "Wonju-si" },
+      { code: "42150", name: "강릉시", engName: "Gangneung-si" },
+      { code: "42170", name: "동해시", engName: "Donghae-si" },
+      { code: "42190", name: "태백시", engName: "Taebaek-si" },
+      { code: "42210", name: "속초시", engName: "Sokcho-si" },
+      { code: "42230", name: "삼척시", engName: "Samcheok-si" },
+      { code: "42720", name: "홍천군", engName: "Hongcheon-gun" },
+      { code: "42730", name: "횡성군", engName: "Hoengseong-gun" },
+      { code: "42750", name: "영월군", engName: "Yeongwol-gun" },
+      { code: "42760", name: "평창군", engName: "Pyeongchang-gun" },
+      { code: "42770", name: "정선군", engName: "Jeongseon-gun" },
+      { code: "42780", name: "철원군", engName: "Cheorwon-gun" },
+      { code: "42790", name: "화천군", engName: "Hwacheon-gun" },
+      { code: "42810", name: "인제군", engName: "Inje-gun" },
+      { code: "42820", name: "고성군", engName: "Goseong-gun" },
+      { code: "42830", name: "양양군", engName: "Yangyang-gun" }
+    ]
+  },
+
   // 충청북도
   "43": {
     name: "충청북도",
