@@ -807,27 +807,63 @@ export const searchImagesByKeyword = async (keyword, size = 10, from = 0) => {
     console.log('키워드 검색 시작:', keyword);
     console.log('검색 API 주소:', `${config.ES_API}/travel_places/_search`);
     
-    // 검색 쿼리 구성 - 가중치 적용
+    // 검색 쿼리 구성 - 향상된 매칭과 가중치 적용
     const query = {
       multi_match: {
         query: keyword,
-        fields: [
-          "p_name^2",  // 가중치 2 적용
+        fields: [ // p_name^2 제거됨
           "p_tags", 
           "p_description", 
           "p_description_en",
           "p_address"
         ],
         type: "best_fields",
-        operator: "or"
+        operator: "or",
+        fuzziness: "AUTO",         // 유사한 단어 매칭 허용
+        minimum_should_match: "50%", // 검색어의 최소 50%가 일치해야 함
+        tie_breaker: 0.3           // 다중 필드 매칭 시 점수 계산에 사용
       }
     };
     
-    // 중복 필터링을 위해 더 많은 결과 가져오기
-    // from 파라미터를 고려하여 fetchSize 조정 (페이지네이션된 데이터셋 전체를 가져와야 함)
-    // 예를 들어, from = 10, size = 10 이면, 최소 20개의 고유 결과를 확보해야 함
-    // 안전하게 요청된 size의 5배 또는 최소 50개를 가져오도록 설정
-    // const fetchSize = Math.max(size * 5, 50 + from); 
+    // 향상된 검색 요청 구성 - 중복 p_id 처리를 Elasticsearch 수준에서 처리
+    const searchBody = {
+      size: size,        // 페이지네이션을 위한 size
+      from: from,        // 페이지네이션을 위한 from
+      query: query,
+      collapse: {        // p_id 기준으로 결과 접기 (중복 제거)
+        field: "p_id",
+        inner_hits: {
+          name: "most_relevant", // 이 이름은 inner_hits 결과 참조 시 사용됨
+          size: 0        // inner_hits의 실제 내용은 필요 없고 count만 필요 (하지만 이 count는 메인 쿼리 필터링됨)
+        }
+      },
+      aggs: {            // p_id 별 전체 문서 수 집계 (이것이 진짜 visitCount가 됨)
+        "p_id_count": {
+          "terms": {
+            "field": "p_id",
+            "size": 10000 // 충분히 큰 값으로 설정하여 모든 p_id 커버
+          }
+        }
+      },
+      sort: [            // 점수 기준 정렬
+        { "_score": "desc" }
+      ],
+      _source: [         // 필요한 필드만 반환
+        "p_id", 
+        "p_name", 
+        "p_address", 
+        "p_region", 
+        "p_sig", 
+        "p_tags", 
+        "p_description", 
+        "p_description_en",
+        "p_image", 
+        "p_vector",
+        "u_age", 
+        "u_gender"
+        // "location_data" 필드는 현재 _source 목록에 없으므로, 필요 시 추가 고려
+      ]
+    };
     
     // config에서 Elasticsearch API URL 사용
     const response = await fetch(`${config.ES_API}/travel_places/_search`, {
@@ -835,27 +871,7 @@ export const searchImagesByKeyword = async (keyword, size = 10, from = 0) => {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        // size: fetchSize, // 여기서는 전체 결과를 가져와서 처리하므로 from은 0으로 고정
-        // from: 0, 
-        size: 10000, // 충분히 큰 값을 설정하여 모든 잠재적 결과 가져오기 (Elasticsearch 기본 한도는 10000)
-        query: query,
-        _source: [
-          "p_id", 
-          "p_name", 
-          "p_address", 
-          "p_region", 
-          "p_sig", 
-          "p_tags", 
-          "p_description", 
-          "p_description_en",
-          "p_image", 
-          "p_vector",
-          "u_age", 
-          "u_gender",
-          "location_data" // 지도 표시에 필요할 수 있는 위치 데이터 포함
-        ]
-      })
+      body: JSON.stringify(searchBody)
     });
     
     console.log('검색 응답 상태:', response.status, response.statusText);
@@ -867,113 +883,41 @@ export const searchImagesByKeyword = async (keyword, size = 10, from = 0) => {
     }
     
     const result = await response.json();
-    let hits = result.hits.hits;
+    console.log('Elasticsearch 검색 결과:', JSON.parse(JSON.stringify(result))); // 응답 전체 로깅
     
-    // 1. 중복 p_id 제거 (가장 높은 스코어만 유지)
-    const uniqueResultsById = new Map();
+    const hits = result.hits.hits;
     
-    for (const hit of hits) {
-      const p_id = hit._source.p_id;
-      // p_id가 없거나 유효하지 않은 경우 건너뛰기
-      if (p_id === undefined || p_id === null) {
-        console.warn('유효하지 않은 p_id를 가진 결과 건너뜀:', hit);
-        continue;
-      }
-      
-      if (!uniqueResultsById.has(p_id) || hit._score > uniqueResultsById.get(p_id)._score) {
-        uniqueResultsById.set(p_id, hit);
-      }
-    }
-    
-    // Map에서 값들만 추출하여 배열로 변환
-    const uniqueResults = Array.from(uniqueResultsById.values());
-    
-    // 점수 기준 내림차순 정렬
-    uniqueResults.sort((a, b) => b._score - a._score);
-
-    // 각 unique p_id에 대한 총 방문 횟수 가져오기
-    const pIdsToFetchCountsFor = uniqueResults.map(hit => hit._source.p_id).filter(id => id !== undefined && id !== null);
-
-    if (pIdsToFetchCountsFor.length > 0) {
-      const countQuery = {
-        size: 0, // 집계만 필요
-        query: {
-          terms: {
-            p_id: pIdsToFetchCountsFor
-          }
-        },
-        aggs: {
-          visits_per_pid: {
-            terms: {
-              field: "p_id",
-              size: pIdsToFetchCountsFor.length // 모든 p_id 커버
-            }
-          }
-        }
-      };
-
-      try {
-        const countResponse = await fetch(`${config.ES_API}/travel_places/_search`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(countQuery)
-        });
-
-        if (countResponse.ok) {
-          const countData = await countResponse.json();
-          const visitCountsMap = new Map();
-          if (countData.aggregations && countData.aggregations.visits_per_pid && countData.aggregations.visits_per_pid.buckets) {
-            countData.aggregations.visits_per_pid.buckets.forEach(bucket => {
-              visitCountsMap.set(bucket.key, bucket.doc_count);
-            });
-          }
-          // uniqueResults에 visitCount 추가
-          uniqueResults.forEach(hit => {
-            const p_id = hit._source.p_id;
-            hit._source.visitCount = visitCountsMap.get(p_id) || 0;
-          });
-        } else {
-          console.error('p_id별 방문 횟수 조회 실패:', await countResponse.text());
-          uniqueResults.forEach(hit => { hit._source.visitCount = 0; }); // 실패 시 0으로 초기화
-        }
-      } catch (aggError) {
-        console.error('p_id별 방문 횟수 집계 중 오류:', aggError);
-        uniqueResults.forEach(hit => { hit._source.visitCount = 0; }); // 오류 시 0으로 초기화
-      }
-    } else {
-      // p_id가 없는 경우 (이론적으로 uniqueResults가 비어있을 때)
-      uniqueResults.forEach(hit => {
-        hit._source.visitCount = 0;
+    // p_id별 전체 방문 횟수(visitCount)를 위한 맵 생성 (aggregations 사용)
+    const visitCountsMap = new Map();
+    if (result.aggregations && result.aggregations.p_id_count && result.aggregations.p_id_count.buckets) {
+      result.aggregations.p_id_count.buckets.forEach(bucket => {
+        visitCountsMap.set(bucket.key, bucket.doc_count); // bucket.key는 p_id, bucket.doc_count는 해당 p_id의 전체 문서 수
       });
     }
-    
-    // 2. 점수 정규화 (0-1 범위로)
-    if (uniqueResults.length > 0) {
-      const maxScore = uniqueResults[0]._score; // 이미 정렬되어 있으므로 첫 항목이 최대값
-      if (maxScore > 0) { // 0으로 나누는 것 방지
-        uniqueResults.forEach(hit => {
-          hit._score = hit._score / maxScore; // 정규화
-        });
+    console.log('Aggregation-based visit counts map:', visitCountsMap);
+
+    // 각 hit에 실제 visitCount 속성 추가 및 점수 정규화
+    hits.forEach(hit => {
+      const p_id = hit._source.p_id;
+      // aggregations에서 가져온 실제 전체 방문 횟수로 설정
+      hit._source.visitCount = visitCountsMap.get(p_id) || 0; 
+      
+      // 점수 정규화 (0-1 범위로)
+      if (result.hits.max_score > 0) {
+        hit._score = hit._score / result.hits.max_score;
       } else {
-        // 모든 점수가 0이거나 음수인 경우 (실제로는 드묾)
-        uniqueResults.forEach(hit => {
-          hit._score = 0; // 안전하게 0으로 설정
-        });
+        hit._score = 0;
       }
-    }
+    });
     
-    const totalUniqueResults = uniqueResults.length;
+    const totalResults = result.hits.total.value || 0; // 메인 쿼리와 일치하는 고유 p_id의 수
     
-    // 페이지네이션 적용 (from과 size를 이용하여 해당 페이지의 결과만 반환)
-    const paginatedResults = uniqueResults.slice(from, from + size);
+    console.log('최종 처리된 검색 결과 (hits):', JSON.parse(JSON.stringify(hits)));
+    console.log('메인 쿼리와 일치하는 고유 장소 수 (totalResults):', totalResults);
     
-    console.log('중복 제거 및 정규화 후 반환될 결과 수 (페이지네이션 적용):', paginatedResults.length);
-    console.log('총 고유 결과 수 (페이지네이션 전):', totalUniqueResults);
-    
-    // 결과와 함께 총 결과 수 반환
     return {
-      hits: paginatedResults,
-      total: totalUniqueResults // 고유 p_id 기준 총 개수
+      hits: hits,
+      total: totalResults 
     };
   } catch (error) {
     console.error('키워드 검색 오류 타입:', error.name);
