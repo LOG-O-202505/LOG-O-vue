@@ -2362,6 +2362,10 @@ export async function ImgToPayment(receiptFile) {
   
   console.log('API Service: OCR 결과:', parsedText);
   
+  // 데이터 전처리: 특정 특수 문자 제거
+  const processedText = parsedText.replace(/[*•(){}[\]]/g, ''); // Corrected regex
+  console.log('API Service: 전처리된 OCR 결과:', processedText);
+
   console.log('API Service: AI 모델로 영수증 분석 시작 (OCR_basic)...');
   const aiResponse = await fetch('http://localhost:11434/api/generate', {
     method: 'POST',
@@ -2370,7 +2374,7 @@ export async function ImgToPayment(receiptFile) {
     },
     body: JSON.stringify({
       model: 'OCR_basic',
-      prompt: "다음 영수증 OCR 데이터를 분석하여 결제 장소, 시간, 최종 금액을 추출해주세요. 반드시 JSON 배열 형식으로만 응답하고, 마크다운 서식이나 설명은 절대 포함하지 마세요: " + parsedText,
+      prompt: "다음 영수증 OCR 데이터를 분석하여 결제 장소, 시간, 최종 금액을 추출해주세요. 반드시 JSON 배열 형식으로만 응답하고, 마크다운 서식이나 설명은 절대 포함하지 마세요: " + processedText, // 전처리된 텍스트 사용
       stream: false,
     }),
   });
