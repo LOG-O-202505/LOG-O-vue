@@ -2715,7 +2715,8 @@ export default {
           testDataInputs.value.p_id,
           testDataInputs.value.u_id,
           testDataInputs.value.u_age,
-          testDataInputs.value.u_gender
+          testDataInputs.value.u_gender,
+          verifyingItemInfo.value.location || verifyingItemInfo.value.place_name || verifyingItemInfo.value.address_name || '' // 새로 추가된 원본 주소 파라미터
         );
         
         if (!esResponse || !esResponse._id) {

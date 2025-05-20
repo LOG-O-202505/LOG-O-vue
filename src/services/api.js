@@ -453,23 +453,25 @@ export const findRegionInfoFromLocation = (locationString) => {
 export const saveToElasticsearch = async (
   imageId,
   name,
-  location,
+  location, // This can be the original Kakao address or manually entered text
   tags,
   description,
   imageBase64,
   analysisResult,
   featuresVector,
-  locationData = null,
+  locationData = null, // This will contain coordinates and results from enhanced reverseGeocode
   p_id = 1,
   u_id = 1,
   u_age = 20,
-  u_gender = 'M'
+  u_gender = 'M',
+  originalAddress = '' // New parameter for the original address string
 ) => {
   try {
     console.log('=== Elasticsearch 저장 데이터 로깅 시작 ===');
     console.log('이미지 ID:', imageId);
     console.log('이미지 이름:', name);
-    console.log('위치 정보 (텍스트):', location);
+    console.log('원본 위치 정보 (originalAddress 파라미터):', originalAddress);
+    console.log('기존 위치 정보 (location 파라미터):', location);
     console.log('태그:', tags);
     console.log('설명:', description);
     
@@ -514,99 +516,66 @@ export const saveToElasticsearch = async (
     // 지역 및 시군구 코드 변수 초기화
     let regionCode = "00"; // 기본값
     let sigCode = "00000"; // 기본값
-    let p_address = location || ''; // 기본 주소는 location 텍스트
     
-    // 처리 방식에 따라 다른 로직 적용
+    // p_address 우선순위:
+    // 1. originalAddress 파라미터 (가장 우선)
+    // 2. locationData.address.display_name (역지오코딩 결과 중 가장 상세한 전체 주소)
+    // 3. location 파라미터 (기존 동작, Kakao 검색결과의 place_name 또는 수동입력 location)
+    // 4. locationData.address의 조합 (역지오코딩 컴포넌트 조합)
+    let p_address_to_save = originalAddress || '';
+
     if (locationData) {
-      console.log('LocationData 정보:', locationData);
+      // console.log('LocationData 정보 (from extractGeoLocationData/reverseGeocode):', locationData); // 이전 로그
+      console.log('LocationData received by saveToElasticsearch:', JSON.parse(JSON.stringify(locationData))); // 수정된 로그 (객체 내용을 더 잘 보기 위함)
       
-      // 1. TripPlan에서 전달한 구조화된 locationInfo가 있는 경우 (이미 regionInfo 포함)
-      if (locationData.province_code) {
-        console.log('구조화된 위치 정보 사용 (TripPlan에서 전달)');
-        // 이미 구조화된 데이터가 있는 경우
-        regionCode = locationData.province_code || "00";
-        sigCode = locationData.city_code || "00000";
-        p_address = locationData.full_text || location;
+      // locationData.address는 reverseGeocode에서 가장 잘 분석된 주소 정보를 담고 있어야 함
+      // locationData.regionInfo는 해당 주소 정보로부터 매핑된 코드 정보를 담고 있어야 함
+      if (locationData.address && locationData.address.display_name && !p_address_to_save) {
+        p_address_to_save = locationData.address.display_name;
       }
-      // 2. locationData에 위도/경도 정보가 있는 경우 - 역지오코딩 실행
-      else if (locationData.latitude && locationData.longitude) {
-        console.log('좌표 정보로 역지오코딩 실행');
-        const geoResult = await reverseGeocode(locationData.latitude, locationData.longitude);
-        
-        if (geoResult) {
-          if (geoResult.regionInfo) {
-            regionCode = geoResult.regionInfo.province_code || "00";
-            sigCode = geoResult.regionInfo.city_code || "00000";
-          }
-          
-          // Nominatim에서 반환한 주소 정보 우선 사용
-          if (geoResult.display_name) {
-            p_address = geoResult.display_name;
-          } else {
-            // 주소 컴포넌트 개별적으로 조합
-            p_address = [
-              geoResult.city, 
-              geoResult.borough, 
-              geoResult.quarter || geoResult.suburb, 
-              geoResult.road
-            ].filter(Boolean).join(' ');
-          }
-          
-          console.log('역지오코딩 성공:', regionCode, sigCode, p_address);
-        }
+
+      // 수정된 로직: locationData에 직접 코드가 있는지 먼저 확인
+      if (locationData.province_code && locationData.city_code) {
+        console.log('Using direct province_code and city_code from locationData.');
+        regionCode = locationData.province_code;
+        sigCode = locationData.city_code;
       }
-      // 3. 위치 정보에 카카오 API에서 온 좌표가 있는 경우
-      else if (locationData.y && locationData.x) {
-        console.log('카카오 좌표 정보로 역지오코딩 실행');
-        const geoResult = await reverseGeocode(locationData.y, locationData.x);
-        
-        if (geoResult) {
-          if (geoResult.regionInfo) {
-            regionCode = geoResult.regionInfo.province_code || "00";
-            sigCode = geoResult.regionInfo.city_code || "00000";
-          }
-          
-          p_address = geoResult.display_name || locationData.address_name || location;
-          console.log('역지오코딩 성공:', regionCode, sigCode, p_address);
-        }
-      }
-      // 4. locationData의 regionInfo 필드 사용
+      // Fallback 1: locationData에 regionInfo 객체가 있는 경우 (기존 또는 다른 경로 호환성)
       else if (locationData.regionInfo) {
-        console.log('RegionInfo 필드 사용');
+        console.log('Using regionInfo from locationData (Fallback 1).');
         regionCode = locationData.regionInfo.province_code || "00";
         sigCode = locationData.regionInfo.city_code || "00000";
-        p_address = locationData.full_text || location;
       }
-      // 5. locationData.address 객체가 있는 경우 (Nominatim 응답 구조와 유사)
+      // Fallback 2: locationData.address 객체를 사용하여 코드 재매핑 시도
       else if (locationData.address) {
-        console.log('주소 객체로 역지오코딩 정보 추출');
-        
-        // 주소 객체에서 정보 추출
-        const address = {
-          province: locationData.address.city || locationData.address.province || '',
-          city: locationData.address.borough || '',
-          quarter: locationData.address.quarter || locationData.address.suburb || '',
-          road: locationData.address.road || ''
-        };
-        
-        // 지역 코드 매핑
-        const mappedRegion = mapAddressToRegionCode(address);
-        regionCode = mappedRegion.province_code || "00";
-        sigCode = mappedRegion.city_code || "00000";
-        
-        // 주소 생성
-        p_address = locationData.display_name || 
-                    [address.province, address.city, address.quarter, address.road]
-                      .filter(Boolean).join(' ');
+        console.log('Using locationData.address to re-map region codes (Fallback 2):', locationData.address);
+        const tempRegionInfo = mapAddressToRegionCode({
+            province: locationData.address.province || locationData.address.city,
+            city: locationData.address.borough || locationData.address.quarter || locationData.address.suburb || locationData.address.city // city도 포함하여 borough 등이 없을 때 대비
+        });
+        if (tempRegionInfo) {
+            regionCode = tempRegionInfo.province_code || regionCode;
+            sigCode = tempRegionInfo.city_code || sigCode;
+        } else {
+          console.log('mapAddressToRegionCode returned null or no codes from locationData.address during Fallback 2.');
+        }
+      } else {
+        console.log('locationData present, but no direct codes, no regionInfo, and no address for re-mapping.');
       }
+      
+       // p_address_to_save가 여전히 비어있으면 location (기존의 Kakao 장소이름/수동입력) 사용
+      if (!p_address_to_save) {
+        p_address_to_save = location || '';
+      }
+
     } else {
-      // 6. 텍스트 기반 위치 정보로부터 지역 정보 추출 시도
-      console.log('텍스트 기반 위치 정보에서 지역 정보 추출 시도');
-      const extractedInfo = findRegionInfoFromLocation(location);
-      if (extractedInfo && extractedInfo.regionInfo) {
-        regionCode = extractedInfo.regionInfo.province_code || "00";
-        sigCode = extractedInfo.regionInfo.city_code || "00000";
-        p_address = location;
+      // locationData가 아예 없는 경우, 기존 location 텍스트로 지역정보 추출 시도
+      console.log('텍스트 기반 위치 정보에서 지역 정보 추출 시도 (locationData 없음)');
+       if (!p_address_to_save) p_address_to_save = location || ''; // 주소 설정
+      const extractedInfo = findRegionInfoFromLocation(location); // location은 originalAddress 또는 name일 수 있음
+      if (extractedInfo && extractedInfo.province_code) { // findRegionInfoFromLocation은 직접 province_code 등을 반환함
+        regionCode = extractedInfo.province_code || "00";
+        sigCode = extractedInfo.city_code || "00000";
       }
     }
     
@@ -619,7 +588,7 @@ export const saveToElasticsearch = async (
     // 로깅
     console.log('최종 지역 코드:', regionCode);
     console.log('최종 시군구 코드:', sigCode);
-    console.log('최종 주소:', p_address);
+    console.log('최종 주소:', p_address_to_save);
 
     // 영어 설명 추출 (light_2 모델을 통해 생성된 description)
     let englishDescription = '';
@@ -632,7 +601,7 @@ export const saveToElasticsearch = async (
     const document = {
       p_id: p_id, // 사용자 입력 p_id 사용
       p_name: name, // 카카오 지도에서의 여행지 이름
-      p_address: p_address, // 카카오에서 가져오는 여행지의 실제 Full 주소
+      p_address: p_address_to_save, // 최종 결정된 주소 저장
       p_region: regionCode, // 여행 지역 코드 (숫자 2자리)
       p_sig: sigCode, // 여행 시군구 코드 (숫자 5자리)
       p_tags: tags, // 이미지 키워드 분석 결과에서 추출
@@ -1023,120 +992,143 @@ export const searchImagesByKeyword = async (keyword, size = 10, from = 0) => {
 export const reverseGeocode = async (latitude, longitude) => {
   try {
     console.log(`위도(${latitude}), 경도(${longitude})에 대한 역지오코딩 시작 (Google API)`);
-    
-    // Google Geocoding API 요청
     const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&language=ko&key=${config.GOOGLE_MAPS_API_KEY}`;
-    
     const response = await fetch(url);
-    
+
     if (!response.ok) {
       throw new Error('Google 역지오코딩 API 호출 실패');
     }
-    
+
     const data = await response.json();
-    console.log('Google 역지오코딩 결과:', data);
-    
-    // 결과가 없거나 상태가 OK가 아닌 경우
+    console.log('Google 역지오코딩 전체 결과:', JSON.stringify(data, null, 2));
+
     if (data.status !== 'OK' || !data.results || data.results.length === 0) {
-      throw new Error(`Google 역지오코딩 API 응답 오류: ${data.status}`);
+      console.error(`Google 역지오코딩 API 응답 오류 또는 결과 없음: ${data.status}`);
+      return null;
     }
-    
-    // 가장 관련성 높은 결과(첫 번째 결과) 사용
-    const result = data.results[0];
-    const addressComponents = result.address_components;
-    
-    // Google 응답에서 주소 컴포넌트 추출
-    const address = {
-      country: '',
-      province: '',  // 광역시/도 정보
-      city: '',      // 특별시/광역시/시 정보
-      borough: '',   // 구 정보
-      quarter: '',   // 동/읍/면 정보
-      suburb: '',    // 동네 정보
-      road: '',      // 도로명
-      display_name: result.formatted_address || ''
+
+    let bestResult = {
+      address: null, // 베스트 파싱된 주소 컴포넌트 객체
+      regionInfo: null, // 베스트 매핑된 regionInfo
+      display_name: '' // 베스트 결과의 formatted_address
     };
-    
-    // 주소 컴포넌트 매핑
-    for (const component of addressComponents) {
-      const types = component.types;
+
+    for (const googleApiResult of data.results) {
+      const currentParsedAddress = {
+        country: '',
+        province: '',
+        city: '',
+        borough: '',
+        quarter: '',
+        suburb: '',
+        road: '',
+        display_name: googleApiResult.formatted_address || ''
+      };
+
+      for (const component of googleApiResult.address_components) {
+        const types = component.types;
+        if (types.includes('country')) currentParsedAddress.country = component.long_name;
+        else if (types.includes('administrative_area_level_1')) currentParsedAddress.province = component.long_name;
+        else if (types.includes('locality')) currentParsedAddress.city = component.long_name; // locality 우선
+        else if (types.includes('administrative_area_level_2') && !currentParsedAddress.city) currentParsedAddress.city = component.long_name; // locality 없으면 admin_area_2
+        else if (types.includes('sublocality_level_1')) currentParsedAddress.borough = component.long_name; // 구 정보
+        else if (types.includes('sublocality_level_2')) currentParsedAddress.quarter = component.long_name; // 동/읍/면
+        else if (types.includes('sublocality_level_3')) currentParsedAddress.suburb = component.long_name; // 더 상세한 동네
+        else if (types.includes('route')) currentParsedAddress.road = component.long_name;
+      }
       
-      if (types.includes('country')) {
-        address.country = component.long_name;
+      console.log('현재 파싱된 주소 컴포넌트:', currentParsedAddress);
+
+      // 제주도 특별 처리: '제주시' 또는 '서귀포시'가 city로 잡혔는데 province가 없거나 '제주특별자치도'가 아니면 강제 설정
+      if ((currentParsedAddress.city === '제주시' || currentParsedAddress.city === '서귀포시') && 
+          (currentParsedAddress.province === '' || currentParsedAddress.province !== '제주특별자치도')) {
+        console.log(`제주도 특별 처리 적용: ${currentParsedAddress.city} -> province를 제주특별자치도로 설정`);
+        currentParsedAddress.province = '제주특별자치도';
       }
-      else if (types.includes('administrative_area_level_1')) {
-        address.province = component.long_name; // 도/특별시/광역시
+      
+      // 서울특별시 등 특별/광역시는 province와 city가 동일 이름일 수 있으므로, city가 비었으면 province 값으로 채움
+      if (currentParsedAddress.province && !currentParsedAddress.city &&
+          (currentParsedAddress.province.includes('특별시') || currentParsedAddress.province.includes('광역시') || currentParsedAddress.province.includes('특별자치시'))) {
+        console.log(`특별/광역시 처리: ${currentParsedAddress.province} -> city를 province 값으로 설정`);
+        currentParsedAddress.city = currentParsedAddress.province;
       }
-      else if (types.includes('locality') || types.includes('administrative_area_level_2')) {
-        // 시/군/구 판별 (행정구역 레벨에 따라)
-        if (types.includes('locality')) {
-          address.city = component.long_name; // 시
-        } else {
-          // Seoul의 경우 administrative_area_level_1이면서 locality임
-          // 다른 경우 행정구역 레벨 2가 city 또는 borough일 수 있음
-          if (!address.city) {
-            address.city = component.long_name;
-          } else {
-            address.borough = component.long_name;
-          }
-        }
+
+      const provinceForMapping = currentParsedAddress.province || currentParsedAddress.city;
+      const cityForMapping = currentParsedAddress.borough || currentParsedAddress.quarter || currentParsedAddress.suburb || currentParsedAddress.city; // city도 포함시켜서 borough 등이 없을 때 대비
+
+      console.log('매핑 시도할 정보:', { province: provinceForMapping, city: cityForMapping });
+      const currentRegionInfo = mapAddressToRegionCode({
+        province: provinceForMapping,
+        city: cityForMapping
+      });
+      
+      console.log('현재 결과의 RegionInfo:', currentRegionInfo);
+
+      // 베스트 결과 업데이트 조건:
+      // 1. 아직 베스트 결과가 없거나,
+      // 2. 현재 결과가 province_code와 city_code를 모두 가지고 있는데, 이전 베스트 결과는 그렇지 않은 경우
+      // 3. (선택적/추후고려) 둘 다 코드가 있지만 현재 결과가 더 구체적인 주소 정보를 가진 경우 (예: borough 정보 유무)
+      if (!bestResult.address || 
+          (currentRegionInfo.province_code && currentRegionInfo.city_code && 
+           !(bestResult.regionInfo && bestResult.regionInfo.province_code && bestResult.regionInfo.city_code))) {
+        console.log('베스트 결과 업데이트:', currentParsedAddress, currentRegionInfo);
+        bestResult.address = currentParsedAddress;
+        bestResult.regionInfo = currentRegionInfo;
+        bestResult.display_name = currentParsedAddress.display_name; // 현재 결과의 formatted_address 사용
       }
-      else if (types.includes('sublocality_level_1') || types.includes('administrative_area_level_3')) {
-        // 구/동 정보
-        if (!address.borough) {
-          address.borough = component.long_name;
-        } else {
-          address.quarter = component.long_name;
-        }
-      }
-      else if (types.includes('sublocality_level_2') || types.includes('administrative_area_level_4')) {
-        // 동/읍/면
-        address.quarter = component.long_name;
-      }
-      else if (types.includes('sublocality_level_3') || types.includes('administrative_area_level_5')) {
-        // 동네
-        address.suburb = component.long_name;
-      }
-      else if (types.includes('route')) {
-        // 도로명
-        address.road = component.long_name;
-      }
-    }
-    
-    console.log('추출된 주소 정보:', address);
-    
-    // 특수 케이스 처리: 서울특별시, 부산광역시 등 특별/광역시는 province와 city가 동일할 수 있음
-    if (address.province && address.province.includes('특별시') || address.province.includes('광역시')) {
-      if (!address.city) {
-        address.city = address.province;
+      // 만약 이미 bestResult가 모든 코드를 가지고 있다면, 더 이상 반복하지 않고 현재 bestResult 사용 (첫번째로 모든 코드를 만족하는 결과)
+      if (bestResult.regionInfo && bestResult.regionInfo.province_code && bestResult.regionInfo.city_code) {
+          console.log("모든 코드를 만족하는 결과 찾음. 반복 중단 가능.");
+          // break; // 필요에 따라 반복 중단
       }
     }
+
+    if (!bestResult.address) {
+      console.warn('Google 역지오코딩 결과에서 유효한 주소 정보를 추출하지 못했습니다. 첫 번째 결과를 기반으로 구성합니다.');
+      // 최악의 경우, 첫 번째 결과로 강제 구성 (기존 로직과 유사하게)
+      const firstGoogleResult = data.results[0];
+      bestResult.address = { country: '', province: '', city: '', borough: '', quarter: '', suburb: '', road: '', display_name: firstGoogleResult.formatted_address };
+      // (첫번째 결과에 대한 파싱 및 mapAddressToRegionCode 호출 로직 필요 - 위 루프의 로직 재활용)
+      // 이 부분은 위 루프에서 bestResult.address가 null로 남는 경우가 거의 없도록 설계해야 함
+      // 최소한 첫번째 루프에서 bestResult.address는 채워지도록
+       for (const component of firstGoogleResult.address_components) {
+            const types = component.types;
+            if (types.includes('country')) bestResult.address.country = component.long_name;
+            else if (types.includes('administrative_area_level_1')) bestResult.address.province = component.long_name;
+            else if (types.includes('locality')) bestResult.address.city = component.long_name;
+            else if (types.includes('administrative_area_level_2') && !bestResult.address.city) bestResult.address.city = component.long_name;
+            else if (types.includes('sublocality_level_1')) bestResult.address.borough = component.long_name;
+            else if (types.includes('sublocality_level_2')) bestResult.address.quarter = component.long_name;
+            else if (types.includes('sublocality_level_3')) bestResult.address.suburb = component.long_name;
+            else if (types.includes('route')) bestResult.address.road = component.long_name;
+        }
+        if ((bestResult.address.city === '제주시' || bestResult.address.city === '서귀포시') && (bestResult.address.province === '' || bestResult.address.province !== '제주특별자치도')) {
+            bestResult.address.province = '제주특별자치도';
+        }
+        if (bestResult.address.province && !bestResult.address.city && (bestResult.address.province.includes('특별시') || bestResult.address.province.includes('광역시') || bestResult.address.province.includes('특별자치시'))) {
+            bestResult.address.city = bestResult.address.province;
+        }
+        const provinceForMapping = bestResult.address.province || bestResult.address.city;
+        const cityForMapping = bestResult.address.borough || bestResult.address.quarter || bestResult.address.suburb || bestResult.address.city;
+        bestResult.regionInfo = mapAddressToRegionCode({ province: provinceForMapping, city: cityForMapping });
+        bestResult.display_name = firstGoogleResult.formatted_address;
+
+    }
     
-    // 광역시/도 매핑을 위한 정보 설정
-    const provinceForMapping = address.province || address.city; // 광역시/도
-    const cityForMapping = address.borough || address.quarter || address.suburb; // 구/동
-    
-    console.log('매핑용 광역시/도:', provinceForMapping);
-    console.log('매핑용 구/동:', cityForMapping);
-    
-    // 지역 코드 매핑
-    const regionInfo = mapAddressToRegionCode({
-      province: provinceForMapping,
-      city: cityForMapping
-    });
-    
-    // 위치 데이터 추가
-    const locationData = {
+    console.log('최종 선택된 역지오코딩 결과:', bestResult);
+
+    const locationDetails = { // extractGeoLocationData 및 saveToElasticsearch에 전달될 구조
       latitude,
       longitude,
-      googleMapsUrl: `https://www.google.com/maps?q=${latitude},${longitude}`
+      googleMapsUrl: `https://www.google.com/maps?q=${latitude},${longitude}`,
+      // address 객체와 regionInfo를 포함
+      address: bestResult.address, // 파싱된 주소 컴포넌트
+      regionInfo: bestResult.regionInfo, // 매핑된 코드 정보
+      // display_name은 bestResult.address 안에 이미 포함되어 있음
     };
     
-    return {
-      ...address,
-      regionInfo,
-      location_data: locationData
-    };
+    return locationDetails; // 기존에는 ...address 였으나, 이제 명확한 구조로 반환
+
   } catch (error) {
     console.error('Google 역지오코딩 오류:', error);
     return null;
