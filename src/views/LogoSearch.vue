@@ -924,10 +924,6 @@ export default {
 
 @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
 
-/* Ensure upload-panel and analysis-panel use the .panel-style */
-.upload-panel, .analysis-panel {
-  /* panel-style will cover most of this */
-}
 
 /* Image Upload Panel Specifics (from original LogoSearch, ensure they blend) */
 .image-container {
@@ -980,11 +976,8 @@ export default {
 
 /* Analysis Panel Specifics (from original LogoSearch, adapt to KS panel style) */
 .loading-state { display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; min-height: 300px; }
-.loading-spinner-container { /* For LoadingSpinner component */ }
 .guide-state { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 100%; padding: 2rem; }
-.guide-icon svg { /* Style your guide icon */ }
 .guide-description { font-size: 1rem; line-height: 1.6; color: #495057; margin-bottom: 1.5rem; }
-.steps-container { /* Style for steps */ }
 .analysis-table-container { overflow: auto; border-radius: 8px; height: 100%; border: 1px solid #eef2f7; }
 .analysis-table { width: 100%; border-collapse: collapse; }
 .analysis-table th { background-color: #f8f9fa; color: #34495e; text-align: left; padding: 0.75rem 1rem; font-size: 0.9rem; font-weight: 600; border-bottom: 1px solid #dde2e7; }
@@ -1041,18 +1034,12 @@ export default {
 .result-card:hover .result-image-container::before { opacity: 1; }
 .result-image { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1); }
 .result-card:hover .result-image { transform: scale(1.07); }
-.placeholder-image { /* from KS */ }
 .result-rank { /* from KS */
   position: absolute; top: 12px; right: 12px; display: flex; align-items: center; justify-content: center;
   gap: 5px; padding: 4px 10px; background: linear-gradient(135deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
   color: white; border-radius: 16px; font-size: 0.75rem; font-weight: 600; z-index: 2; box-shadow: 0 2px 5px rgba(0,0,0,0.15);
 }
 .result-rank.with-heart { padding-left: 10px; gap: 7px; }
-.rank-number { /* from KS */ }
-.heart-indicator { /* from KS */ }
-.heart-indicator.active { /* from KS */ }
-.heart-indicator svg { /* from KS */ }
-.heart-indicator.active svg { /* from KS */ }
 .result-info { padding: 1rem 1.2rem; }
 .result-name {
   font-size: 1.05rem; font-weight: 600; color: #34495e; margin: 0 0 0.4rem 0;
@@ -1060,7 +1047,6 @@ export default {
 }
 .result-card:hover .result-name { color: var(--logo-blue, #48b0e4); }
 .result-location { display: flex; align-items: center; gap: 0.3rem; font-size: 0.8rem; color: #7f8c8d; margin-bottom: 0.6rem; }
-.location-icon svg { /* from KS */ }
 .result-similarity { /* from KS, .similarity-bar-container, .similarity-bar, .similarity-value */
   display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: #7f8c8d; margin-bottom: 0.75rem;
 }
@@ -1068,11 +1054,6 @@ export default {
 .similarity-bar-container { flex-grow: 1; height: 7px; background-color: #e8eaed; border-radius: 4px; overflow: hidden; }
 .similarity-bar { height: 100%; background: linear-gradient(90deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d)); border-radius: 4px; transition: width 1s cubic-bezier(0.25, 0.8, 0.25, 1); }
 .similarity-value { font-weight: 600; color: var(--logo-blue, #48b0e4); font-size: 0.85rem; }
-.result-tags { /* from KS */ }
-.result-tag { /* from KS */ }
-.result-description { /* from KS */ }
-.description-title { /* from KS */ }
-.description-text { /* from KS */ }
 
 /* Visit count style from KeywordSearch.vue */
 .result-visit-count {
@@ -1148,7 +1129,6 @@ export default {
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); background-color: #f0f2f5;
 }
 .detail-image, .detail-map { width: 100%; height: 100%; object-fit: cover; }
-.detail-map .kakao-map-error { /* from KS */ }
 
 .detail-section {
   padding: 1.5rem; border-radius: 10px; background-color: #fdfdfe;
