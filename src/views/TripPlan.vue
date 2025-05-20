@@ -4,6 +4,14 @@
     <Header :showHero="true" heroImageSrc="https://images.unsplash.com/photo-1503221043305-f7498f8b7888?q=80&w=1470"
       heroTitle="나만의 여행 설계하기" heroSubtitle="나만의 특별한 여행 경험을 디자인해보세요" heroHeight="320px" />
 
+    <!-- NEW Toast Message Component -->
+    <ToastMessage 
+      :message="toastMessage" 
+      :type="toastType" 
+      :duration="toastDuration"
+      v-model:show="showToast" 
+    />
+
     <!-- 메인 콘텐츠 -->
     <div class="plan-content-wrapper">
       <div class="plan-container">
@@ -535,16 +543,7 @@
     </div>
 
     <!-- 성공 알림 배너 -->
-    <div v-if="showSuccessBannerFlag" class="success-banner">
-      <div class="success-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-          <polyline points="22 4 12 14.01 9 11.01"></polyline>
-        </svg>
-      </div>
-      {{ successMessage || '영수증 정보가 성공적으로 추가되었습니다!' }}
-    </div>
+    <!-- REMOVED OLD BANNER -->
 
     <!-- 방문 인증 모달 (개선된 버전) -->
     <div class="modal-overlay" v-if="showVerificationModal" @click="closeVerificationModal">
@@ -718,6 +717,7 @@
 <script>
 import Header from '@/components/Header.vue';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
+import ToastMessage from '@/components/ToastMessage.vue';
 import { ref, computed, onMounted, watch, nextTick, onBeforeUnmount } from 'vue';
 import config from '@/config';
 import EXIF from 'exif-js';
@@ -738,7 +738,8 @@ export default {
   name: 'TripPlan',
   components: {
     Header,
-    LoadingSpinner
+    LoadingSpinner,
+    ToastMessage,
   },
   setup() {
     // 카카오 맵 관련 변수
@@ -1683,7 +1684,7 @@ export default {
       forceRefresh();
       
       // 성공 메시지
-      showSuccessBanner(`${newItem.activity}이(가) 일정에 추가되었습니다.`);
+      displayToast(`${newItem.activity}이(가) 일정에 추가되었습니다.`, 'success');
     };
 
     // 장소 검색 실행
@@ -1925,7 +1926,8 @@ export default {
     // 영수증 분석
     const analyzeReceipt = async () => {
       if (!receiptFile.value) {
-        alert('영수증 파일을 선택해주세요.');
+        // Changed alert to displayToast
+        displayToast('영수증 파일을 선택해주세요.', 'error');
         return;
       }
 
@@ -1933,14 +1935,11 @@ export default {
       loadingMessage.value = '영수증 분석 중... (OCR 및 AI 처리)';
 
       try {
-        // ImgToPayment는 배열을 반환합니다
         const paymentDataArray = await ImgToPayment(receiptFile.value);
         
-        // 배열의 각 항목을 처리
         if (paymentDataArray && paymentDataArray.length > 0) {
           let addedCount = 0;
           
-          // 모든 결제 항목을 처리
           for (const paymentData of paymentDataArray) {
             if (paymentData && paymentData.Place && paymentData.Time && paymentData.Price !== undefined) {
               addFromReceipt(
@@ -1952,22 +1951,21 @@ export default {
             }
           }
           
-          // 결제 항목이 추가되었는지 확인
           if (addedCount > 0) {
-            // 토스트 메시지 표시
-            showSuccessBanner(`총 ${addedCount}건의 결제 내역이 추가되었습니다!!`);
-            
-            // 모달 닫기 및 이미지 초기화
+            displayToast(`총 ${addedCount}건의 결제 내역이 추가되었습니다!!`, 'success');
             closeReceiptUpload();
           } else {
-            alert('유효한 결제 내역을 찾을 수 없습니다.');
+            // Changed alert to displayToast
+            displayToast('영수증에서 유효한 결제 내역을 찾을 수 없습니다.', 'error');
           }
         } else {
-          alert('영수증에서 결제 내역을 찾을 수 없습니다.');
+          // Changed alert to displayToast
+          displayToast('영수증에서 결제 내역을 찾을 수 없습니다.', 'error');
         }
       } catch (error) {
-        console.error('영수증 분석 처리 오류 (TripPlan.vue):', error);
-        alert(`영수증 분석 실패: ${error.message}`);
+        console.error('영수증 분석 API 오류 (TripPlan.vue):', error);
+        // Message is already specific
+        displayToast(`영수증 자동 분석 실패: ${error.message || '서버 오류'}`, 'error');
       } finally {
         isLoading.value = false;
         loadingMessage.value = '';
@@ -2069,7 +2067,7 @@ export default {
       tripData.value.expenses.push(newExpense);
 
       // 성공 메시지 표시
-      showSuccessBanner('영수증 정보가 성공적으로 추가되었습니다!');
+      displayToast('영수증 정보가 성공적으로 추가되었습니다!', 'success');
     };
 
     // 지출 항목 수정 관련 상태
@@ -2080,6 +2078,20 @@ export default {
     const originalExpenseTime = ref('');
     const originalExpenseDesc = ref('');
     const originalExpenseAmount = ref(0);
+
+    // NEW Toast Message State
+    const toastMessage = ref('');
+    const toastType = ref('success'); // 'success' or 'error'
+    const showToast = ref(false);
+    const toastDuration = ref(3000);
+
+    // NEW displayToast function
+    const displayToast = (message, type = 'success', duration = 3000) => {
+      toastMessage.value = message;
+      toastType.value = type;
+      toastDuration.value = duration;
+      showToast.value = true;
+    };
 
     // 지출 항목 수정 시작
     const startExpenseEdit = (expense) => {
@@ -2117,20 +2129,6 @@ export default {
       editingExpense.value = null;
     };
 
-    // 성공 배너 상태
-    const showSuccessBannerFlag = ref(false);
-    const successMessage = ref('');
-    
-    // 성공 배너 표시 함수
-    const showSuccessBanner = (message) => {
-      successMessage.value = message;
-      showSuccessBannerFlag.value = true;
-      
-      // 3초 후 배너 자동 숨김
-      setTimeout(() => {
-        showSuccessBannerFlag.value = false;
-      }, 3000);
-    };
 
     // 여행 기본 정보 수정 관련 상태
     const isEditingInfo = ref(false);
@@ -2639,7 +2637,7 @@ export default {
         };
 
         // 성공 메시지 표시
-        showSuccessBanner('방문 인증이 완료되었습니다!');
+        displayToast('방문 인증이 완료되었습니다!', 'success');
 
         // 모달 닫기
         closeVerificationModal();
@@ -2700,44 +2698,35 @@ export default {
       if (!verificationResult.value || !verificationResult.value.success) return;
 
       try {
-        // 인증 사진 저장 및 분석 프로세스 시작
-        isVerifying.value = true; // 모달은 닫지 않고 로딩 상태 활성화
-        loadingPhase.value = 'imageAnalysis'; // 초기 단계: 이미지 분석
+        isVerifying.value = true;
+        loadingPhase.value = 'imageAnalysis'; 
         
-        // 성능 측정 초기화
         imageAnalysisDuration.value = null;
         meaningAnalysisDuration.value = null;
         keywordExtractionDuration.value = null;
         searchDuration.value = null;
 
-        // 인증할 아이템 참조를 미리 가져옴
         const item = tripDays.value[verifyingDay.value].items[verifyingItem.value];
         if (!item) {
           throw new Error('인증할 아이템을 찾을 수 없습니다.');
         }
 
-        // Base64 이미지를 File 객체로 변환
         const response = await fetch(verificationPhotoPreview.value);
         const blob = await response.blob();
         const imageFile = new File([blob], `verification-${Date.now()}.jpg`, { type: 'image/jpeg' });
 
-        // 요청 취소를 위한 AbortController 생성
         const abortController = new AbortController();
         
-        // 먼저 좌표로부터 지오 데이터 가져오기 (light_2 전에 실행)
         let locationInfo = null;
         let locationText = '';
-        let englishLocationName = ''; // 영어 지역 이름을 저장할 변수
+        let englishLocationName = '';
         
-        // 아이템의 좌표가 있으면 역지오코딩 실행
         if (item.coords && item.coords.lat && item.coords.lng) {
           try {
-            // 좌표로부터 주소 정보 가져오기
             const geoData = await reverseGeocode(item.coords.lat, item.coords.lng);
             console.log('역지오코딩 결과:', geoData);
             
             if (geoData) {
-              // 주소 문자열 생성
               locationText = [
                 geoData.country,
                 geoData.province,
@@ -2746,10 +2735,8 @@ export default {
                 geoData.quarter
               ].filter(Boolean).join(' ');
               
-              // 지역 코드 정보 직접 추출 (하드코딩된 매핑 포함)
               const locationCodes = getLocationCodes(geoData);
               
-              // 지역 정보 저장 - 더 신뢰할 수 있는 코드로 업데이트
               locationInfo = {
                 full_text: locationText,
                 province_code: locationCodes.province_code,
@@ -2763,86 +2750,71 @@ export default {
                 `city(${locationInfo.city_code}:${locationInfo.city_name})`
               );
               
-              // 영어 지역 이름 추출 - 개선된 함수 사용
               englishLocationName = getEnglishLocationName(geoData);
               console.log('추출된 영어 지역 이름:', englishLocationName);
             }
           } catch (geoError) {
-            console.error('역지오코딩 오류:', geoError);
-            throw new Error('위치 정보 가져오기 실패: ' + geoError.message);
+            console.error('역지오코딩 API 호출 오류:', geoError);
+            displayToast(`위치 정보 조회 실패 (역지오코딩): ${geoError.message || '서버 오류'}`, 'error');
+            isVerifying.value = false; 
+            loadingPhase.value = 'error'; 
+            return; 
           }
         }
         
-        // 위치 정보가 없으면 기본값 사용
         if (!locationText) {
           locationText = item.location || verifyingItemInfo.value.location || '장소 정보 없음';
         }
         
-        // 1단계: 이미지 → 영어 설명 (light_2 모델) - 이제 영어 지역 이름을 전달
+        loadingPhase.value = 'imageAnalysis'; // Ensure phase is set before API call
         console.log('1. 이미지 분석 시작 (light_2 모델 - 영문 설명 추출)...', englishLocationName);
         const imageAnalysisStartTime = performance.now();
         const engDescription = await imageToEngDescription(imageFile, abortController.signal, englishLocationName);
         const imageAnalysisEndTime = performance.now();
         imageAnalysisDuration.value = Number(((imageAnalysisEndTime - imageAnalysisStartTime) / 1000).toFixed(1));
         
-        if (!engDescription) {
-          throw new Error('이미지 분석 실패: 영어 설명을 얻을 수 없습니다.');
+        if (!engDescription && !abortController.signal.aborted) { // Check if not aborted
+          // Consider if imageToEngDescription itself throws a detailed error.
+          // If it returns null/undefined on failure without throwing, this is needed.
+          throw new Error('영어 설명을 얻을 수 없습니다.');
         }
         
-        // 단계 업데이트: 의미 분석
         loadingPhase.value = 'meaningAnalysis';
-        
-        // 2단계: 영어 설명 → 10차원 벡터 (ko_2 모델)
         console.log('2. 10차원 특성 벡터 추출 시작...');
         const meaningAnalysisStartTime = performance.now();
         const analysisResult = await EngDescriptionToVector(engDescription, abortController.signal);
         const meaningAnalysisEndTime = performance.now();
         meaningAnalysisDuration.value = Number(((meaningAnalysisEndTime - meaningAnalysisStartTime) / 1000).toFixed(1));
 
-        if (!analysisResult) {
-          throw new Error('이미지 분석 실패: 특성 벡터 결과를 얻을 수 없습니다.');
+        if (!analysisResult && !abortController.signal.aborted) {
+          throw new Error('특성 벡터 결과를 얻을 수 없습니다.');
         }
 
-        // 특성 벡터 생성
         const featuresVector = createFeaturesVector(analysisResult);
         console.log('2. 생성된 10차원 특성 벡터:', featuresVector);
 
-        if (!featuresVector || !featuresVector.length) {
-          throw new Error('10차원 벡터 생성 실패: 벡터 데이터를 얻을 수 없습니다.');
+        if ((!featuresVector || !featuresVector.length) && !abortController.signal.aborted) {
+          throw new Error('10차원 벡터 생성에 실패했습니다.');
         }
         
-        // 단계 업데이트: 키워드 추출
         loadingPhase.value = 'keywordExtraction';
-        
-        // 3. ko_3 모델을 이용하여 한글 설명과 키워드 추출
         console.log('3. ko_3 모델을 이용한 한글 설명과 키워드 추출 시작 (API 서비스 호출)...');
         const keywordExtractionStartTime = performance.now();
         
-        // enDescToKoDescAndTags 함수 호출로 변경
         const { koreanDescription, extractedKeywords } = await enDescToKoDescAndTags(engDescription, abortController.signal);
-        // ko3Response, ko3Data 관련 로직은 이제 enDescToKoDescAndTags 함수 내부에 있음
         
         const keywordExtractionEndTime = performance.now();
         keywordExtractionDuration.value = Number(((keywordExtractionEndTime - keywordExtractionStartTime) / 1000).toFixed(1));
         console.log('3. 키워드 추출 완료 (API 서비스 결과):', extractedKeywords, '한글 설명:', koreanDescription);
         
-        // 단계 업데이트: 벡터 저장
         loadingPhase.value = 'vectorSaving';
-        
-        // 고유 ID 생성
         const imageId = `trip-verification-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
         
-        // 태그 생성 (장소 정보와 추출된 키워드 포함)
-        const baseTags = [
-          item.activity, 
-        ];
-        
-        // extractedKeywords가 존재하면 태그에 추가
-        const tags = extractedKeywords.length > 0 
+        const baseTags = [item.activity];
+        const tags = extractedKeywords && extractedKeywords.length > 0 
           ? [...baseTags, ...extractedKeywords]
           : baseTags;
         
-        // 설명에 한글 설명 사용 (없으면 리뷰 텍스트 사용)
         const description = koreanDescription || reviewText.value || '방문 인증 사진';
         
         console.log('4. Elasticsearch에 저장할 데이터:');
@@ -2853,79 +2825,83 @@ export default {
         console.log('- 설명:', description);
         console.log('- 10차원 벡터:', featuresVector);
         
-        // Elasticsearch에 저장 시작 시간
-        const saveStartTime = performance.now();
-        
-        // locationInfo에 영어 지역 이름 추가
         if (locationInfo && englishLocationName) {
           locationInfo.englishLocationName = englishLocationName;
         }
         
-        // Elasticsearch에 저장
+        const saveStartTime = performance.now();
         const esResponse = await saveToElasticsearch(
           imageId,
-          item.activity, // activity를 이미지 이름으로 사용
+          item.activity,
           locationText,
           tags,
           description,
           verificationPhotoPreview.value,
           analysisResult,
           featuresVector,
-          locationInfo, // 지오코딩으로 얻은 구조화된 위치 정보 (영어 지역 이름 포함)
+          locationInfo,
           testDataInputs.value.p_id,
           testDataInputs.value.u_id,
           testDataInputs.value.u_age,
           testDataInputs.value.u_gender,
-          verifyingItemInfo.value.location || verifyingItemInfo.value.place_name || verifyingItemInfo.value.address_name || '' // 새로 추가된 원본 주소 파라미터
+          verifyingItemInfo.value.location || verifyingItemInfo.value.place_name || verifyingItemInfo.value.address_name || ''
         );
         
         if (!esResponse || !esResponse._id) {
-          throw new Error('Elasticsearch 저장 실패');
+          // Assuming saveToElasticsearch throws an error on failure.
+          // If not, this condition needs to be handled.
+          throw new Error('Elasticsearch 저장에 실패했습니다.');
         }
         
-        // Elasticsearch에 저장 완료 시간 및 소요 시간 저장
         const saveEndTime = performance.now();
         searchDuration.value = Number(((saveEndTime - saveStartTime) / 1000).toFixed(1));
         console.log('4. Elasticsearch에 저장 완료:', imageId);
         
-        // 작업 완료 상태로 업데이트
         loadingPhase.value = 'completed';
         
-        // 모든 데이터 처리가 성공적으로 완료되면 방문 정보 저장
-        // 여기서는 item 변수를 다시 참조하지 않고 이미 위에서 가져온 item을 사용
-        
-        // 인증 정보 저장
         const verifiedAt = new Date().toISOString();
         item.verified = true;
         item.verifiedAt = verifiedAt;
         item.verificationPhoto = verificationPhotoPreview.value;
         item.photoMetadata = photoMetadata.value;
-
-        // 별점 및 리뷰 저장
         item.rating = reviewRating.value;
         item.review = reviewText.value;
         
-        // 성공 메시지 표시
-        showSuccessBanner('방문이 인증되었고 사진이 저장되었습니다!');
+        displayToast('방문이 인증되었고 사진이 저장되었습니다!', 'success');
         
-        // 로딩 완료 후 모달 닫기
         setTimeout(() => {
-          // 모든 작업이 완료된 후에만 모달 닫기
           showVerificationModal.value = false;
         }, 1000);
         
       } catch (error) {
-        console.error('인증 처리 오류:', error);
-        
-        // 오류 단계 표시
+        // AbortError is often thrown by fetch when a signal is aborted.
+        // We don't want to show an error toast if the user cancelled.
+        if (error.name === 'AbortError') {
+          console.log('API 요청이 사용자에 의해 중단되었습니다.');
+          displayToast('요청이 중단되었습니다.', 'error'); // Or perhaps no toast, or a different type.
+        } else {
+          console.error(`인증 처리 중 오류 발생 (단계: ${loadingPhase.value}):`, error);
+          let stageErrorMessage = '';
+          switch (loadingPhase.value) {
+            case 'imageAnalysis':
+              stageErrorMessage = '이미지 분석(영어 설명 추출) 중 오류';
+              break;
+            case 'meaningAnalysis':
+              stageErrorMessage = '이미지 의미 분석(벡터 변환) 중 오류';
+              break;
+            case 'keywordExtraction':
+              stageErrorMessage = '이미지 키워드/한글 설명 추출 중 오류';
+              break;
+            case 'vectorSaving':
+              stageErrorMessage = '인증 정보 저장 중 오류';
+              break;
+            default:
+              stageErrorMessage = `인증 처리 중 오류 (단계: ${loadingPhase.value || '알 수 없음'})`;
+          }
+          displayToast(`${stageErrorMessage}: ${error.message || '알 수 없는 문제'}`, 'error', 5000);
+        }
         loadingPhase.value = 'error';
-        
-        // 오류 메시지 표시 - 다시 시도 요청
-        showSuccessBanner(`처리 오류: ${error.message || '알 수 없는 오류가 발생했습니다.'}`); // 오류 메시지는 더 길게 표시
-        
-        // 방문 인증 데이터를 저장하지 않음 (중요: 데이터가 정상적으로 처리되지 않으면 저장하지 않음)
       } finally {
-        // 로딩 상태 종료
         isVerifying.value = false;
       }
     };
@@ -3073,9 +3049,11 @@ export default {
       startExpenseEdit,
       saveExpenseEdit,
       cancelExpenseEdit,
-      showSuccessBanner,
-      showSuccessBannerFlag,
-      successMessage,
+      displayToast,
+      toastMessage,
+      toastType,
+      showToast,
+      toastDuration,
       isEditingInfo,
       startEditInfo,
       saveEditInfo,
