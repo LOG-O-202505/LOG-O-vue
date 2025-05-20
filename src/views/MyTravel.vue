@@ -1320,6 +1320,9 @@ export default {
         .attr('class', 'map-group')
         .attr('filter', 'url(#dropshadow-detail)');
 
+      // Use a non-reactive clone of travelStats for D3 data binding
+      const currentTravelStats = JSON.parse(JSON.stringify(travelStats.value));
+
       try {
         // 지역 코드로 시군구 필터링
         const filteredFeatures = sigGeoJson.features.filter(feature => {
@@ -1337,13 +1340,13 @@ export default {
 
         console.log(`[renderDetailMap] Found ${filteredFeatures.length} districts for region ${regionCode}`);
 
-        // 방문 데이터 확인
-        const regionData = travelStats.value.regions[regionCode];
+        // 방문 데이터 확인 (cloned data 사용)
+        const regionData = currentTravelStats.regions[regionCode];
         if (regionData && regionData.sigs) {
           console.log(`[renderDetailMap] Visit counts for region ${regionCode}:`, regionData.sigs);
         }
 
-        // 각 시군구에 대한 코드 매핑 과정을 자세히 로깅
+        // 각 시군구에 대한 코드 매핑 과정을 자세히 로깅 (cloned data 사용)
         console.log(`[renderDetailMap] District code mapping for region ${regionCode}:`);
         filteredFeatures.forEach(feature => {
           const sigCode = feature.properties.SIG_CD;
@@ -1351,7 +1354,7 @@ export default {
 
           console.log(`  - District: ${sigCode}, Name: ${sigName}`);
 
-          // 방문 정보 확인
+          // 방문 정보 확인 (cloned data 사용)
           if (regionData && regionData.sigs) {
             const keys = Object.keys(regionData.sigs);
             let matched = false;
@@ -1415,7 +1418,7 @@ export default {
             const sigName = d.properties.SIG_KOR_NM || '';
 
             // 방문 여부 확인
-            const regionData = travelStats.value.regions[regionCode];
+            const regionData = currentTravelStats.regions[regionCode];
             let isVisited = false;
             let visitCount = 0;
 
@@ -1550,35 +1553,59 @@ export default {
 
     // 레이더 차트 렌더링 함수
     const renderRadarChart = () => {
-      if (!radarChartContainer.value) return;
-
-      // 기존 차트가 있다면 파괴
-      if (radarChart.value) {
-        radarChart.value.destroy();
+      if (!radarChartContainer.value) {
+        console.warn("Radar chart container not found. Skipping render.");
+        return;
       }
 
-      // 데이터 준비
-      const dimensions = Object.keys(dimensionScores);
-      const dimensionLabels = dimensions.map(d => getCategoryName(d));
-      const dimensionValues = dimensions.map(d => dimensionScores[d]);
+      // Ensure the container is visible and has dimensions
+      if (radarChartContainer.value.clientWidth === 0 || radarChartContainer.value.clientHeight === 0) {
+        console.warn("Radar chart container has no dimensions (clientWidth or clientHeight is 0). Deferring render.");
+        nextTick(() => { // Retry after next DOM update cycle
+            if (radarChartContainer.value && radarChartContainer.value.clientWidth > 0 && radarChartContainer.value.clientHeight > 0) {
+                renderRadarChartInternal();
+            } else {
+                console.error("Radar chart container still has no dimensions after nextTick. Chart cannot be rendered.");
+            }
+        });
+        return;
+      }
+      renderRadarChartInternal();
+    };
 
-      // 캔버스 컨텍스트 가져오기
+    const renderRadarChartInternal = () => {
+      if (!radarChartContainer.value) return; // Should be caught by the caller, but as a safeguard
+
+      // 기존 차트 파괴
+      if (radarChart.value) {
+        radarChart.value.destroy();
+        radarChart.value = null; // Ensure old instance is cleared
+      }
+
       const canvas = document.createElement('canvas');
+      // 명시적으로 크기 설정 (컨테이너 크기에 맞춤)
       canvas.width = radarChartContainer.value.clientWidth;
       canvas.height = radarChartContainer.value.clientHeight;
-      radarChartContainer.value.innerHTML = '';
+      
+      radarChartContainer.value.innerHTML = ''; // 이전 canvas 제거
       radarChartContainer.value.appendChild(canvas);
       
       const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        console.error('Failed to get 2D context from canvas for radar chart.');
+        return;
+      }
 
-      // Chart.js 레이더 차트 생성
+      const labels = Object.keys(dimensionScores).map(dim => dimensionTranslations[dim] || dim);
+      const data = Object.values(dimensionScores);
+
       radarChart.value = new Chart(ctx, {
         type: 'radar',
         data: {
-          labels: dimensionLabels,
+          labels: labels,
           datasets: [{
             label: '취향 프로필',
-            data: dimensionValues,
+            data: data,
             backgroundColor: 'rgba(66, 153, 225, 0.5)',
             borderColor: '#4299e1',
             borderWidth: 2,

@@ -983,7 +983,7 @@ export default {
 
       try {
         // 제주도 중심 좌표
-        const jejuCenter = new kakao.maps.LatLng(33.3846, 126.5535);
+        const jejuCenter = new window.kakao.maps.LatLng(33.3846, 126.5535);
 
         // 맵 생성
         const options = {
@@ -991,15 +991,23 @@ export default {
           level: 9 // 확대 레벨 (숫자가 작을수록 확대)
         };
 
-        kakaoMap.value = new kakao.maps.Map(kakaoMapContainer.value, options);
+        kakaoMap.value = new window.kakao.maps.Map(kakaoMapContainer.value, options);
         console.log("Kakao Map created:", kakaoMap.value);
 
         // 확대 축소 컨트롤러 추가
-        const zoomControl = new kakao.maps.ZoomControl();
-        kakaoMap.value.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT);
+        const zoomControl = new window.kakao.maps.ZoomControl();
+        kakaoMap.value.addControl(zoomControl, window.kakao.maps.ControlPosition.RIGHT);
 
-        // Geocoder 초기화
-        geocoder.value = new kakao.maps.services.Geocoder();
+        // Geocoder 초기화 강화
+        if (window.kakao.maps.services && window.kakao.maps.services.Geocoder) {
+          geocoder.value = new window.kakao.maps.services.Geocoder();
+          console.log("Geocoder initialized successfully.");
+        } else {
+          console.error("Kakao Maps Services or Geocoder not available.");
+          // 필요한 경우 여기서 사용자에게 알림을 표시하거나 대체 로직을 수행할 수 있습니다.
+          // 예를 들어, 몇 초 후 다시 시도하거나, 기능의 사용을 제한할 수 있습니다.
+          // 이 예제에서는 단순히 에러를 로깅합니다.
+        }
 
         // 마커와 경로 표시
         updateMapMarkers();
@@ -1045,7 +1053,7 @@ export default {
         kakaoMap.value.relayout();
 
         const linePath = [];
-        const bounds = new kakao.maps.LatLngBounds();
+        const bounds = new window.kakao.maps.LatLngBounds();
 
         // 마커 추가
         dayItems.forEach((item, index) => {
@@ -1054,7 +1062,7 @@ export default {
             return;
           }
 
-          const position = new kakao.maps.LatLng(item.coords.lat, item.coords.lng);
+          const position = new window.kakao.maps.LatLng(item.coords.lat, item.coords.lng);
           linePath.push(position);
           bounds.extend(position);
 
@@ -1088,7 +1096,7 @@ export default {
           `;
 
           // 커스텀 오버레이 생성
-          const customOverlay = new kakao.maps.CustomOverlay({
+          const customOverlay = new window.kakao.maps.CustomOverlay({
             position: position,
             content: content,
             yAnchor: 1,
@@ -1115,7 +1123,7 @@ export default {
             </div>
           `;
 
-          const infoWindow = new kakao.maps.CustomOverlay({
+          const infoWindow = new window.kakao.maps.CustomOverlay({
             position: position,
             content: infoContent,
             yAnchor: 2.2,
@@ -1123,7 +1131,7 @@ export default {
           });
 
           // 마커 클릭 이벤트 - 인포윈도우 표시 (2초 후 자동으로 닫힘)
-          kakao.maps.event.addListener(customOverlay, 'click', function () {
+          window.kakao.maps.event.addListener(customOverlay, 'click', function () {
             infoWindow.setMap(kakaoMap.value);
 
             // 2초 후 인포윈도우 닫기
@@ -1137,7 +1145,7 @@ export default {
 
         // 경로 표시 (2개 이상의 위치가 있을 경우)
         if (linePath.length >= 2) {
-          kakaoPolyline.value = new kakao.maps.Polyline({
+          kakaoPolyline.value = new window.kakao.maps.Polyline({
             path: linePath,
             strokeWeight: 3,
             strokeColor: '#db4040',
@@ -1168,7 +1176,7 @@ export default {
       if (!geocoder.value) {
         try {
           console.log("Creating new Geocoder instance");
-          geocoder.value = new kakao.maps.services.Geocoder();
+          geocoder.value = new window.kakao.maps.services.Geocoder();
         } catch (error) {
           console.error("Failed to create Geocoder:", error);
           return;
@@ -1181,7 +1189,7 @@ export default {
         const searchAddress = `${address}, 제주도`;
 
         geocoder.value.addressSearch(searchAddress, (result, status) => {
-          if (status === kakao.maps.services.Status.OK && result.length > 0) {
+          if (status === window.kakao.maps.services.Status.OK && result.length > 0) {
             const coords = {
               lat: parseFloat(result[0].y),
               lng: parseFloat(result[0].x)
@@ -1427,7 +1435,7 @@ export default {
 
       try {
         // 선택한 장소의 좌표
-        const placePosition = new kakao.maps.LatLng(
+        const placePosition = new window.kakao.maps.LatLng(
           selectedPlace.value.y,
           selectedPlace.value.x
         );
@@ -1439,10 +1447,10 @@ export default {
         };
 
         // 지도 생성
-        const detailMap = new kakao.maps.Map(detailMapContainer, mapOptions);
+        const detailMap = new window.kakao.maps.Map(detailMapContainer, mapOptions);
 
         // 마커 생성
-        new kakao.maps.Marker({
+        new window.kakao.maps.Marker({
           position: placePosition,
           map: detailMap
         });
@@ -1552,7 +1560,7 @@ export default {
       searchResults.value = [];
 
       // 카카오 장소 검색 API 사용
-      const places = new kakao.maps.services.Places();
+      const places = new window.kakao.maps.services.Places();
 
       // 검색 옵션 - 지역 제한 없이 전국 검색
       const searchOptions = {
@@ -1565,10 +1573,10 @@ export default {
       places.keywordSearch(keyword, (result, status) => {
         isSearching.value = false;
 
-        if (status === kakao.maps.services.Status.OK) {
+        if (status === window.kakao.maps.services.Status.OK) {
           console.log('검색 결과:', result);
           searchResults.value = result;
-        } else if (status === kakao.maps.services.Status.ZERO_RESULT) {
+        } else if (status === window.kakao.maps.services.Status.ZERO_RESULT) {
           console.log('검색 결과가 없습니다.');
         } else {
           alert('검색 중 오류가 발생했습니다.');

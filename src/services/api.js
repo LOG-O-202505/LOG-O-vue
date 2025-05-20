@@ -820,7 +820,7 @@ export const searchImagesByKeyword = async (keyword, size = 10, from = 0) => {
         type: "best_fields",
         operator: "or",
         fuzziness: "AUTO",         // 유사한 단어 매칭 허용
-        minimum_should_match: "50%", // 검색어의 최소 50%가 일치해야 함
+        minimum_should_match: "30%", // 검색어의 최소 50%가 일치해야 함
         tie_breaker: 0.3           // 다중 필드 매칭 시 점수 계산에 사용
       }
     };

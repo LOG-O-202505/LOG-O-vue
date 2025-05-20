@@ -183,7 +183,7 @@
                 
             <!-- 지도 영역 -->
             <div class="detail-map-container">
-              <div id="detailMap" class="detail-map"></div>
+              <div id="detailMap" ref="detailMapModalContainerRef" class="detail-map"></div>
             </div>
           </div>
           
@@ -432,74 +432,50 @@
       
       // 연령대별 도넛 차트 렌더링 함수
       const renderAgeChart = () => {
-        const canvas = ageChartCanvas.value;
-        if (!canvas || totalAgeVisits.value === 0) return;
-        
-        // 기존 차트 제거
         if (ageChart) {
           ageChart.destroy();
+          ageChart = null;
         }
-        
-        // 데이터 준비 (값이 있는 연령대만 필터링)
-        const filteredAgeStats = ageStats.value.filter(stat => stat.value > 0);
-        
-        // 차트 데이터 및 색상 배열 준비
-        const data = filteredAgeStats.map(stat => stat.value);
-        const labels = filteredAgeStats.map(stat => `${stat.age}대`);
-        const colors = filteredAgeStats.map(stat => getColorForAge(stat.age));
-        const percentages = filteredAgeStats.map(stat => 
-          ((stat.value / totalAgeVisits.value) * 100).toFixed(1)
-        );
-        
-        // Chart.js 도넛 차트 생성
-        ageChart = new Chart(canvas, {
-          type: 'doughnut',
+        if (!ageChartCanvas.value || !showDetailModal.value) return;
+        if (totalAgeVisits.value === 0) return; // Don't render if no data
+
+        const ctx = ageChartCanvas.value.getContext('2d');
+        if (!ctx) return;
+
+        const labels = ageStats.value.map(stat => stat.label);
+        const data = ageStats.value.map(stat => stat.value);
+
+        ageChart = new Chart(ctx, {
+          type: 'pie',
           data: {
             labels: labels,
             datasets: [{
+              label: '방문자 연령대',
               data: data,
-              backgroundColor: colors,
-              borderColor: '#ffffff',
-              borderWidth: 2,
-              hoverOffset: 15
+              backgroundColor: [
+                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', 
+                '#FF9F40', '#E7E9ED', '#8C8C8C', '#C45850'
+              ],
             }]
           },
           options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '50%',
-            layout: {
-              padding: 20
-            },
             plugins: {
               legend: {
-                position: 'right',
-                labels: {
-                  font: {
-                    size: 12
-                  },
-                  generateLabels: (chart) => {
-                    const datasets = chart.data.datasets;
-                    return chart.data.labels.map((label, i) => {
-                      const percentage = percentages[i];
-                      return {
-                        text: `${label} (${percentage}%)`,
-                        fillStyle: datasets[0].backgroundColor[i],
-                        strokeStyle: datasets[0].borderColor,
-                        lineWidth: datasets[0].borderWidth,
-                        hidden: false,
-                        index: i
-                      };
-                    });
-                  }
-                }
+                position: 'bottom',
               },
               tooltip: {
                 callbacks: {
-                  label: (context) => {
-                    const value = context.raw;
-                    const percentage = percentages[context.dataIndex];
-                    return `${context.label}: ${value}명 (${percentage}%)`;
+                  label: function(context) {
+                    let label = context.label || '';
+                    if (label) {
+                      label += ': ';
+                    }
+                    if (context.parsed !== null) {
+                      label += context.parsed + '명';
+                    }
+                    return label;
                   }
                 }
               }
@@ -510,6 +486,7 @@
       
       // 차트 canvas 참조
       const ageChartCanvas = ref(null);
+      const detailMapModalContainerRef = ref(null); // Ref for detail map in modal
       
       // 연령 통계 변경 시 차트 업데이트
       watch([ageStats, totalAgeVisits], () => {
@@ -1987,29 +1964,28 @@
       const openDetailModal = (destination) => {
         console.log('상세 모달 열기:', destination);
         
-        // p_image와 같은 실제 API 필드들을 그대로 전달
         selectedDetail.value = {
           ...destination,
           name: destination.name,
           address: destination.address,
-          reviews: dummyReviews // 더미 리뷰 데이터 추가
+          reviews: dummyReviews
         };
         
         showDetailModal.value = true;
         
-        // 통계 데이터 로드
         loadDestinationStats(destination.id);
         
-        // 모달이 열린 후 지도 초기화를 위해 nextTick 사용
         nextTick(() => {
-          // 약간의 지연 추가로 모달 애니메이션 완료 후 지도 초기화
+          // Render charts after modal is visible and data is likely loading/loaded
+          renderAgeChart(); 
+          // Initialize map after a short delay for modal animations
           setTimeout(() => {
             initDetailMap();
-          }, 300);
+          }, 100); // Reduced delay slightly, ensure it's enough for modal to be ready
         });
       };
       
-      // 연령별 방문 통계 로드
+      // 연령별 방문 통계 로드 후 차트 렌더링
       const loadDestinationStats = async (placeId) => {
         if (!placeId) return;
         
@@ -2107,10 +2083,16 @@
             genderStats: genderStats.value, 
             totalVisits: totalStatsVisits.value 
           });
+
+          // Data is ready, re-render chart if modal is still open
+          if (showDetailModal.value) {
+            nextTick(() => {
+                renderAgeChart();
+            });
+          }
           
         } catch (error) {
           console.error('연령별 방문 통계 로드 오류:', error);
-          // 오류 발생 시 기본값 설정
           ageStats.value = [];
           genderStats.value = [];
           totalStatsVisits.value = 0;
@@ -2122,83 +2104,102 @@
       // 상세 모달 닫기 함수
       const closeDetailModal = () => {
         showDetailModal.value = false;
-        // 통계 데이터 초기화
         ageStats.value = [];
         genderStats.value = [];
         totalStatsVisits.value = 0;
+        if (ageChart) {
+          ageChart.destroy();
+          ageChart = null;
+        }
+        if (kakaoMap) { // kakaoMap for modal
+          // Kakao maps don't have a direct destroy. 
+          // Setting the container to null or removing it is usually enough.
+          // Ensure no further operations are done on this map instance.
+          kakaoMap = null; 
+        }
       };
       
       // 상세 모달의 지도 초기화
       const initDetailMap = async () => {
         console.log('지도 초기화 함수 호출됨');
     
-        const mapContainer = document.getElementById('detailMap');
-        if (!mapContainer) {
-          console.error('지도 컨테이너를 찾을 수 없습니다');
+        // Use ref for map container
+        if (!detailMapModalContainerRef.value) {
+          console.error('상세 모달 지도 컨테이너를 찾을 수 없습니다 (ref)');
           return;
         }
         
+        // Clear previous map if any by emptying container
+        detailMapModalContainerRef.value.innerHTML = '';
+
         try {
-          // 카카오맵 API 로드 확인
-          if (!window.kakao || !window.kakao.maps) {
-            console.log('카카오 맵 API 로드 필요');
-            await loadKakaoMapsScript();
+          if (!window.kakao || !window.kakao.maps || !window.kakao.maps.services) {
+            console.log('카카오 맵 API 또는 services 라이브러리 로드 필요');
+            await loadKakaoMapsScript(); // Ensure services are loaded
+            if (!window.kakao || !window.kakao.maps || !window.kakao.maps.services) {
+                console.error('카카오 맵 services 라이브러리 로드 실패 후에도 사용 불가.');
+                return;
+            }
           }
           
-          // 선택된 장소의 위치 정보 확인
-          let lat = 37.5665; // 기본값: 서울시청
+          let lat = 37.5665; 
           let lng = 126.9780;
           
           if (selectedDetail.value && selectedDetail.value.location_data) {
-            // 위치 데이터가 있는 경우 실제 위치 표시
             const locationData = selectedDetail.value.location_data;
             lat = locationData.latitude || lat;
             lng = locationData.longitude || lng;
+          } else if (selectedDetail.value && selectedDetail.value.address) {
+            // 주소로 좌표 검색 (Geocoder 사용)
+            const geocoder = new window.kakao.maps.services.Geocoder();
+            const result = await new Promise((resolve, reject) => {
+              geocoder.addressSearch(selectedDetail.value.address, (res, status) => {
+                if (status === window.kakao.maps.services.Status.OK && res.length > 0) {
+                  resolve(res);
+                } else {
+                  reject(status);
+                }
+              });
+            });
+            if (result && result.length > 0) {
+              lat = parseFloat(result[0].y);
+              lng = parseFloat(result[0].x);
+            }
           }
           
-          // 지도 옵션
           const mapOption = {
-            center: new kakao.maps.LatLng(lat, lng),
-            level: 3 // 확대 레벨
+            center: new window.kakao.maps.LatLng(lat, lng),
+            level: 3 
           };
           
-          // 지도 생성
-          kakaoMap = new kakao.maps.Map(mapContainer, mapOption);
+          // kakaoMap 변수를 사용하여 모달 내 지도 인스턴스 저장
+          kakaoMap = new window.kakao.maps.Map(detailMapModalContainerRef.value, mapOption);
           
-          // 마커 생성
-          const markerPosition = new kakao.maps.LatLng(lat, lng);
-          const marker = new kakao.maps.Marker({
+          const markerPosition = new window.kakao.maps.LatLng(lat, lng);
+          const marker = new window.kakao.maps.Marker({
             position: markerPosition
           });
           
-          // 마커 지도에 표시
           marker.setMap(kakaoMap);
           
-          // 인포윈도우 추가
           const infoContent = `
             <div style="padding: 5px; text-align: center;">
-              <span style="font-weight: bold;">${selectedDetail.value.name || '여행지'}</span>
-            </div>
-          `;
-          
-          const infoWindow = new kakao.maps.InfoWindow({
-            content: infoContent
+              ${selectedDetail.value.name}<br>
+              <a href="https://map.kakao.com/link/map/${selectedDetail.value.name},${lat},${lng}" style="color:blue" target="_blank">큰지도보기</a> 
+              <a href="https://map.kakao.com/link/to/${selectedDetail.value.name},${lat},${lng}" style="color:blue" target="_blank">길찾기</a>
+            </div>`;
+          const infowindow = new window.kakao.maps.InfoWindow({
+            content: infoContent,
+            removable: true
           });
-          
-          // 마커에 마우스 오버 시 인포윈도우 표시
-          kakao.maps.event.addListener(marker, 'mouseover', function() {
-            infoWindow.open(kakaoMap, marker);
+          window.kakao.maps.event.addListener(marker, 'click', function() {
+            infowindow.open(kakaoMap, marker);
           });
-          
-          // 마커에 마우스 아웃 시 인포윈도우 숨김
-          kakao.maps.event.addListener(marker, 'mouseout', function() {
-            infoWindow.close();
-          });
-          
+
           console.log('카카오 지도 초기화 완료');
+
         } catch (error) {
-          console.error('지도 초기화 오류:', error);
-          mapContainer.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; background-color: #f0f0f0; color: #666; text-align: center; padding: 20px;">지도를 로드할 수 없습니다.</div>';
+          console.error('상세 모달 지도 초기화 중 오류:', error);
         }
       };
 
