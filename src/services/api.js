@@ -122,11 +122,13 @@ export const imageToEngDescription = async (imageFile, signal, englishLocationNa
     console.log("이미지 설명 생성 API 호출 시작...");
     
     // 지역 이름이 있으면 프롬프트에 포함
-    let prompt = 'Describe this travel destination in detail according to your instructions.';
+    let prompt = 'Please express the atmosphere, objects, objects, etc. in 2-3 lines for the photo. The address of the photo is as follows.';
     if (englishLocationName) {
-      prompt = `Describe this travel destination in ${englishLocationName} in detail according to your instructions.`;
-      console.log('영어 지역 이름이 포함된 프롬프트 사용:', prompt);
+      //prompt = `Please express the atmosphere, objects, objects, etc. in 2-3 lines for the photo. The address of the photo is ${englishLocationName}.`;
+      prompt = `Please describe this image in 2-3 concise sentences, focusing on the main visual elements, atmosphere, and suitable visitor context (couples, friends, families, etc.). Include what activities are available or appropriate for the setting. The location is ${englishLocationName}.`;
     }
+
+    console.log('생성된 프롬프트:', prompt);
     
     // Ollama API 형식으로 요청 구성
     const descriptionRequestBody = {
@@ -186,7 +188,8 @@ export const EngDescriptionToVector = async (engDescription, signal) => {
     
     const analysisRequestBody = {
       model: 'ko_2', // 10차원 분석 모델
-      prompt: engDescription, // 이전 단계에서 얻은 설명을 프롬프트로 사용
+       prompt : `Based on this travel destination description, generate a vector representation with scores from 0.0 to 1.0 for each of the 10 dimensions. Remember to create a distinctive profile with clear highs and lows. Ensure your response is ONLY a valid JSON object with exactly 10 dimensions, using the exact dimension names and single-decimal scores (e.g., 0.7, not 0.75). The description is: ${engDescription}`,
+      //prompt: `Based on this travel destination description, generate a vector representation with scores from 0.0 to 1.0 for each of the 10 dimensions. Remember to create a distinctive profile with clear highs and lows. The description is: ${engDescription}` ,// 이전 단계에서 얻은 설명을 프롬프트로 사용
       stream: false
     };
     
@@ -2256,3 +2259,146 @@ export const getLocationCodes = (locationData) => {
  *    console.log(analysisResult.suggestedName);
  *    console.log(analysisResult.googleMapsUrl);
  */
+
+/**
+ * Converts an English description to a Korean description and extracts keywords using the ko_3 model.
+ * @param {string} englishDescription - The English description to process.
+ * @param {AbortSignal} signal - AbortSignal for the fetch request.
+ * @returns {Promise<{koreanDescription: string, extractedKeywords: string[]}>}
+ * @throws {Error} If the API call or parsing fails.
+ */
+export async function enDescToKoDescAndTags(englishDescription, signal) {
+  console.log('API Service: ko_3 모델을 이용한 한글 설명과 키워드 추출 시작...');
+  const response = await fetch('http://localhost:11434/api/generate', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'ko_3',
+      prompt : `다음 영문 여행지 설명을 2-3개의 간결한 한국어 문장으로 요약하고, 이 장소의 특징을 나타내는 5-20개의 고유한 한국어 키워드를 추출해주세요. 모든 영어 단어는 100% 한국어로 변환하고, 의미가 중복되는 키워드는 철저히 제거하세요. 각 키워드는 1-2단어의 명사 형태로 구성하고, 추상적이거나 일반적인 키워드는 피하세요. 반드시 정확한 JSON 형식으로 응답해주세요: ${englishDescription}`,
+      stream: false,
+    }),
+    signal: signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`키워드/설명 추출 API 실패 (ko_3): ${response.status} ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  console.log('API Service: ko_3 모델 전체 응답:', data);
+
+  let koreanDescription = '';
+  let extractedKeywords = [];
+
+  if (data && data.response) {
+    try {
+      const jsonString = data.response.trim();
+      const parsedData = JSON.parse(jsonString);
+      if (parsedData.description) {
+        koreanDescription = parsedData.description;
+      }
+      if (parsedData.keywords && Array.isArray(parsedData.keywords)) {
+        extractedKeywords = parsedData.keywords;
+      }
+    } catch (e) {
+      console.error('API Service: ko_3 응답 파싱 오류:', e, data.response);
+      // Fallback: if response is not JSON, maybe it's just the description string
+      koreanDescription = data.response;
+      extractedKeywords = []; // Cannot extract keywords if not JSON
+      console.warn('API Service: ko_3 응답을 JSON으로 파싱하지 못했습니다. 응답 전체를 설명으로 사용합니다.');
+    }
+  } else {
+    console.warn('API Service: ko_3 모델 응답에 response 필드가 없습니다.');
+    throw new Error('ko_3 모델로부터 유효한 응답을 받지 못했습니다.');
+  }
+  
+  return { koreanDescription, extractedKeywords };
+}
+
+/**
+ * Analyzes a receipt image to extract payment information (Place, Time, Price).
+ * Uses OCR.space API and then an OCR_basic AI model.
+ * @param {File} receiptFile - The image file of the receipt.
+ * @returns {Promise<{Place: string, Time: string, Price: number}>}
+ * @throws {Error} If any API call or parsing fails.
+ */
+export async function ImgToPayment(receiptFile) {
+  if (!receiptFile) {
+    throw new Error('영수증 파일이 제공되지 않았습니다.');
+  }
+
+  console.log('API Service: OCR로 텍스트 추출 시작 (OCR.space)...');
+  const ocrFormData = new FormData();
+  // IMPORTANT: Consider moving API keys to a more secure location like .env files for production.
+  ocrFormData.append('apikey', 'K83821813888957'); 
+  ocrFormData.append('language', 'kor');
+  ocrFormData.append('isTable', 'true');
+  ocrFormData.append('OCREngine', '2');
+  ocrFormData.append('scale', 'true');
+  ocrFormData.append('file', receiptFile);
+
+  const ocrResponse = await fetch('https://api.ocr.space/parse/image', {
+    method: 'POST',
+    body: ocrFormData,
+  });
+
+  const ocrData = await ocrResponse.json();
+
+  if (!ocrResponse.ok || ocrData.OCRExitCode !== 1) {
+    const errorMessage = ocrData.ErrorMessage?.[0] || ocrData.ErrorMessage || 'OCR 이미지 분석 중 알 수 없는 오류 발생';
+    console.error('API Service: OCR.space API 오류:', errorMessage, ocrData);
+    throw new Error(`OCR 분석 실패: ${errorMessage}`);
+  }
+
+  const parsedText = ocrData.ParsedResults?.[0]?.ParsedText;
+  if (!parsedText) {
+    console.error('API Service: OCR 결과에서 텍스트를 추출하지 못했습니다.', ocrData);
+    throw new Error('OCR 결과에서 텍스트를 추출하지 못했습니다.');
+  }
+  
+  console.log('API Service: AI 모델로 영수증 분석 시작 (OCR_basic)...');
+  const aiResponse = await fetch('http://localhost:11434/api/generate', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'OCR_basic',
+      prompt: parsedText,
+      stream: false,
+    }),
+  });
+
+  if (!aiResponse.ok) {
+    throw new Error(`영수증 분석 AI API 실패 (OCR_basic): ${aiResponse.status} ${aiResponse.statusText}`);
+  }
+
+  const aiData = await aiResponse.json();
+  console.log('API Service: OCR_basic 모델 전체 응답:', aiData);
+
+  if (aiData && aiData.response) {
+    try {
+      const parsedAIResponse = JSON.parse(aiData.response);
+      if (
+        parsedAIResponse.Place !== undefined &&
+        parsedAIResponse.Time !== undefined &&
+        parsedAIResponse.Price !== undefined
+      ) {
+        console.log('API Service: 영수증 분석 완료:', parsedAIResponse);
+        // Ensure Price is a number
+        parsedAIResponse.Price = Number(String(parsedAIResponse.Price).replace(/[^\d.-]/g, '')) || 0;
+        return parsedAIResponse;
+      }
+      console.error('API Service: AI 응답 JSON 구조가 예상과 다릅니다:', parsedAIResponse);
+      throw new Error('AI 응답에서 필요한 결제 정보를 추출하지 못했습니다.');
+    } catch (e) {
+      console.error('API Service: AI 응답을 JSON으로 파싱하는데 실패했습니다:', e, aiData.response);
+      throw new Error(`AI 응답 파싱 오류: ${e.message}. 응답 전문: ${aiData.response}`);
+    }
+  }
+  
+  console.error('API Service: AI 모델(OCR_basic)로부터 유효한 응답을 받지 못했습니다.', aiData);
+  throw new Error('AI 모델(OCR_basic)로부터 유효한 응답을 받지 못했습니다.');
+}

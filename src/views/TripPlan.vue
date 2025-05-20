@@ -728,7 +728,9 @@ import {
   createFeaturesVector,
   reverseGeocode,
   getEnglishLocationName,
-  getLocationCodes
+  getLocationCodes,
+  enDescToKoDescAndTags, // Added import
+  ImgToPayment           // Added import
 } from '@/services/api';
 
 export default {
@@ -1764,171 +1766,30 @@ export default {
     // 영수증 분석
     const analyzeReceipt = async () => {
       if (!receiptFile.value) {
+        alert('영수증 파일을 선택해주세요.'); // User feedback
         return;
       }
 
       isLoading.value = true;
-      loadingMessage.value = 'OCR로 텍스트 추출 중...';
+      loadingMessage.value = '영수증 분석 중... (OCR 및 AI 처리)';
 
       try {
-        const formData = new FormData();
-        formData.append('apikey', 'K83821813888957');
-        formData.append('language', 'kor');
-        formData.append('isTable', 'true');
-        formData.append('OCREngine', '2');
-        formData.append('scale', 'true');
-        formData.append('file', receiptFile.value);
+        const paymentData = await ImgToPayment(receiptFile.value);
+        
+        // 지출 항목으로 추가 (addFromReceipt는 이미 Place, Time, Price를 인자로 받음)
+        addFromReceipt(
+          paymentData.Place,
+          paymentData.Time,
+          paymentData.Price
+        );
+        closeReceiptUpload(); // 성공 시 모달 닫기
 
-        const response = await fetch('https://api.ocr.space/parse/image', {
-          method: 'POST',
-          body: formData
-        });
-
-        const data = await response.json();
-
-        if (data.OCRExitCode === 1) {
-          loadingMessage.value = 'AI 처리중...';
-          await analyzeWithAI(data.ParsedResults[0].ParsedText);
-        } else {
-          throw new Error(data.ErrorMessage || '이미지 분석 중 오류가 발생했습니다.');
-        }
       } catch (error) {
-        console.error('OCR API 호출 오류:', error);
-        alert('이미지 분석 실패: ' + error.message);
+        console.error('영수증 분석 처리 오류 (TripPlan.vue):', error);
+        alert(`영수증 분석 실패: ${error.message}`); // Display error to user
       } finally {
         isLoading.value = false;
-      }
-    };
-
-    // AI 모델로 분석
-    const analyzeWithAI = async (text) => {
-      try {
-        const response = await fetch('http://localhost:11434/api/generate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'OCR_basic',
-            prompt: text,
-            stream: false
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error(`API 응답 오류: ${response.status} ${response.statusText}`);
-        }
-
-        const data = await response.json();
-
-        if (data && data.response) {
-          try {
-            const parsedResponse = JSON.parse(data.response);
-
-            if (parsedResponse.Place !== undefined &&
-              parsedResponse.Time !== undefined &&
-              parsedResponse.Price !== undefined) {
-              parsedReceiptData.value = parsedResponse;
-
-              // 지출 항목으로 추가
-              addFromReceipt(
-                parsedReceiptData.value.Place,
-                parsedReceiptData.value.Time,
-                parsedReceiptData.value.Price
-              );
-
-              // 모달 닫기
-              closeReceiptUpload();
-              return;
-            }
-          } catch (e) {
-            console.error('AI 응답을 JSON으로 파싱할 수 없습니다:', e);
-          }
-        }
-
-        // AI 분석 실패시 기본 패턴 매칭 사용
-        extractReceiptData(text);
-
-        // 지출 항목으로 추가
-        addFromReceipt(
-          parsedReceiptData.value.Place,
-          parsedReceiptData.value.Time,
-          parsedReceiptData.value.Price
-        );
-
-        // 모달 닫기
-        closeReceiptUpload();
-      } catch (error) {
-        console.error('AI 분석 오류:', error);
-        extractReceiptData(text);
-
-        // 지출 항목으로 추가
-        addFromReceipt(
-          parsedReceiptData.value.Place,
-          parsedReceiptData.value.Time,
-          parsedReceiptData.value.Price
-        );
-
-        // 모달 닫기
-        closeReceiptUpload();
-      }
-    };
-
-    // 기본 패턴 매칭
-    const extractReceiptData = (text) => {
-      if (!text) return;
-
-      const lines = text.split('\n').filter(line => line.trim());
-
-      // 결제 장소 추출
-      const potentialPlaces = lines.slice(0, Math.min(3, lines.length));
-      parsedReceiptData.value.Place = potentialPlaces.reduce(
-        (longest, current) => current.length > longest.length ? current : longest,
-        ''
-      ).trim();
-
-      // 날짜 및 시간 패턴 찾기
-      const datePattern = /\d{2,4}[-./]\d{1,2}[-./]\d{1,2}|\d{1,2}[-./]\d{1,2}[-./]\d{2,4}/;
-      const timePattern = /\d{1,2}:\d{2}(:\d{2})?/;
-
-      // 결제 시간 추출
-      for (const line of lines) {
-        const timeLabels = ['날짜', '시간', '결제시간', '거래일시', '거래일자', '일자', '일시'];
-        const hasTimeLabel = timeLabels.some(label => line.includes(label));
-
-        const dateMatch = line.match(datePattern);
-        if (dateMatch) {
-          let dateStr = dateMatch[0];
-
-          const timeMatch = line.match(timePattern);
-          if (timeMatch) {
-            dateStr += ' ' + timeMatch[0];
-          }
-
-          if (hasTimeLabel || !parsedReceiptData.value.Time) {
-            parsedReceiptData.value.Time = dateStr.trim();
-          }
-        }
-      }
-
-      // 결제 금액 추출
-      const totalPatterns = [
-        /(합\s*계|총\s*액|결제\s*금액|결제액|Total|합계금액).{0,10}([\d,]+)/i,
-        /([\d,]+)\s*원\s*(합\s*계|총\s*액|결제\s*금액)/i,
-        /([\d,]+)/
-      ];
-
-      for (const line of lines) {
-        for (const pattern of totalPatterns) {
-          const match = line.match(pattern);
-          if (match) {
-            const priceStr = match[2] || match[1];
-            const numericPrice = priceStr.replace(/[^\d]/g, '');
-            if (numericPrice && (!parsedReceiptData.value.Price || parseInt(numericPrice) > parsedReceiptData.value.Price)) {
-              parsedReceiptData.value.Price = parseInt(numericPrice);
-            }
-          }
-        }
+        loadingMessage.value = ''; // Clear loading message
       }
     };
 
@@ -2768,57 +2629,16 @@ export default {
         loadingPhase.value = 'keywordExtraction';
         
         // 3. ko_3 모델을 이용하여 한글 설명과 키워드 추출
-        console.log('3. ko_3 모델을 이용한 한글 설명과 키워드 추출 시작...');
+        console.log('3. ko_3 모델을 이용한 한글 설명과 키워드 추출 시작 (API 서비스 호출)...');
         const keywordExtractionStartTime = performance.now();
-        const ko3Response = await fetch('http://localhost:11434/api/generate', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'ko_3',
-            prompt: engDescription || '이미지 설명이 없습니다.',
-            stream: false
-          }),
-          signal: abortController.signal
-        });
         
-        if (!ko3Response.ok) {
-          throw new Error(`키워드 추출 실패: ${ko3Response.status} ${ko3Response.statusText}`);
-        }
-        
-        let koreanDescription = '';
-        let extractedKeywords = [];
-        let ko3Data = null;
-        
-        ko3Data = await ko3Response.json();
-        console.log('3. ko_3 모델 전체 응답:', ko3Data);
-        
-        if (!ko3Data || !ko3Data.response) {
-          throw new Error('키워드 추출 실패: 응답에서 데이터를 찾을 수 없습니다.');
-        }
-        
-        try {
-          // JSON 형태의 응답 파싱
-          const jsonString = ko3Data.response.trim();
-          const parsedData = JSON.parse(jsonString);
-          console.log('3. 파싱된 ko_3 데이터:', parsedData);
-          
-          if (parsedData.description) {
-            koreanDescription = parsedData.description;
-          }
-          
-          if (parsedData.keywords && Array.isArray(parsedData.keywords)) {
-            extractedKeywords = parsedData.keywords;
-          }
-        } catch (e) {
-          console.error('ko_3 응답 파싱 오류:', e);
-          throw new Error('키워드 추출 실패: 응답 데이터 파싱 오류');
-        }
+        // enDescToKoDescAndTags 함수 호출로 변경
+        const { koreanDescription, extractedKeywords } = await enDescToKoDescAndTags(engDescription, abortController.signal);
+        // ko3Response, ko3Data 관련 로직은 이제 enDescToKoDescAndTags 함수 내부에 있음
         
         const keywordExtractionEndTime = performance.now();
         keywordExtractionDuration.value = Number(((keywordExtractionEndTime - keywordExtractionStartTime) / 1000).toFixed(1));
-        console.log('3. 키워드 추출 완료:', extractedKeywords);
+        console.log('3. 키워드 추출 완료 (API 서비스 결과):', extractedKeywords, '한글 설명:', koreanDescription);
         
         // 단계 업데이트: 벡터 저장
         loadingPhase.value = 'vectorSaving';
@@ -3045,8 +2865,6 @@ export default {
       processReceiptFile,
       clearReceiptImage,
       analyzeReceipt,
-      analyzeWithAI,
-      extractReceiptData,
       addFromReceipt,
       editingExpense,
       editExpenseTime,
