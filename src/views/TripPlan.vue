@@ -535,7 +535,7 @@
     </div>
 
     <!-- 성공 알림 배너 -->
-    <div v-if="showSuccessBanner" class="success-banner">
+    <div v-if="showSuccessBannerFlag" class="success-banner">
       <div class="success-icon">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -718,9 +718,10 @@
 <script>
 import Header from '@/components/Header.vue';
 import LoadingSpinner from '@/components/LoadingSpinner.vue';
-import { ref, computed, onMounted, watch, nextTick } from 'vue';
+import { ref, computed, onMounted, watch, nextTick, onBeforeUnmount } from 'vue';
 import config from '@/config';
 import EXIF from 'exif-js';
+import { safelyCleanupMap, isKakaoMapsLoaded, waitForKakaoMapsSDK } from '@/utils/mapUtils';
 import {
   imageToEngDescription,
   EngDescriptionToVector,
@@ -747,6 +748,10 @@ export default {
     const kakaoPolyline = ref(null);
     const mapLoaded = ref(false);
     const geocoder = ref(null);
+
+    // 장소 상세 모달의 지도 인스턴스를 위한 ref
+    const detailMapInstance = ref(null);
+    const detailMapContainer = ref(null); // 이미 템플릿에 있는 ref (id="detail-map")
 
     // 장소 검색 관련 상태
     const isPlaceSearchModalOpen = ref(false);
@@ -939,7 +944,7 @@ export default {
     };
 
     // 카카오 맵 초기화
-    const initializeMap = () => {
+    const initializeMap = async () => {
       console.log("Initializing Kakao Map...");
 
       // 카카오 지도 API 로드
@@ -949,39 +954,87 @@ export default {
       // 스크립트가 이미 있는지 확인
       const existingScript = document.getElementById('kakao-maps-sdk');
       if (existingScript) {
-        existingScript.remove();
+        // 이미 존재하면 스크립트 삭제하지 않고 재사용
+        if (isKakaoMapsLoaded()) {
+          console.log("Kakao Maps SDK already loaded, proceeding to map initialization");
+          await initGeocoderAndMap();
+          return;
+        }
       }
 
       // 스크립트 생성
       const script = document.createElement('script');
       script.id = 'kakao-maps-sdk';
       script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${kakaoMapsApiKey}&libraries=services,clusterer,drawing&autoload=false`;
-      script.onload = () => {
-        console.log("Kakao Maps SDK loaded");
-        window.kakao.maps.load(() => {
-          console.log("Kakao Maps initialized");
-          nextTick(() => {
-            loadMap();
+      
+      // 프로미스로 스크립트 로드 처리
+      await new Promise((resolve) => {
+        script.onload = () => {
+          console.log("Kakao Maps SDK script loaded");
+          window.kakao.maps.load(() => {
+            console.log("Kakao Maps API and libraries are loaded");
+            resolve();
           });
-        });
-      };
-      document.head.appendChild(script);
+        };
+        script.onerror = () => {
+          console.error("Failed to load Kakao Maps SDK");
+          resolve(); // 에러 발생해도 진행
+        };
+        document.head.appendChild(script);
+      });
+      
+      await initGeocoderAndMap();
+    };
+    
+    // Geocoder 초기화 및 맵 로드
+    const initGeocoderAndMap = async () => {
+      if (!isKakaoMapsLoaded()) {
+        console.error("Kakao Maps SDK not available after loading attempt");
+        return;
+      }
+      
+      // Geocoder 초기화
+      if (window.kakao.maps.services && window.kakao.maps.services.Geocoder) {
+        try {
+          geocoder.value = new window.kakao.maps.services.Geocoder();
+          console.log("Geocoder initialized successfully");
+        } catch (error) {
+          console.error("Error initializing Geocoder:", error);
+          geocoder.value = null;
+        }
+      } else {
+        console.error("Kakao Maps Services or Geocoder constructor not available");
+        geocoder.value = null;
+      }
+
+      // nextTick으로 DOM 업데이트 후 지도 로드
+      await nextTick();
+      loadMap();
     };
 
     // 카카오 맵 로드 및 초기화
-    const loadMap = () => {
+    const loadMap = async () => {
       console.log("Loading Kakao Map...");
-      if (!window.kakao || !window.kakao.maps) {
-        console.error("Kakao Maps SDK not loaded");
+      
+      // 카카오맵 SDK가 로드되었는지 확인
+      if (!isKakaoMapsLoaded()) {
+        console.error("Kakao Maps SDK not available when loadMap is called");
         return;
       }
 
+      // 컨테이너 확인
       if (!kakaoMapContainer.value) {
         console.error("Kakao Map container not found");
         return;
       }
 
       try {
+        // 기존 지도 인스턴스 정리
+        if (kakaoMap.value) {
+          safelyCleanupMap(kakaoMap.value);
+          kakaoMap.value = null;
+        }
+        
         // 제주도 중심 좌표
         const jejuCenter = new window.kakao.maps.LatLng(33.3846, 126.5535);
 
@@ -992,24 +1045,19 @@ export default {
         };
 
         kakaoMap.value = new window.kakao.maps.Map(kakaoMapContainer.value, options);
-        console.log("Kakao Map created:", kakaoMap.value);
+        console.log("Kakao Map created successfully");
 
         // 확대 축소 컨트롤러 추가
         const zoomControl = new window.kakao.maps.ZoomControl();
         kakaoMap.value.addControl(zoomControl, window.kakao.maps.ControlPosition.RIGHT);
 
-        // Geocoder 초기화 강화
-        if (window.kakao.maps.services && window.kakao.maps.services.Geocoder) {
-          geocoder.value = new window.kakao.maps.services.Geocoder();
-          console.log("Geocoder initialized successfully.");
-        } else {
-          console.error("Kakao Maps Services or Geocoder not available.");
-          // 필요한 경우 여기서 사용자에게 알림을 표시하거나 대체 로직을 수행할 수 있습니다.
-          // 예를 들어, 몇 초 후 다시 시도하거나, 기능의 사용을 제한할 수 있습니다.
-          // 이 예제에서는 단순히 에러를 로깅합니다.
+        // Geocoder 확인
+        if (!geocoder.value) {
+          console.warn("Geocoder instance was not available. Address search might fail.");
         }
 
         // 마커와 경로 표시
+        await nextTick(); // DOM 업데이트 보장
         updateMapMarkers();
 
         mapLoaded.value = true;
@@ -1167,26 +1215,23 @@ export default {
 
     // 카카오 지도에서 주소를 좌표로 변환하는 함수
     const geocodeAddress = (address, callback) => {
-      if (!window.kakao || !window.kakao.maps || !window.kakao.maps.services) {
-        console.error("Kakao Maps Services not loaded");
+      if (!geocoder.value) {
+        console.error("Geocoder instance is not available. Cannot perform address search for:", address);
+        // 대체 좌표를 제공하거나 오류 콜백을 호출할 수 있습니다.
+        const fallbackCoords = {
+          lat: 33.3846 + (Math.random() * 0.2 - 0.1),
+          lng: 126.5535 + (Math.random() * 0.2 - 0.1)
+        };
+        console.log("Using fallback coordinates due to missing geocoder.");
+        if (callback && typeof callback === 'function') {
+          callback(fallbackCoords); 
+        }
         return;
       }
 
-      // geocoder가 없으면 새로 생성
-      if (!geocoder.value) {
-        try {
-          console.log("Creating new Geocoder instance");
-          geocoder.value = new window.kakao.maps.services.Geocoder();
-        } catch (error) {
-          console.error("Failed to create Geocoder:", error);
-          return;
-        }
-      }
-
       try {
-        console.log(`Geocoding address: ${address}`);
-        // 제주도 지역 검색을 위해 주소에 제주도를 포함
-        const searchAddress = `${address}, 제주도`;
+        console.log(`Geocoding address: ${address} with geocoder instance.`);
+        const searchAddress = `${address}, 제주도`; // 제주도 지역 검색 강화
 
         geocoder.value.addressSearch(searchAddress, (result, status) => {
           if (status === window.kakao.maps.services.Status.OK && result.length > 0) {
@@ -1194,27 +1239,32 @@ export default {
               lat: parseFloat(result[0].y),
               lng: parseFloat(result[0].x)
             };
-            console.log(`Geocoded coordinates:`, coords);
-            callback(coords);
+            console.log(`Geocoded coordinates for ${address}:`, coords);
+            if (callback && typeof callback === 'function') {
+              callback(coords);
+            }
           } else {
-            console.warn(`Geocoding failed for: ${searchAddress}, status: ${status}`);
-            // 실패 시 제주도 중심 근처 랜덤 좌표 반환
+            console.warn(`Geocoding failed for: ${searchAddress}, status: ${status}. Result:`, result);
             const fallbackCoords = {
-              lat: 33.3846 + (Math.random() * 0.2 - 0.1),  // 제주도 중심 ±0.1도 랜덤
+              lat: 33.3846 + (Math.random() * 0.2 - 0.1),
               lng: 126.5535 + (Math.random() * 0.2 - 0.1)
             };
-            console.log("Using fallback coordinates:", fallbackCoords);
-            callback(fallbackCoords);
+            console.log("Using fallback coordinates after geocoding failure.");
+            if (callback && typeof callback === 'function') {
+              callback(fallbackCoords);
+            }
           }
         });
       } catch (error) {
         console.error("Error during geocoding:", error);
-        // 오류 발생 시 랜덤 좌표 반환
         const errorCoords = {
           lat: 33.3846 + (Math.random() * 0.2 - 0.1),
           lng: 126.5535 + (Math.random() * 0.2 - 0.1)
         };
-        callback(errorCoords);
+        console.log("Using fallback coordinates due to geocoding error.");
+        if (callback && typeof callback === 'function') {
+          callback(errorCoords);
+        }
       }
     };
 
@@ -1385,6 +1435,19 @@ export default {
       placeSearchKeyword.value = '';
       searchResults.value = [];
       hasSearched.value = false;
+      
+      // 로딩 대기 타이머가 있으면 제거
+      if (window.detailMapLoadTimer) {
+        clearInterval(window.detailMapLoadTimer);
+        window.detailMapLoadTimer = null;
+      }
+
+      // 상세 지도 인스턴스 안전하게 정리
+      if (detailMapInstance.value) {
+        safelyCleanupMap(detailMapInstance.value);
+        detailMapInstance.value = null;
+        console.log("Detail map instance cleaned up on closePlaceSearch.");
+      }
     };
 
     // 장소 상세 정보 열기
@@ -1398,42 +1461,85 @@ export default {
       visitTime.value = `${hours}:${minutes}`;
       placeMemo.value = '';
 
-      // 다음 렌더링 주기에서 상세 지도 초기화
-      nextTick(() => {
-        // 지도 초기화
-        initDetailMap();
+      // 지도가 생성되기 전에 모달을 먼저 나타내어 사용자 경험 개선
+      requestAnimationFrame(() => {
+        const detailModal = document.querySelector('.place-detail-modal');
+        if (detailModal) {
+          detailModal.classList.add('slide-in');
+        }
         
-        // 애니메이션을 위한 타이밍 설정
-        requestAnimationFrame(() => {
-          const detailModal = document.querySelector('.place-detail-modal');
-          if (detailModal) {
-            detailModal.classList.add('slide-in');
+        // 텍스트 영역 높이 초기화
+        if (memoTextarea.value) {
+          memoTextarea.value.style.height = '60px';
+          memoTextarea.value.classList.remove('expanded');
+        }
+      });
+
+      // 지도 초기화를 비동기적으로 처리
+      nextTick(async () => {
+        try {
+          // SDK 로드 여부 확인 및 대기 - 새로 생성한 유틸리티 함수 사용
+          if (!isKakaoMapsLoaded()) {
+            console.log("Kakao Maps SDK not ready. Waiting...");
+            const sdkLoaded = await waitForKakaoMapsSDK(5000);
+            
+            if (!sdkLoaded) {
+              console.error("Kakao Maps SDK 로드 타임아웃");
+              // 오류 메시지 표시
+              const mapContainer = document.getElementById('detail-map');
+              if (mapContainer) {
+                mapContainer.style.display = 'flex';
+                mapContainer.style.justifyContent = 'center';
+                mapContainer.style.alignItems = 'center';
+                mapContainer.style.backgroundColor = '#f5f5f5';
+                mapContainer.innerHTML = '<div style="padding: 20px; text-align: center;">지도 로딩 중 문제가 발생했습니다. <br>다른 정보로 계속 진행해 주세요.</div>';
+              }
+              return;
+            }
           }
           
-          // 텍스트 영역 높이 초기화
-          if (memoTextarea.value) {
-            memoTextarea.value.style.height = '60px';
-            memoTextarea.value.classList.remove('expanded');
-          }
-        });
+          // SDK가 로드되었으므로 지도 초기화 실행
+          console.log("Kakao Maps SDK ready, initializing detail map");
+          await initDetailMap();
+          
+        } catch (error) {
+          console.error("Error in openPlaceDetails:", error);
+        }
       });
     };
 
-    // 상세 지도 초기화
-    const initDetailMap = () => {
-      if (!selectedPlace.value) return;
+    // 상세 지도 초기화 함수 개선 - 비동기 처리
+    const initDetailMap = async () => {
+      if (!selectedPlace.value) {
+        console.log("No selected place for detail map.");
+        return;
+      }
 
-      // 지도 컨테이너 요소가 있는지 확인
-      const detailMapContainer = document.getElementById('detail-map');
-      if (!detailMapContainer) return;
-
-      // 카카오맵 API가 로드되었는지 확인
-      if (!window.kakao || !window.kakao.maps) {
-        console.error("Kakao Maps SDK not loaded");
+      // 지도 컨테이너 요소가 있는지 확인 (Vue ref 사용 또는 일반 DOM 조회)
+      const mapElement = detailMapContainer.value || document.getElementById('detail-map');
+      if (!mapElement) {
+        console.error("Detail map container not found.");
         return;
       }
 
       try {
+        // 이전 상세 지도 인스턴스가 있으면 정리
+        if (detailMapInstance.value) {
+          console.log("Cleaning up previous map instance");
+          safelyCleanupMap(detailMapInstance.value);
+          detailMapInstance.value = null;
+        }
+        
+        // Kakao SDK 로드 확인 및 대기
+        if (!isKakaoMapsLoaded()) {
+          console.log("Waiting for Kakao Maps SDK to load...");
+          const isLoaded = await waitForKakaoMapsSDK(3000);
+          if (!isLoaded) {
+            console.error("Kakao Maps SDK 로드 실패");
+            return;
+          }
+        }
+
         // 선택한 장소의 좌표
         const placePosition = new window.kakao.maps.LatLng(
           selectedPlace.value.y,
@@ -1446,36 +1552,57 @@ export default {
           level: 3 // 확대 레벨
         };
 
-        // 지도 생성
-        const detailMap = new window.kakao.maps.Map(detailMapContainer, mapOptions);
-
+        // NextTick으로 DOM 업데이트 보장
+        await nextTick();
+        
+        // 새로운 상세 지도 인스턴스 생성 및 저장
+        detailMapInstance.value = new window.kakao.maps.Map(mapElement, mapOptions);
+        console.log("Detail map created successfully");
+        
         // 마커 생성
         new window.kakao.maps.Marker({
           position: placePosition,
-          map: detailMap
+          map: detailMapInstance.value
         });
 
-        // 애니메이션 완료 후 지도 리사이즈 
+        // 애니메이션 또는 모달 렌더링 지연 후 지도 리사이즈 
         setTimeout(() => {
-          detailMap.relayout();
-        }, 650);
+          if (detailMapInstance.value) { // 인스턴스가 여전히 존재하는지 확인
+            detailMapInstance.value.relayout();
+            console.log("Detail map relayout called");
+          }
+        }, 650); 
+
       } catch (error) {
         console.error("Error initializing detail map:", error);
+        if (detailMapInstance.value) {
+          // 오류 발생 시 안전한 정리
+          safelyCleanupMap(detailMapInstance.value);
+          detailMapInstance.value = null;
+        }
       }
     };
 
     // 장소 상세 취소
     const cancelPlaceDetails = () => {
-      // Add animation class to trigger reverse animation
-      const detailModal = document.querySelector('.place-detail-modal');
-      if (detailModal) {
-        detailModal.classList.remove('slide-in');
+      // 애니메이션을 위한 클래스 제거
+      const detailModalEl = document.querySelector('.place-detail-modal');
+      if (detailModalEl) {
+        detailModalEl.classList.remove('slide-in');
       }
       
-      // Delay removing the selectedPlace to allow animation to complete
+      // 애니메이션 완료 후 지도 관련 리소스 정리
       setTimeout(() => {
+        // 지도 인스턴스 먼저 안전하게 정리
+        if (detailMapInstance.value) {
+          console.log("Cleaning up detail map instance");
+          safelyCleanupMap(detailMapInstance.value);
+          detailMapInstance.value = null;
+        }
+        
+        // 상태 초기화
         selectedPlace.value = null;
-      }, 600); // Match the animation duration for smooth transition
+      }, 600); // 애니메이션 지속 시간과 일치시킴
     };
 
     // 위시리스트에 장소 추가
@@ -1509,38 +1636,54 @@ export default {
     // 선택한 장소 일정에 추가
     const addSelectedPlace = () => {
       if (!selectedPlace.value) return;
-
+      
+      // 시간 파싱 및 검증
+      const timeRegex = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
+      if (!timeRegex.test(visitTime.value)) {
+        alert('시간은 HH:MM 형식으로 입력해 주세요.');
+        return;
+      }
+      
       // 좌표 추출
       const coords = {
         lat: parseFloat(selectedPlace.value.y),
         lng: parseFloat(selectedPlace.value.x)
       };
-
+      
       // 새 일정 아이템 생성
       const newItem = {
+        id: Date.now(), // 고유 ID 생성
         time: visitTime.value,
         activity: selectedPlace.value.place_name,
-        location: placeMemo.value || selectedPlace.value.road_address_name || selectedPlace.value.address_name,
+        location: selectedPlace.value.address_name || selectedPlace.value.road_address_name,
+        memo: placeMemo.value,
         coords: coords
       };
-
+      
+      console.log('추가할 새 일정:', newItem);
+      console.log('현재 선택된 날짜:', selectedDay.value);
+      console.log('현재 tripDays 상태:', JSON.parse(JSON.stringify(tripDays.value)));
+      
       // 선택한 날짜의 일정에 추가
       if (!tripDays.value[selectedDay.value].items) {
         tripDays.value[selectedDay.value].items = [];
       }
-
+      
       tripDays.value[selectedDay.value].items.push(newItem);
-
+      
       // 모달 닫기
       closePlaceSearch();
-
+      
       // 활성 날짜를 선택한 날짜로 변경 (다른 날짜에 일정을 추가한 경우)
       if (selectedDay.value !== activeDay.value) {
         activeDay.value = selectedDay.value;
       }
-
+      
       // 강제 화면 갱신 - 일정 추가 후 즉시 실행
       forceRefresh();
+      
+      // 성공 메시지
+      showSuccessBanner(`${newItem.activity}이(가) 일정에 추가되었습니다.`);
     };
 
     // 장소 검색 실행
@@ -1592,15 +1735,20 @@ export default {
 
 
     // 컴포넌트 마운트 시 지도 초기화
-    onMounted(() => {
+    onMounted(async () => {
       console.log("Component mounted");
-      nextTick(() => {
-        // DOM이 완전히 렌더링된 후 카카오 맵 초기화
-        console.log("Next tick after mount - initializing Kakao Map");
-        setTimeout(() => {
-          initializeMap();
-        }, 500); // 더 긴 딜레이로 DOM이 완전히 렌더링되도록 기다림
-      });
+      
+      // DOM이 완전히 렌더링될 때까지 대기
+      await nextTick();
+      
+      // 약간의 지연 후 초기화 (더 안정적인 DOM 렌더링을 위해)
+      setTimeout(async () => {
+        try {
+          await initializeMap();
+        } catch (error) {
+          console.error("Map initialization error:", error);
+        }
+      }, 300);
     });
 
     // 활성 날짜가 변경될 때 지도 업데이트
@@ -1625,14 +1773,17 @@ export default {
     });
 
     // 맵 크기 재조정 - 창 크기 변경 시
-    window.addEventListener('resize', () => {
+    const handleResize = () => {
       if (mapLoaded.value && kakaoMap.value) {
         nextTick(() => {
           kakaoMap.value.relayout();
           updateMapMarkers();
         });
       }
-    });
+    };
+
+    // 기존의 익명 리스너 대신 명명된 함수 사용
+    window.addEventListener('resize', handleResize);
 
     // 강제 화면 갱신 함수 추가
     const forceRefresh = () => {
@@ -1804,11 +1955,7 @@ export default {
           // 결제 항목이 추가되었는지 확인
           if (addedCount > 0) {
             // 토스트 메시지 표시
-            successMessage.value = `총 ${addedCount}건의 결제 내역이 추가되었습니다!!`;
-            showSuccessBanner.value = true;
-            setTimeout(() => {
-              showSuccessBanner.value = false;
-            }, 3000);
+            showSuccessBanner(`총 ${addedCount}건의 결제 내역이 추가되었습니다!!`);
             
             // 모달 닫기 및 이미지 초기화
             closeReceiptUpload();
@@ -1921,11 +2068,8 @@ export default {
       // 지출 목록에 추가
       tripData.value.expenses.push(newExpense);
 
-      // 성공 메시지 (alert 대신 배너 표시)
-      showSuccessBanner.value = true;
-      setTimeout(() => {
-        showSuccessBanner.value = false;
-      }, 3000);
+      // 성공 메시지 표시
+      showSuccessBanner('영수증 정보가 성공적으로 추가되었습니다!');
     };
 
     // 지출 항목 수정 관련 상태
@@ -1974,8 +2118,19 @@ export default {
     };
 
     // 성공 배너 상태
-    const showSuccessBanner = ref(false);
+    const showSuccessBannerFlag = ref(false);
     const successMessage = ref('');
+    
+    // 성공 배너 표시 함수
+    const showSuccessBanner = (message) => {
+      successMessage.value = message;
+      showSuccessBannerFlag.value = true;
+      
+      // 3초 후 배너 자동 숨김
+      setTimeout(() => {
+        showSuccessBannerFlag.value = false;
+      }, 3000);
+    };
 
     // 여행 기본 정보 수정 관련 상태
     const isEditingInfo = ref(false);
@@ -2484,10 +2639,7 @@ export default {
         };
 
         // 성공 메시지 표시
-        showSuccessBanner.value = true;
-        setTimeout(() => {
-          showSuccessBanner.value = false;
-        }, 3000);
+        showSuccessBanner('방문 인증이 완료되었습니다!');
 
         // 모달 닫기
         closeVerificationModal();
@@ -2754,11 +2906,7 @@ export default {
         item.review = reviewText.value;
         
         // 성공 메시지 표시
-        successMessage.value = '방문이 인증되었고 사진이 저장되었습니다!';
-        showSuccessBanner.value = true;
-        setTimeout(() => {
-          showSuccessBanner.value = false;
-        }, 3000);
+        showSuccessBanner('방문이 인증되었고 사진이 저장되었습니다!');
         
         // 로딩 완료 후 모달 닫기
         setTimeout(() => {
@@ -2773,11 +2921,7 @@ export default {
         loadingPhase.value = 'error';
         
         // 오류 메시지 표시 - 다시 시도 요청
-        successMessage.value = `처리 오류: ${error.message || '알 수 없는 오류가 발생했습니다.'}`;
-        showSuccessBanner.value = true;
-        setTimeout(() => {
-          showSuccessBanner.value = false;
-        }, 5000);
+        showSuccessBanner(`처리 오류: ${error.message || '알 수 없는 오류가 발생했습니다.'}`); // 오류 메시지는 더 길게 표시
         
         // 방문 인증 데이터를 저장하지 않음 (중요: 데이터가 정상적으로 처리되지 않으면 저장하지 않음)
       } finally {
@@ -2831,6 +2975,27 @@ export default {
       // 로딩 상태 해제
       isVerifying.value = false;
     };
+
+    // 컴포넌트 소멸 시 정리
+    onBeforeUnmount(() => {
+      console.log("TripPlan Component unmounting. Cleaning up resources...");
+      
+      // 모든 지도 인스턴스 정리
+      if (kakaoMap.value) {
+        safelyCleanupMap(kakaoMap.value);
+        kakaoMap.value = null;
+      }
+      
+      if (detailMapInstance.value) {
+        safelyCleanupMap(detailMapInstance.value);
+        detailMapInstance.value = null;
+      }
+      
+      // 이벤트 리스너 제거
+      window.removeEventListener('resize', handleResize);
+    });
+
+         // mapUtils에서 가져온 유틸리티 함수 사용
 
     return {
       tripData,
@@ -2909,6 +3074,8 @@ export default {
       saveExpenseEdit,
       cancelExpenseEdit,
       showSuccessBanner,
+      showSuccessBannerFlag,
+      successMessage,
       isEditingInfo,
       startEditInfo,
       saveEditInfo,
@@ -2937,7 +3104,6 @@ export default {
       reviewRating,
       reviewText,
       completeVerification,
-      successMessage,
       loadingPhase,
       imageAnalysisDuration,
       meaningAnalysisDuration,
@@ -2947,6 +3113,7 @@ export default {
       autoResizeTextarea,
       adminVerify,
       testDataInputs,
+      detailMapContainer, // expose to template if not already (it is used by ref="detailMapContainer")
     };
   }
 };
