@@ -97,7 +97,18 @@
                 </span>
                 <span class="rank-number">{{ destination.displayRank }}</span>
               </div>
-              <div class="destination-image" :style="{ backgroundImage: destination.p_image ? `url(data:image/jpeg;base64,${destination.p_image})` : 'url(https://via.placeholder.com/300x200?text=No+Image)' }"></div>
+              <div class="destination-image"> <!-- This div is now a container -->
+                <img 
+                  v-if="destination.p_image" 
+                  :src="`data:image/jpeg;base64,${destination.p_image}`" 
+                  :alt="destination.name || '여행지 이미지'" 
+                  class="destination-actual-image"
+                >
+                <div v-else class="destination-placeholder">
+                  <svg class="placeholder-icon" xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                  <span class="placeholder-text">이미지 준비중</span>
+                </div>
+              </div>
               <div class="destination-content">
                 <h4>{{ destination.name }}</h4>
                 <div class="destination-location">
@@ -112,7 +123,7 @@
                   <span class="count-value">{{ destination.visitCount }}회</span>
                 </div>
                 <div class="destination-tags">
-                  <span v-for="tag in destination.tags.slice(0, 3)" :key="tag" class="tag">{{ tag }}</span>
+                  <span v-for="tag in getVisibleTags(destination.tags)" :key="tag" class="tag">{{ tag }}</span>
                 </div>
               </div>
             </div>
@@ -160,15 +171,16 @@
             </button>
           </div>
         </div>
-              
+                
         <div class="modal-content">
           <!-- 이미지와 지도 섹션 (수평 레이아웃) -->
           <div class="visual-section">
             <div class="detail-image-container">
-              <img v-if="selectedDetail.p_image" :src="`data:image/jpeg;base64,${selectedDetail.p_image}`" :alt="selectedDetail.name" class="detail-image">
+              <img v-if="selectedDetail.p_image" :src="`data:image/jpeg;base64,${selectedDetail.p_image}`" :alt="selectedDetail.name"
+                class="detail-image">
               <div v-else class="placeholder-image">이미지 없음</div>
             </div>
-              
+                
             <!-- 지도 영역 -->
             <div class="detail-map-container">
               <div id="detailMap" class="detail-map"></div>
@@ -182,36 +194,17 @@
               <span v-for="(tag, index) in selectedDetail.tags" :key="index" class="tag">{{ tag }}</span>
             </div>
           </div>
-  
+
           <!-- 설명 섹션 -->
           <div v-if="selectedDetail.description" class="detail-section">
             <h4>설명</h4>
             <p class="detail-description">{{ selectedDetail.description }}</p>
           </div>
           
-          <!-- 방문 정보 섹션 -->
-          <div class="detail-section">
-            <h4>방문 정보</h4>
-            <div class="detail-visit-info">
-              <div class="visit-info-item">
-                <span class="info-label">총 방문 인증:</span>
-                <span class="info-value">{{ selectedDetail.visitCount }}회</span>
-              </div>
-              <div class="visit-info-item">
-                <span class="info-label">지역:</span>
-                <span class="info-value">{{ selectedDetail.regionName }}</span>
-              </div>
-              <div class="visit-info-item">
-                <span class="info-label">시군구:</span>
-                <span class="info-value">{{ selectedDetail.sigName }}</span>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 연령대별 방문 통계 섹션 (새로 추가) -->
+          <!-- 연령대별 방문 통계 섹션 -->
           <div v-if="!isLoadingStats" class="detail-section stats-section">
             <h4>연령대별 방문 통계 (총 {{ totalStatsVisits }}건 인증)</h4>
-            <div v-if="ageStats.length > 0" class="stats-charts">
+            <div v-if="ageStats.length > 0 || genderStats.length > 0" class="stats-charts">
               <!-- 연령대별 원형 그래프 -->
               <div class="chart-container">
                 <h5>연령대별 방문 비율</h5>
@@ -219,7 +212,7 @@
                   <div v-if="totalAgeVisits === 0" class="no-age-data">
                     <p>연령대 데이터가 없습니다</p>
                   </div>
-                  <canvas v-else ref="ageChartCanvas" width="380" height="380"></canvas>
+                  <canvas v-else ref="ageChartCanvas"></canvas>
                 </div>
               </div>
               
@@ -232,26 +225,18 @@
                       <!-- 남성 아이콘 -->
                       <div class="gender-icon male">
                         <div class="icon-container">
-                          <svg viewBox="0 0 158.66 332.54" class="male-icon">
-                            <!-- 배경 회색 아이콘 -->
+                          <svg viewBox="0 0 158.66 332.54" class="male-icon-svg">
                             <g>
-                              <path class="icon-background" d="M123.25,82.17H35.42C13.84,82.17-2.72,101.3.37,122.66l11.55,79.69c1.17,8.06,8.07,14.03,16.21,14.03h2.43l14.06,116.16h69.42l14.06-116.16h2.51c8.11,0,14.99-5.96,16.15-13.98l11.56-79.94c2.97-21.29-13.57-40.29-35.07-40.29Z" fill="#d1d5db"/>
-                              <circle class="icon-background" cx="79.33" cy="37.42" r="37.42" transform="translate(-3.23 67.06) rotate(-45)" fill="#d1d5db"/>
+                              <path class="icon-background" d="M123.25,82.17H35.42C13.84,82.17-2.72,101.3.37,122.66l11.55,79.69c1.17,8.06,8.07,14.03,16.21,14.03h2.43l14.06,116.16h69.42l14.06-116.16h2.51c8.11,0,14.99-5.96,16.15-13.98l11.56-79.94c2.97-21.29-13.57-40.29-35.07-40.29Z" />
+                              <circle class="icon-background" cx="79.33" cy="37.42" r="37.42" transform="translate(-3.23 67.06) rotate(-45)" />
                             </g>
-                            
-                            <!-- 색상이 채워진 남성 아이콘 (진행률 표시) -->
-                            <g style="mask: url(#male-mask)">
+                            <g :style="{ mask: 'url(#male-mask-' + selectedDetail.id + ')' }">
                               <path d="M123.25,82.17H35.42C13.84,82.17-2.72,101.3.37,122.66l11.55,79.69c1.17,8.06,8.07,14.03,16.21,14.03h2.43l14.06,116.16h69.42l14.06-116.16h2.51c8.11,0,14.99-5.96,16.15-13.98l11.56-79.94c2.97-21.29-13.57-40.29-35.07-40.29Z" fill="#4c7bd8"/>
                               <circle cx="79.33" cy="37.42" r="37.42" transform="translate(-3.23 67.06) rotate(-45)" fill="#4c7bd8"/>
                             </g>
-                            
-                            <!-- 남성 심볼 (항상 맨 위에 보이는 부분) -->
-                            <path d="M86.77,172.23v-14.03c13.6-3.35,23.72-15.64,23.72-30.25,0-17.18-13.98-31.16-31.16-31.16s-31.16,13.98-31.16,31.16c0,14.66,10.19,26.99,23.85,30.29v14l-11.47-7.63-8.17,12.28,27.02,17.97,27.02-17.97-8.17-12.28-11.47,7.63ZM62.92,127.95c0-9.05,7.36-16.41,16.41-16.41s16.41,7.36,16.41,16.41-7.36,16.41-16.41,16.41-16.41-7.36-16.41-16.41Z" fill="#fff"/>
-                            
-                            <!-- 마스크 정의 - 아래에서부터 채우기 -->
-                            <mask :id="`male-mask`">
-                              <rect x="0" y="0" width="160" height="332.54" fill="white"/>
-                              <rect x="0" y="0" :height="332.54 * (1 - malePercentage / 100)" width="160" fill="black"/>
+                            <mask :id="`male-mask-${selectedDetail.id}`">
+                              <rect x="0" y="0" width="100%" height="100%" fill="white"/>
+                              <rect x="0" y="0" :height="`calc(100% * (1 - (${malePercentage} / 100)))`" width="100%" fill="black"/>
                             </mask>
                           </svg>
                         </div>
@@ -261,26 +246,18 @@
                       <!-- 여성 아이콘 -->
                       <div class="gender-icon female">
                         <div class="icon-container">
-                          <svg viewBox="0 0 157.19 332.54" class="female-icon">
-                            <!-- 배경 회색 아이콘 -->
+                          <svg viewBox="0 0 157.19 332.54" class="female-icon-svg">
                             <g>
                               <circle class="icon-background" cx="78.68" cy="37.42" r="37.42" transform="translate(24.18 105.4) rotate(-76.72)" fill="#d1d5db"/>
                               <path class="icon-background" d="M156.76,187.25l-24.97-94.01c-.03-.1-.06-.2-.09-.29-2.35-6.46-8.49-10.77-15.37-10.77H41.02c-6.89,0-13.03,4.31-15.37,10.77-.03.1-.06.19-.09.29L.59,187.25s-5.18,20.11,15.14,23.87h.31l-6.41,33.76h24.91l12.45,87.66h63.38l12.45-87.66h24.91l-6.41-33.76h.3c19.58-3.22,15.15-23.87,15.15-23.87Z" fill="#d1d5db"/>
                             </g>
-                            
-                            <!-- 색상이 채워진 여성 아이콘 (진행률 표시) -->
-                            <g style="mask: url(#female-mask)">
+                            <g :style="{ mask: 'url(#female-mask-' + selectedDetail.id + ')' }">
                               <circle cx="78.68" cy="37.42" r="37.42" transform="translate(24.18 105.4) rotate(-76.72)" fill="#e5518d"/>
                               <path d="M156.76,187.25l-24.97-94.01c-.03-.1-.06-.2-.09-.29-2.35-6.46-8.49-10.77-15.37-10.77H41.02c-6.89,0-13.03,4.31-15.37,10.77-.03.1-.06.19-.09.29L.59,187.25s-5.18,20.11,15.14,23.87h.31l-6.41,33.76h24.91l12.45,87.66h63.38l12.45-87.66h24.91l-6.41-33.76h.3c19.58-3.22,15.15-23.87,15.15-23.87Z" fill="#e5518d"/>
                             </g>
-                            
-                            <!-- 여성 심볼 (항상 맨 위에 보이는 부분) -->
-                            <path d="M109.86,127.87c0-17.14-13.94-31.08-31.08-31.08s-31.08,13.94-31.08,31.08c0,14.63,10.16,26.92,23.79,30.21v11.86h-11.52v14.71h11.52v11.52h14.71v-11.52h11.52s0-14.71,0-14.71h-11.52v-11.89c13.56-3.34,23.66-15.6,23.66-30.18ZM62.41,127.87c0-9.03,7.34-16.37,16.37-16.37s16.37,7.34,16.37,16.37-7.34,16.37-16.37,16.37-16.37-7.34-16.37-16.37Z" fill="#fff"/>
-                            
-                            <!-- 마스크 정의 - 아래에서부터 채우기 -->
-                            <mask :id="`female-mask`">
-                              <rect x="0" y="0" width="160" height="332.54" fill="white"/>
-                              <rect x="0" y="0" :height="332.54 * (1 - femalePercentage / 100)" width="160" fill="black"/>
+                            <mask :id="`female-mask-${selectedDetail.id}`">
+                              <rect x="0" y="0" width="100%" height="100%" fill="white"/>
+                              <rect x="0" y="0" :height="`calc(100% * (1 - (${femalePercentage} / 100)))`" width="100%" fill="black"/>
                             </mask>
                           </svg>
                         </div>
@@ -294,16 +271,10 @@
                     <div class="female-percentage" :style="{ width: `${femalePercentage}%` }"></div>
                   </div>
                 </div>
-                
-                <div v-else class="no-gender-data">
-                  <p>성별 데이터가 없습니다</p>
-                </div>
+                <div v-else class="no-gender-data"><p>성별 데이터가 없습니다</p></div>
               </div>
             </div>
-            
-            <div v-if="ageStats.length === 0" class="no-stats-data">
-              <p>아직 연령대별 방문 통계 데이터가 없습니다.</p>
-            </div>
+            <div v-else class="no-stats-data"><p>방문 통계 데이터가 없습니다.</p></div>
           </div>
           
           <!-- 통계 로딩 중 -->
@@ -315,8 +286,8 @@
             </div>
           </div>
           
-          <!-- 리뷰 섹션 - 분리를 위해 클래스 추가 -->
-          <div v-if="selectedDetail.reviews && selectedDetail.reviews.length > 0" class="detail-section reviews-section">
+          <!-- 리뷰 섹션 -->
+          <div v-if="selectedDetail.reviews && selectedDetail.reviews.length > 0" class="detail-section">
             <h4>방문자 리뷰 ({{ selectedDetail.reviews.length }})</h4>
             <div class="reviews-container">
               <div v-for="(review, index) in selectedDetail.reviews" :key="index" class="review-item">
@@ -338,10 +309,10 @@
               </div>
             </div>
           </div>
-  
-          <div class="modal-footer">
-            <button class="cancel-btn" @click="closeDetailModal">닫기</button>
-          </div>
+        </div>
+    
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="closeDetailModal">닫기</button>
         </div>
       </div>
     </div>
@@ -734,6 +705,22 @@
         const femaleCount = genderStats.value.find(s => s.gender === 'F')?.value || 0;
         return Math.round((femaleCount / totalStatsVisits.value) * 100);
       });
+      
+      // Method to determine visible tags based on length
+      const getVisibleTags = (tags) => {
+        if (!tags || tags.length === 0) {
+          return [];
+        }
+        const tagThresholdLength = 7; // Adjust this threshold as needed
+        const potentialTags = tags.slice(0, 3);
+
+        if (potentialTags.length === 3) {
+          if (potentialTags.some(tag => tag.length > tagThresholdLength)) {
+            return tags.slice(0, 2);
+          }
+        }
+        return potentialTags; // Returns 1, 2, or 3 tags based on checks and availability
+      };
       
       // 마우스 이벤트 처리
       const updateMousePosition = (event) => {
@@ -2278,7 +2265,9 @@
         isInWishlist,
         toggleWishlist,
         // 리뷰 관련
-        formatReviewDate
+        formatReviewDate,
+        // 태그 길이 기반 표시 로직
+        getVisibleTags
       };
     }
   };
@@ -2689,10 +2678,41 @@
   }
   
   .destination-image {
-    height: 360px; /* Doubled from 180px to 360px */
-    background-size: cover;
-    background-position: center;
-    transition: transform 0.5s ease;
+    height: 360px;
+    overflow: hidden;
+    position: relative;
+    background-color: #f8f9fa; /* Default background for the container */
+    transition: transform 0.5s ease; /* Keep this for the hover effect */
+  }
+  
+  .destination-actual-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  
+  .destination-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: #e9ecef;
+    text-align: center;
+  }
+  
+  .destination-placeholder .placeholder-icon {
+    width: 50px;
+    height: 50px;
+    margin-bottom: 10px;
+    stroke: #ced4da;
+  }
+  
+  .destination-placeholder .placeholder-text {
+    font-size: 0.9rem;
+    color: #6c757d;
   }
   
   .destination-card:hover .destination-image {
@@ -3027,29 +3047,28 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.6);
+    background-color: rgba(30, 40, 50, 0.65); /* Slightly darker overlay */
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
     overflow-y: auto;
-    padding: 2rem 0;
-    backdrop-filter: blur(5px);
+    padding: 2rem; /* Add padding for smaller screens */
+    backdrop-filter: blur(4px); /* Softer blur */
   }
 
   .place-detail-modal {
-    background-color: white;
-    border-radius: 16px;
+    background-color: #ffffff;
+    border-radius: 12px; /* Softer radius */
     width: 95%;
-    max-width: 1200px;
-    max-height: 90vh;
+    max-width: 1100px; /* Slightly reduced max-width for better proportions */
+    max-height: calc(100vh - 4rem); /* Ensure padding is respected */
     overflow-y: auto;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); /* Refined shadow */
     display: flex;
     flex-direction: column;
     animation: modalFadeIn 0.3s ease-out;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    font-family: 'Noto Sans KR', sans-serif;
+    border: none; /* Removed border for a cleaner look */
   }
 
   @keyframes modalFadeIn {
@@ -3065,140 +3084,112 @@
 
   .modal-header {
     display: flex;
-    padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid #e2e8f0;
+    justify-content: space-between; /* Ensure actions are to the right */
+    align-items: center;
+    padding: 1.25rem 1.75rem; /* Adjusted padding */
+    border-bottom: 1px solid #eef2f7; /* Lighter border */
     position: sticky;
     top: 0;
-    background-color: white;
+    background-color: #ffffff;
     z-index: 10;
   }
 
   .modal-title-location {
     display: flex;
-    align-items: center;
+    /* flex-direction: column; */ /* Changed from column */
+    flex-direction: row; /* Stack title and location horizontally */
+    /* align-items: flex-start; */ /* Changed from flex-start */
+    align-items: baseline; /* Align to baseline of text */
     flex: 1;
+    margin-right: 1rem; /* Space before action buttons */
+    gap: 0.75rem; /* Add gap between title and address */
   }
 
   .modal-title-location h3 {
     margin: 0;
-    font-size: 1.25rem;
+    font-size: 1.4rem; /* Slightly larger title */
     font-weight: 600;
-    color: #2d3748;
-    font-family: 'Noto Sans KR', sans-serif;
+    color: #2c3e50; /* Dark blue-grey */
+    font-family: 'Noto Sans KR', sans-serif; /* Consistent font */
+    line-height: 1.3;
   }
 
   .modal-location {
-    margin-left: 1.5rem;
-    color: #718096;
-    font-size: 1rem;
+    /* margin-left: 0; Removed as it's stacked now */
+    /* margin-top: 0.25rem; */ /* Removed top margin, gap will handle spacing */
+    color: #7f8c8d; /* Softer grey */
+    font-size: 0.9rem; /* Adjusted size */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 300px;
-  }
-
-  /* 각 섹션 스타일 */
-  .detail-section {
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-    border-radius: 12px;
-    background-color: #f8fafc;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  }
-
-  .detail-section:last-child {
-    margin-bottom: 0;
-  }
-
-  .detail-section h4 {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: #2d3748;
-    margin: 0 0 1rem 0;
-    border-bottom: 2px solid #e2e8f0;
-    padding-bottom: 0.5rem;
-    font-family: 'Noto Sans KR', sans-serif;
-  }
-
-  .chart-container h5 {
-    font-family: 'Noto Sans KR', sans-serif;
-  }
-
-  .reviewer-name, .review-date, .review-content {
-    font-family: 'Noto Sans KR', sans-serif;
-  }
-
-  .info-label, .info-value {
-    font-family: 'Noto Sans KR', sans-serif;
+    max-width: 100%; /* Allow full width within its container */
   }
 
   .modal-actions {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem; /* Reduced gap */
   }
 
-  .heart-btn {
+  .close-btn, .heart-btn { /* Combined common styles */
     background: none;
     border: none;
-    color: #718096;
     cursor: pointer;
-    padding: 0.5rem;
+    padding: 0.6rem; /* Uniform padding */
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    transition: all 0.2s;
+    transition: all 0.25s ease;
+    color: #95a5a6; /* Muted icon color */
   }
 
-  .heart-btn:hover {
-    background-color: #f7fafc;
-    color: #4a5568;
+  .close-btn:hover, .heart-btn:hover {
+    background-color: #f4f6f8; /* Subtle hover background */
+    color: #52616B; /* Darker icon on hover */
+  }
+
+  .heart-btn svg {
+    width: 22px; /* Consistent icon size */
+    height: 22px;
+  }
+  .close-btn svg {
+    width: 20px; /* Consistent icon size */
+    height: 20px;
   }
 
   .heart-btn.active {
-    color: #ffab91;
+    color: var(--logo-coral, #ff715e); /* Brighter coral */
+    /* animation: heartbeat 1s ease-in-out; Already defined elsewhere */
+  }
+  .heart-btn.active:hover {
+    background-color: #fff0ee; /* Light coral background on hover when active */
   }
 
-  .close-btn {
-    background: none;
-    border: none;
-    color: #718096;
-    cursor: pointer;
-    padding: 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    transition: all 0.2s;
-  }
-
-  .close-btn:hover {
-    background-color: #f7fafc;
-    color: #4a5568;
-  }
 
   /* 모달 콘텐츠 영역 */
   .modal-content {
-    padding: 1.5rem;
+    padding: 1.75rem; /* Increased padding */
     display: flex;
     flex-direction: column;
+    gap: 1.75rem; /* Consistent gap between sections */
     overflow-y: auto;
   }
 
   /* 이미지와 지도를 수평으로 나란히 배치 */
   .visual-section {
     display: flex;
-    gap: 20px;
-    margin-bottom: 1.5rem;
+    gap: 1.75rem; /* Consistent gap */
+    /* margin-bottom: 1.5rem; Removed, using gap in modal-content */
   }
 
   .detail-image-container, .detail-map-container {
     flex: 1;
-    height: 400px;
-    border-radius: 12px;
+    height: 380px; /* Adjusted height */
+    border-radius: 10px; /* Softer radius */
     overflow: hidden;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); /* Softer shadow */
+    background-color: #f0f2f5; /* Placeholder background */
   }
 
   .detail-image, .detail-map {
@@ -3206,14 +3197,27 @@
     height: 100%;
     object-fit: cover;
   }
+  .detail-map .kakao-map-error { /* Style for map error message */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    background-color: #f0f2f5;
+    color: #666;
+    text-align: center;
+    padding: 20px;
+    font-size: 0.9rem;
+  }
+
 
   /* 각 섹션 스타일 */
   .detail-section {
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-    border-radius: 12px;
-    background-color: #f8fafc;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    padding: 1.5rem; /* Consistent padding */
+    /* margin-bottom: 1.5rem; Removed, using gap in modal-content */
+    border-radius: 10px; /* Softer radius */
+    background-color: #fdfdfe; /* Slightly off-white background */
+    border: 1px solid #eef2f7; /* Subtle border */
+    /* box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03); Removed for a flatter look, border is enough */
   }
 
   .detail-section:last-child {
@@ -3221,12 +3225,12 @@
   }
 
   .detail-section h4 {
-    font-size: 1.2rem;
+    font-size: 1.15rem; /* Adjusted size */
     font-weight: 600;
-    color: #2d3748;
+    color: #34495e; /* Dark blue-grey */
     margin: 0 0 1rem 0;
-    border-bottom: 2px solid #e2e8f0;
-    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #dde2e7; /* Lighter, thinner border */
+    padding-bottom: 0.75rem; /* Adjusted padding */
     font-family: 'Noto Sans KR', sans-serif;
   }
 
@@ -3238,26 +3242,27 @@
   }
 
   .tag {
-    background-color: rgba(72, 176, 228, 0.1);
-    color: var(--logo-blue, #48b0e4);
-    font-size: 0.9rem;
-    padding: 0.35rem 0.85rem;
-    border-radius: 50px;
+    background-color: #eaf6ff; /* Lighter blue */
+    color: #2979ff; /* Brighter blue text */
+    font-size: 0.85rem; /* Adjusted size */
+    padding: 0.4rem 0.9rem; /* Adjusted padding */
+    border-radius: 16px; /* Pill shape */
     cursor: pointer;
     transition: all 0.2s ease;
+    font-weight: 500;
   }
 
   .tag:hover {
-    background-color: var(--logo-blue, #48b0e4);
-    color: white;
-    transform: translateY(-2px);
+    background-color: #d1e7fd;
+    color: #1a63d4;
+    transform: translateY(-1px);
   }
 
   /* 설명 텍스트 */
   .detail-description {
-    font-size: 1rem;
-    line-height: 1.7;
-    color: #4a5568;
+    font-size: 0.95rem; /* Adjusted size */
+    line-height: 1.75; /* Improved readability */
+    color: #52616B; /* Softer black */
     margin: 0;
   }
 
@@ -3274,9 +3279,9 @@
   }
 
   .info-label {
-    width: 120px;
-    font-size: 0.95rem;
-    color: #4a5568;
+    width: 130px; /* Adjusted width */
+    font-size: 0.9rem;
+    color: #52616B;
     font-weight: 500;
   }
 
@@ -3285,60 +3290,34 @@
     color: #2d3748;
   }
 
+  /* 모달 푸터 영역 */
   .modal-footer {
-    padding: 1.25rem 1.5rem;
-    border-top: 1px solid #e2e8f0;
+    padding: 1.25rem 1.75rem; /* Consistent padding */
+    border-top: 1px solid #eef2f7; /* Lighter border */
     display: flex;
     justify-content: flex-end;
-    gap: 1rem;
+    gap: 0.75rem; /* Adjusted gap */
     position: sticky;
     bottom: 0;
-    background-color: white;
+    background-color: #f9fafb; /* Slightly off-white footer */
     z-index: 1;
   }
 
   .cancel-btn {
-    padding: 0.75rem 1.5rem;
-    border-radius: 50px;
+    padding: 0.6rem 1.25rem; /* Adjusted padding */
+    border-radius: 20px; /* Pill shape */
     font-size: 0.9rem;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.2s;
-    background-color: #fff;
-    color: #4a5568;
-    border: 1px solid #e2e8f0;
+    transition: all 0.2s ease;
+    background-color: #e9ecef; /* Light grey button */
+    color: #495057; /* Darker text */
+    border: none;
   }
 
   .cancel-btn:hover {
-    background-color: #f7fafc;
-  }
-
-  /* 반응형 모달 조정 */
-  @media (max-width: 1100px) {
-    .visual-section {
-      flex-direction: column;
-    }
-    
-    .detail-image-container, 
-    .detail-map-container {
-      width: 100%;
-      height: 350px;
-    }
-    
-    .info-label {
-      width: 100px;
-    }
-  }
-
-  @media (max-width: 768px) {
-    .modal-title-location {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-    
-    .modal-location {
-      margin: 0.25rem 0 0 0;
-    }
+    background-color: #dee2e6; /* Darken on hover */
+    color: #343a40;
   }
 
   .placeholder-image {
@@ -3357,13 +3336,13 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: rgba(255, 255, 255, 0.6);
+    color: rgba(255, 255, 255, 0.7); /* Slightly more visible */
     transition: all 0.3s ease;
   }
 
   .heart-indicator.active {
     color: var(--logo-coral, #ff8e7f);
-    animation: heartbeat 1s ease-in-out;
+    animation: heartbeat 0.8s ease-in-out;
   }
 
   .heart-indicator svg {
@@ -3376,12 +3355,9 @@
   }
 
   @keyframes heartbeat {
-    0%, 100% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.2);
-    }
+    0%, 100% { transform: scale(1); }
+    30% { transform: scale(1.25); }
+    60% { transform: scale(1.1); }
   }
 
   .destination-rank.with-heart {
@@ -3398,49 +3374,26 @@
     line-height: 1;
   }
 
-  /* 하트 버튼 스타일 */
-  .heart-btn {
-    background: none;
-    border: none;
-    color: #cbd5e0;
-    cursor: pointer;
-    padding: 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    transition: all 0.2s;
-  }
-
-  .heart-btn:hover {
-    color: var(--logo-coral, #ff8e7f);
-    transform: scale(1.1);
-  }
-
-  .heart-btn.active {
-    color: var(--logo-coral, #ff8e7f);
-    animation: heartbeat 1s ease-in-out;
-  }
-
   /* 리뷰 섹션 */
   .reviews-container {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1.25rem; /* Adjusted gap */
   }
 
   .review-item {
     padding: 1.25rem;
-    background-color: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    background-color: #ffffff; /* White background for reviews */
+    border-radius: 8px; /* Softer radius */
+    border: 1px solid #eef2f7; /* Subtle border */
+    /* box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);  Removed shadow */
   }
 
   .review-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.75rem;
+    align-items: flex-start; /* Align items to top for multi-line names */
+    margin-bottom: 0.6rem; /* Reduced margin */
   }
 
   .reviewer-info {
@@ -3450,36 +3403,277 @@
 
   .reviewer-name {
     font-weight: 600;
-    color: #2d3748;
-    font-size: 1rem;
+    color: #34495e; /* Dark blue-grey */
+    font-size: 0.95rem; /* Adjusted size */
+    margin-bottom: 0.1rem;
   }
 
   .review-date {
-    font-size: 0.85rem;
-    color: #718096;
+    font-size: 0.8rem; /* Adjusted size */
+    color: #95a5a6; /* Muted grey */
   }
 
   .review-rating {
-    color: #a0aec0;
-    font-size: 1.25rem;
+    font-size: 1.1rem; /* Adjusted star size */
+    line-height: 1; /* Ensure stars align well */
   }
 
   .star-filled {
-    color: var(--logo-yellow, #ffd166);
+    color: var(--logo-yellow, #fbc02d); /* Brighter yellow */
   }
 
   .star-empty {
-    color: #e2e8f0;
+    color: #e0e0e0; /* Lighter empty star */
   }
 
   .review-content {
-    font-size: 0.95rem;
-    line-height: 1.6;
-    color: #4a5568;
+    font-size: 0.9rem; /* Adjusted size */
+    line-height: 1.65; /* Improved readability */
+    color: #52616B; /* Softer black */
   }
 
-  /* 반응형 조정 - 리뷰 섹션 */
+  /* 통계 섹션 스타일 */
+  .stats-section {
+    background-color: #fdfdfe;
+  }
+
+  .stats-charts {
+    display: flex;
+    gap: 1.75rem; /* Consistent gap */
+    justify-content: space-around;
+    align-items: flex-start;
+    padding: 0.5rem 0 0; /* Reduced top padding as h4 has bottom margin */
+    flex-wrap: wrap;
+  }
+
+  .chart-container {
+    flex: 1 1 45%;
+    min-width: 280px; /* Adjusted min-width */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    background-color: transparent; /* Changed from #f8f9fa */
+    border-radius: 8px;
+    /* box-shadow: inset 0 1px 3px rgba(0,0,0,0.04); */ /* Subtle inset shadow */
+    /* border: 1px solid #eef2f7; Removed border */
+    min-height: 372px; /* Equalize height with sibling chart container */
+  }
+
+  .chart-container h5 {
+    font-size: 0.95rem; /* Adjusted size */
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 1rem; /* Adjusted margin */
+    text-align: center;
+  }
+
+  .age-chart-wrapper {
+    width: 100%;
+    max-width: 308px; /* Increased from 280px by 10% */
+    height: 308px; /* Increased from 280px by 10% */
+    position: relative;
+  }
+
+  .age-chart-wrapper canvas {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .no-age-data, .no-gender-data, .no-stats-data {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 120px; /* Reduced height */
+    width: 100%;
+    color: #7f8c8d; /* Softer grey */
+    font-size: 0.85rem;
+    background-color: #f0f2f5; /* Lighter background */
+    border-radius: 6px;
+    padding: 1rem;
+    text-align: center;
+    margin-top: 0.5rem;
+  }
+
+  .gender-chart-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding-top: 40px; /* Increased from 20px to push content down further */
+  }
+
+  .gender-icons-wrapper {
+    display: flex;
+    justify-content: center;
+    gap: 2rem; /* Adjusted gap */
+    margin-bottom: 1.25rem; /* Adjusted margin */
+    width: 100%;
+  }
+
+  .gender-figure-container {
+    display: flex;
+    gap: 1.5rem; /* Adjusted gap */
+  }
+
+  .gender-icon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .icon-container {
+    width: 80px; /* Adjusted size */
+    height: auto;
+    margin-bottom: 0.5rem;
+  }
+
+  .icon-container svg {
+    width: 100%;
+    height: auto;
+  }
+
+  .male-icon-svg .icon-background,
+  .female-icon-svg .icon-background {
+    fill: #eef2f7; /* Lighter background */
+  }
+
+  .gender-label-percent {
+    font-size: 0.85rem; /* Adjusted size */
+    font-weight: 500;
+    color: #343a40;
+  }
+
+  .gender-label-percent .percent-value {
+    font-weight: 700;
+  }
+
+  .gender-percentage-bar {
+    width: 100%;
+    max-width: 250px; /* Adjusted max width */
+    height: 10px; /* Adjusted height */
+    display: flex;
+    border-radius: 5px;
+    overflow: hidden;
+    background-color: #eef2f7; /* Lighter background */
+    /* box-shadow: inset 0 1px 2px rgba(0,0,0,0.04); */
+  }
+
+  .male-percentage {
+    background-color: #4c7bd8;
+    height: 100%;
+    transition: width 0.5s ease-in-out;
+  }
+
+  .female-percentage {
+    background-color: #e5518d;
+    height: 100%;
+    transition: width 0.5s ease-in-out;
+  }
+
+  .stats-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    color: #6c757d;
+  }
+
+  /* 반응형 조정 */
+  @media (max-width: 1100px) {
+    .visual-section {
+      flex-direction: column;
+      gap: 1.5rem; /* Gap when stacked */
+    }
+    
+    .detail-image-container, 
+    .detail-map-container {
+      width: 100%;
+      height: 320px; /* Adjust height when stacked */
+    }
+    
+    .info-label {
+      width: 110px; /* Further adjust for medium screens */
+    }
+  }
+
   @media (max-width: 768px) {
+    .modal-header {
+      padding: 1rem 1.25rem; /* Smaller padding on mobile */
+    }
+    .modal-title-location h3 {
+      font-size: 1.25rem; /* Smaller title on mobile */
+    }
+    .modal-location {
+      font-size: 0.85rem;
+    }
+    .modal-content {
+      padding: 1.25rem; /* Smaller padding */
+      gap: 1.25rem;
+    }
+    .visual-section {
+      gap: 1.25rem;
+    }
+    .detail-image-container, .detail-map-container {
+      height: 280px; /* Adjust height for smaller screens */
+    }
+    .detail-section {
+      padding: 1.25rem;
+    }
+    .detail-section h4 {
+      font-size: 1.1rem;
+      padding-bottom: 0.6rem;
+      margin-bottom: 0.8rem;
+    }
+    .tag {
+      font-size: 0.8rem;
+      padding: 0.35rem 0.8rem;
+    }
+    .detail-description {
+      font-size: 0.9rem;
+    }
+    .info-label {
+      width: 100px;
+      font-size: 0.85rem;
+    }
+    .visit-info-item {
+      gap: 0.75rem;
+    }
+    
+    .stats-charts {
+      flex-direction: column; 
+      align-items: center; 
+      gap: 1.25rem;
+    }
+
+    .chart-container {
+      flex-basis: 100%; /* Full width for each chart container */
+      max-width: 100%; /* Allow full width on mobile */
+      padding: 0.75rem;
+      min-height: 342px; /* Equalize height for mobile */
+    }
+
+    .age-chart-wrapper {
+      max-width: 286px; /* Increased from 260px by 10% */
+      height: 286px; /* Increased from 260px by 10% */
+    }
+
+    .gender-icons-wrapper {
+      gap: 1.5rem; 
+    }
+
+    .icon-container {
+      width: 70px; /* Smaller icons */
+    }
+    .modal-footer {
+      padding: 1rem 1.25rem;
+    }
+    .cancel-btn {
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+    }
     .review-header {
       flex-direction: column;
       align-items: flex-start;
@@ -3487,349 +3681,46 @@
     }
   }
 
-  /* 연령별 방문 통계 스타일 */
-  .stats-section {
-    background-color: #f8fafc;
-  }
-  
-  .stats-charts {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
-    margin: 1rem 0;
-  }
-  
-  .chart-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .chart-container h5 {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #334155;
-    margin-bottom: 1rem;
-    text-align: center;
-  }
-  
-  .pie-chart-wrapper {
-    position: relative;
-    width: 320px;
-    height: 320px;
-    margin: 0 auto;
-  }
-  
-  .pie-segment {
-    transition: transform 0.2s;
-    cursor: pointer;
-  }
-  
-  .pie-segment:hover {
-    transform: translateX(3px) translateY(-3px);
-    filter: brightness(1.05);
-  }
-  
-  .segment-label {
-    pointer-events: none;
-    user-select: none;
-    text-shadow: 0px 0px 3px rgba(255, 255, 255, 0.5);
-  }
-  
-  .pointer-label {
-    pointer-events: none;
-    user-select: none;
-    text-shadow: 0px 0px 8px rgba(255, 255, 255, 0.8);
-  }
-  
-  .pie-tooltip {
-    position: fixed;
-    z-index: 1000;
-    background-color: rgba(0, 0, 0, 0.9);
-    color: white;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 0.95rem;
-    pointer-events: none;
-    transform: translate(-50%, -100%);
-    white-space: nowrap;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
-  }
-  
-  .pie-tooltip::after {
-    content: '';
-    position: absolute;
-    bottom: -5px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 0;
-    height: 0;
-    border-left: 6px solid transparent;
-    border-right: 6px solid transparent;
-    border-top: 6px solid rgba(0, 0, 0, 0.8);
-  }
-  
-  /* 성별 아이콘 그래프 스타일 */
-  .gender-icons-container {
-    display: flex;
-    justify-content: center;
-    height: 260px;
-    padding: 15px 0;
-  }
-  
-  .gender-display {
-    display: flex;
-    justify-content: center;
-    align-items: flex-end;
-    width: 100%;
-    gap: 30px;
-  }
-  
-  .gender-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-  }
-  
-  .gender-label {
-    margin-top: 5px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #333;
-  }
-  
-  .gender-icon {
-    transition: transform 0.3s ease;
-  }
-  
-  .gender-item:hover .gender-icon {
-    transform: translateY(-5px);
-  }
-  
-  .gender-item.male .gender-label {
-    color: #16a5a5; /* 남성 색상 */
-  }
-  
-  .gender-item.female .gender-label {
-    color: #e05d55; /* 여성 색상 */
-  }
-  
-  .percentage {
-    font-size: 2rem;
-    font-weight: bold;
-    margin-bottom: 10px;
-  }
-  
-  .gender-item.male .percentage {
-    color: #16a5a5;
-  }
-  
-  .gender-item.female .percentage {
-    color: #e05d55;
-  }
-  
-  .no-gender-data {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-    color: #64748b;
-    font-style: italic;
-  }
-  
-  .stats-loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem 0;
-  }
-  
-  .stats-loading .spinner {
-    border: 3px solid rgba(0, 0, 0, 0.1);
-    border-radius: 50%;
-    border-top: 3px solid #4299e1;
-    width: 30px;
-    height: 30px;
-    animation: spin 1s linear infinite;
-    margin-bottom: 1rem;
-  }
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-  
-  .stats-loading p {
-    color: #64748b;
-    font-size: 0.9rem;
-  }
-  
-  .no-stats-data {
-    text-align: center;
-    padding: 2rem 0;
-    color: #64748b;
-    font-style: italic;
-  }
-  
-  /* 반응형 통계 섹션 */
-  @media (max-width: 768px) {
-    .stats-charts {
-      grid-template-columns: 1fr;
+  @media (max-width: 600px) {
+    .modal-overlay {
+      padding: 1rem; /* Reduce overlay padding for small screens */
     }
-    
-    .chart-container:last-child {
-      margin-top: 1.5rem;
+    .place-detail-modal {
+      max-height: calc(100vh - 2rem);
     }
-  }
-
-  /* 성별 아이콘 그래프 스타일 */
-  .gender-chart-container {
-    position: relative;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-top: 20px;
-  }
-
-  .gender-icons-wrapper {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 20px;
-  }
-
-  .gender-figure-container {
-    display: flex;
-    justify-content: center;
-    gap: 60px;
-    margin: 10px 0 20px;
-  }
-
-  .gender-icon {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    position: relative;
-  }
-
-  .icon-container {
-    position: relative;
-    width: 130px;
-    height: 260px;
-    overflow: hidden;
-    margin-bottom: 15px;
-  }
-
-  .male-icon, .female-icon {
-    height: 100%;
-    width: 100%;
-  }
-
-  .gender-label-percent {
-    font-size: 0.9rem;
-    font-weight: 500;
-    text-align: center;
-  }
-
-  .gender-icon.male .gender-label-percent {
-    color: #4c7bd8;
-  }
-
-  .gender-icon.female .gender-label-percent {
-    color: #e5518d;
-  }
-
-  .percent-value {
-    font-weight: 600;
-    font-size: 0.85rem;
-  }
-
-  .gender-percentage-bar {
-    display: flex;
-    width: 100%;
-    max-width: 320px;
-    height: 8px;
-    background-color: #f3f4f6;
-    border-radius: 4px;
-    overflow: hidden;
-    margin-top: 10px;
-  }
-
-  .male-percentage {
-    height: 100%;
-    background-color: #4c7bd8;
-  }
-
-  .female-percentage {
-    height: 100%;
-    background-color: #e5518d;
-  }
-
-  .no-gender-data {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 200px;
-    color: #64748b;
-    font-style: italic;
-  }
-
-  .pie-chart-wrapper {
-    position: relative;
-    width: 320px;
-    height: 320px;
-    margin: 0 auto;
-  }
-  
-  .age-chart-wrapper {
-    position: relative;
-    width: 320px;
-    height: 320px;
-    margin: 0 auto;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  
-  .no-age-data {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-    width: 100%;
-    color: #64748b;
-    font-style: italic;
-    background-color: #f8fafc;
-    border-radius: 8px;
-  }
-
-  .reviews-section {
-    margin-top: 1.5rem;
-    border-top: 1px solid #e2e8f0;
-    padding-top: 1.5rem;
-  }
-  
-  .age-chart-wrapper {
-    position: relative;
-    width: 380px;
-    height: 380px;
-    margin: 0 auto;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  
-  .no-age-data {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-    width: 100%;
-    color: #64748b;
-    font-style: italic;
-    background-color: #f8fafc;
-    border-radius: 8px;
+    .modal-header {
+      padding: 0.75rem 1rem;
+    }
+    .modal-title-location h3 {
+      font-size: 1.1rem;
+    }
+    .modal-location {
+      font-size: 0.8rem;
+    }
+    .modal-content {
+      padding: 1rem;
+      gap: 1rem;
+    }
+    .visual-section {
+      gap: 1rem;
+    }
+    .detail-image-container, .detail-map-container {
+      height: 220px;
+    }
+    .detail-section {
+      padding: 1rem;
+    }
+    .detail-section h4 {
+      font-size: 1rem;
+    }
+    .info-label {
+      width: auto; /* Allow full width */
+      margin-bottom: 0.2rem;
+    }
+    .visit-info-item {
+      flex-direction: column; /* Stack dimension items */
+      align-items: flex-start;
+      gap: 0.3rem;
+    }
   }
   </style> 
