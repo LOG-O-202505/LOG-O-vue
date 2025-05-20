@@ -2321,7 +2321,7 @@ export async function enDescToKoDescAndTags(englishDescription, signal) {
  * Analyzes a receipt image to extract payment information (Place, Time, Price).
  * Uses OCR.space API and then an OCR_basic AI model.
  * @param {File} receiptFile - The image file of the receipt.
- * @returns {Promise<{Place: string, Time: string, Price: number}>}
+ * @returns {Promise<Array<{Place: string, Time: string, Price: number}>>}
  * @throws {Error} If any API call or parsing fails.
  */
 export async function ImgToPayment(receiptFile) {
@@ -2346,6 +2346,8 @@ export async function ImgToPayment(receiptFile) {
 
   const ocrData = await ocrResponse.json();
 
+  console.log('API Service: OCR.space API 응답:', ocrData);
+
   if (!ocrResponse.ok || ocrData.OCRExitCode !== 1) {
     const errorMessage = ocrData.ErrorMessage?.[0] || ocrData.ErrorMessage || 'OCR 이미지 분석 중 알 수 없는 오류 발생';
     console.error('API Service: OCR.space API 오류:', errorMessage, ocrData);
@@ -2358,6 +2360,8 @@ export async function ImgToPayment(receiptFile) {
     throw new Error('OCR 결과에서 텍스트를 추출하지 못했습니다.');
   }
   
+  console.log('API Service: OCR 결과:', parsedText);
+  
   console.log('API Service: AI 모델로 영수증 분석 시작 (OCR_basic)...');
   const aiResponse = await fetch('http://localhost:11434/api/generate', {
     method: 'POST',
@@ -2366,7 +2370,7 @@ export async function ImgToPayment(receiptFile) {
     },
     body: JSON.stringify({
       model: 'OCR_basic',
-      prompt: parsedText,
+      prompt: "다음 영수증 OCR 데이터를 분석하여 결제 장소, 시간, 최종 금액을 추출해주세요. 반드시 JSON 배열 형식으로만 응답하고, 마크다운 서식이나 설명은 절대 포함하지 마세요: " + parsedText,
       stream: false,
     }),
   });
@@ -2380,21 +2384,61 @@ export async function ImgToPayment(receiptFile) {
 
   if (aiData && aiData.response) {
     try {
-      const parsedAIResponse = JSON.parse(aiData.response);
-      if (
-        parsedAIResponse.Place !== undefined &&
-        parsedAIResponse.Time !== undefined &&
-        parsedAIResponse.Price !== undefined
-      ) {
-        console.log('API Service: 영수증 분석 완료:', parsedAIResponse);
-        // Ensure Price is a number
-        parsedAIResponse.Price = Number(String(parsedAIResponse.Price).replace(/[^\d.-]/g, '')) || 0;
-        return parsedAIResponse;
+      const response = aiData.response.trim();
+      
+      // 1. 응답이 배열 형식인지 확인
+      if (response.startsWith('[') && response.endsWith(']')) {
+        // 배열 형식으로 파싱
+        const paymentArray = JSON.parse(response);
+        console.log('API Service: 배열 형식의 결제 내역 분석 완료:', paymentArray);
+        
+        // 각 항목의 Price를 숫자로 변환
+        return paymentArray.map(item => ({
+          ...item,
+          Price: Number(String(item.Price).replace(/[^\d.-]/g, '')) || 0
+        }));
       }
-      console.error('API Service: AI 응답 JSON 구조가 예상과 다릅니다:', parsedAIResponse);
+      
+      // 2. 단일 객체인 경우
+      try {
+        const parsedAIResponse = JSON.parse(response);
+        if (
+          parsedAIResponse.Place !== undefined &&
+          parsedAIResponse.Time !== undefined &&
+          parsedAIResponse.Price !== undefined
+        ) {
+          console.log('API Service: 단일 결제 내역 분석 완료:', parsedAIResponse);
+          // Ensure Price is a number
+          parsedAIResponse.Price = Number(String(parsedAIResponse.Price).replace(/[^\d.-]/g, '')) || 0;
+          // 단일 객체를 배열로 래핑하여 반환
+          return [parsedAIResponse];
+        }
+      } catch (e) {
+        console.error('API Service: 단일 객체 파싱 실패:', e);
+      }
+      
+      // 3. 여러 객체가 쉼표로 구분된 경우
+      if (response.includes('{') && response.includes('}')) {
+        try {
+          // 쉼표로 구분된 객체들을 배열로 변환
+          const fixedJson = '[' + response.replace(/}\s*{/g, '},{') + ']';
+          const paymentArray = JSON.parse(fixedJson);
+          console.log('API Service: 쉼표 구분 결제 내역 분석 완료:', paymentArray);
+          
+          // 각 항목의 Price를 숫자로 변환
+          return paymentArray.map(item => ({
+            ...item,
+            Price: Number(String(item.Price).replace(/[^\d.-]/g, '')) || 0
+          }));
+        } catch (e) {
+          console.error('API Service: 쉼표 구분 객체 파싱 실패:', e);
+        }
+      }
+      
+      console.error('API Service: AI 응답을 적절한 형식으로 파싱할 수 없습니다:', response);
       throw new Error('AI 응답에서 필요한 결제 정보를 추출하지 못했습니다.');
     } catch (e) {
-      console.error('API Service: AI 응답을 JSON으로 파싱하는데 실패했습니다:', e, aiData.response);
+      console.error('API Service: AI 응답 파싱 오류:', e, aiData.response);
       throw new Error(`AI 응답 파싱 오류: ${e.message}. 응답 전문: ${aiData.response}`);
     }
   }

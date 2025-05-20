@@ -1766,7 +1766,7 @@ export default {
     // 영수증 분석
     const analyzeReceipt = async () => {
       if (!receiptFile.value) {
-        alert('영수증 파일을 선택해주세요.'); // User feedback
+        alert('영수증 파일을 선택해주세요.');
         return;
       }
 
@@ -1774,22 +1774,48 @@ export default {
       loadingMessage.value = '영수증 분석 중... (OCR 및 AI 처리)';
 
       try {
-        const paymentData = await ImgToPayment(receiptFile.value);
+        // ImgToPayment는 배열을 반환합니다
+        const paymentDataArray = await ImgToPayment(receiptFile.value);
         
-        // 지출 항목으로 추가 (addFromReceipt는 이미 Place, Time, Price를 인자로 받음)
-        addFromReceipt(
-          paymentData.Place,
-          paymentData.Time,
-          paymentData.Price
-        );
-        closeReceiptUpload(); // 성공 시 모달 닫기
-
+        // 배열의 각 항목을 처리
+        if (paymentDataArray && paymentDataArray.length > 0) {
+          let addedCount = 0;
+          
+          // 모든 결제 항목을 처리
+          for (const paymentData of paymentDataArray) {
+            if (paymentData && paymentData.Place && paymentData.Time && paymentData.Price !== undefined) {
+              addFromReceipt(
+                paymentData.Place,
+                paymentData.Time,
+                paymentData.Price
+              );
+              addedCount++;
+            }
+          }
+          
+          // 결제 항목이 추가되었는지 확인
+          if (addedCount > 0) {
+            // 토스트 메시지 표시
+            successMessage.value = `총 ${addedCount}건의 결제 내역이 추가되었습니다!!`;
+            showSuccessBanner.value = true;
+            setTimeout(() => {
+              showSuccessBanner.value = false;
+            }, 3000);
+            
+            // 모달 닫기 및 이미지 초기화
+            closeReceiptUpload();
+          } else {
+            alert('유효한 결제 내역을 찾을 수 없습니다.');
+          }
+        } else {
+          alert('영수증에서 결제 내역을 찾을 수 없습니다.');
+        }
       } catch (error) {
         console.error('영수증 분석 처리 오류 (TripPlan.vue):', error);
-        alert(`영수증 분석 실패: ${error.message}`); // Display error to user
+        alert(`영수증 분석 실패: ${error.message}`);
       } finally {
         isLoading.value = false;
-        loadingMessage.value = ''; // Clear loading message
+        loadingMessage.value = '';
       }
     };
 

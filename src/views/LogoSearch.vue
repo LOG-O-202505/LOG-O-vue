@@ -158,9 +158,9 @@
                   <div class="result-location">
                     <span class="location-icon">
                       <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                        <circle cx="12" cy="10" r="3"></circle>
-                      </svg>
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                      <circle cx="12" cy="10" r="3"></circle>
+                    </svg>
                     </span>
                     {{ result._source.p_address }}
                   </div>
@@ -173,7 +173,7 @@
                       <div class="similarity-bar" :style="{ width: `${(result._score * 100)}%` }"></div>
                     </div>
                     <span class="similarity-value">{{ (result._score * 100).toFixed(0) }}%</span>
-                  </div>
+                    </div>
                   <div v-if="result._source.p_tags && result._source.p_tags.length > 0" class="result-tags">
                     <span 
                       v-for="(tag, tagIndex) in result._source.p_tags.slice(0, 5)" 
@@ -208,8 +208,8 @@
                 </div>
                 <p class="no-results-text">추천할 만한 유사 여행지가 없습니다.</p>
                 <p class="no-results-hint">다른 이미지로 다시 시도해보세요.</p>
-              </div>
             </div>
+          </div>
         </div>
       </div>
     </div>
@@ -290,7 +290,7 @@
               </div>
             </div>
           </div>
-
+          
           <!-- 연령대별/성별 방문 통계 섹션 (KeywordSearch.vue 참조) -->
           <div v-if="!isLoadingStats" class="detail-section stats-section">
             <h4>연령대별 방문 통계 (총 {{ totalStatsVisits }}건 인증)</h4>
@@ -452,7 +452,7 @@ export default {
     const selectedDetail = ref({});
     const wishlistItems = ref([]);
     let kakaoMap = null;
-
+    
     // Stats related reactive variables (from KeywordSearch.vue)
     const ageStats = ref([]);
     const genderStats = ref([]);
@@ -489,7 +489,7 @@ export default {
       const date = new Date(dateString);
       return date.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
     };
-
+    
     const formatSimilarityScore = (score) => {
       const percentage = Math.max(0, Math.min(100, Math.round(score * 100)));
       let description = "";
@@ -514,7 +514,7 @@ export default {
         document.head.appendChild(script);
       });
     };
-    
+
     onMounted(async () => {
       console.log("LogoSearch 컴포넌트 마운트");
       const savedWishlist = localStorage.getItem('logo_wishlist');
@@ -547,7 +547,7 @@ export default {
       };
       selectedDetail.value = detailData;
       showDetailModal.value = true;
-      
+
       if (detailData.p_id) {
         loadDestinationStats(detailData.p_id);
       } else {
@@ -620,34 +620,34 @@ export default {
 
     const analyzeCurrentImage = async () => {
       if (!imageFile.value) return;
-      isLoading.value = true;
-      loadingPhase.value = 'imageAnalysis';
-      imageAnalysisDuration.value = null;
-      meaningAnalysisDuration.value = null;
-      searchDuration.value = null;
-      abortController.value = new AbortController();
+        isLoading.value = true;
+        loadingPhase.value = 'imageAnalysis';
+        imageAnalysisDuration.value = null;
+        meaningAnalysisDuration.value = null;
+        searchDuration.value = null;
+        abortController.value = new AbortController();
 
-      try {
-        const imageAnalysisStartTime = performance.now();
+        try {
+          const imageAnalysisStartTime = performance.now();
         const engDescription = await imageToEngDescription(imageFile.value, abortController.value.signal);
         imageAnalysisDuration.value = ((performance.now() - imageAnalysisStartTime) / 1000).toFixed(1);
-        
-        loadingPhase.value = 'meaningAnalysis';
-        const meaningAnalysisStartTime = performance.now();
+          
+          loadingPhase.value = 'meaningAnalysis';
+          const meaningAnalysisStartTime = performance.now();
         // EngDescriptionToVector is expected to return { "Natural Elements": 0.7, ... }
         const vectorResultObject = await EngDescriptionToVector(engDescription, abortController.value.signal);
         meaningAnalysisDuration.value = ((performance.now() - meaningAnalysisStartTime) / 1000).toFixed(1);
-        
+          
         // Convert the object to a flat vector array
         const featuresVector = createFeaturesVector(vectorResultObject);
 
-        analysisResult.value = {
+            analysisResult.value = {
           p_vector: featuresVector, // Now an array [0.7, 0.3, ...]
           imageDescription: vectorResultObject.imageDescription // Preserve description if needed
         };
 
-        loadingPhase.value = 'search';
-        const searchStartTime = performance.now();
+            loadingPhase.value = 'search';
+            const searchStartTime = performance.now();
         await searchSimilarHandler(); // Uses analysisResult.value.p_vector
         searchDuration.value = ((performance.now() - searchStartTime) / 1000).toFixed(1);
 
@@ -661,7 +661,7 @@ export default {
         abortController.value = null;
       }
     };
-    
+
     const reset = () => {
       store.commit("image/reset");
       analysisResult.value = null;
@@ -744,7 +744,7 @@ export default {
                   strokeStyle: chart.data.datasets[0].borderColor, lineWidth: chart.data.datasets[0].borderWidth,
                   hidden: false, index: i
                 }))
-              }
+      }
             },
             tooltip: {
               callbacks: {
@@ -796,7 +796,7 @@ export default {
         ageStats.value = []; genderStats.value = []; totalStatsVisits.value = 0;
       } finally { isLoadingStats.value = false; }
     };
-    
+
     return {
       // Core
       imageFile, imagePreview, isLoading, analysisResult, searchResults, sortedSearchResults,
@@ -998,7 +998,7 @@ export default {
 /* Results Panel Container and Panel (from KeywordSearch.vue) */
 .results-panel-container {
   margin-top: 1.5rem; /* Spacing from top section */
-  opacity: 0;
+    opacity: 0;
   transform: translateY(20px);
   animation: fadeInUp 0.8s ease-out 0.2s forwards; /* Delay this animation */
 }
