@@ -171,7 +171,6 @@
             </button>
           </div>
         </div>
-                
         <div class="modal-content">
           <!-- 이미지와 지도 섹션 (수평 레이아웃) -->
           <div class="visual-section">
@@ -306,13 +305,13 @@
                 <div class="review-content">
                   {{ review.comment }}
                 </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-    
-        <div class="modal-footer">
-          <button class="cancel-btn" @click="closeDetailModal">닫기</button>
+  
+          <div class="modal-footer">
+            <button class="cancel-btn" @click="closeDetailModal">닫기</button>
         </div>
       </div>
     </div>
@@ -444,7 +443,7 @@
 
         const labels = ageStats.value.map(stat => stat.label);
         const data = ageStats.value.map(stat => stat.value);
-
+        
         ageChart = new Chart(ctx, {
           type: 'pie',
           data: {
@@ -2195,7 +2194,7 @@
           window.kakao.maps.event.addListener(marker, 'click', function() {
             infowindow.open(kakaoMap, marker);
           });
-
+          
           console.log('카카오 지도 초기화 완료');
 
         } catch (error) {
@@ -3437,7 +3436,7 @@
   .stats-section {
     background-color: #fdfdfe;
   }
-
+  
   .stats-charts {
     display: flex;
     gap: 1.75rem; /* Consistent gap */
@@ -3446,7 +3445,7 @@
     padding: 0.5rem 0 0; /* Reduced top padding as h4 has bottom margin */
     flex-wrap: wrap;
   }
-
+  
   .chart-container {
     flex: 1 1 45%;
     min-width: 280px; /* Adjusted min-width */
@@ -3460,7 +3459,7 @@
     /* border: 1px solid #eef2f7; Removed border */
     min-height: 372px; /* Equalize height with sibling chart container */
   }
-
+  
   .chart-container h5 {
     font-size: 0.95rem; /* Adjusted size */
     font-weight: 500;
@@ -3468,7 +3467,7 @@
     margin-bottom: 1rem; /* Adjusted margin */
     text-align: center;
   }
-
+  
   .age-chart-wrapper {
     width: 100%;
     max-width: 308px; /* Increased from 280px by 10% */
@@ -3480,7 +3479,7 @@
     width: 100% !important;
     height: 100% !important;
   }
-
+  
   .no-age-data, .no-gender-data, .no-stats-data {
     display: flex;
     justify-content: center;
@@ -3495,7 +3494,7 @@
     text-align: center;
     margin-top: 0.5rem;
   }
-
+  
   .gender-chart-container {
     display: flex;
     flex-direction: column;
@@ -3511,45 +3510,45 @@
     margin-bottom: 1.25rem; /* Adjusted margin */
     width: 100%;
   }
-
+  
   .gender-figure-container {
     display: flex;
     gap: 1.5rem; /* Adjusted gap */
   }
-
+  
   .gender-icon {
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
   }
-
+  
   .icon-container {
     width: 80px; /* Adjusted size */
     height: auto;
     margin-bottom: 0.5rem;
   }
-
+  
   .icon-container svg {
     width: 100%;
     height: auto;
   }
-
+  
   .male-icon-svg .icon-background,
   .female-icon-svg .icon-background {
     fill: #eef2f7; /* Lighter background */
   }
-
+  
   .gender-label-percent {
     font-size: 0.85rem; /* Adjusted size */
     font-weight: 500;
     color: #343a40;
   }
-
+  
   .gender-label-percent .percent-value {
     font-weight: 700;
   }
-
+  
   .gender-percentage-bar {
     width: 100%;
     max-width: 250px; /* Adjusted max width */
@@ -3572,7 +3571,7 @@
     height: 100%;
     transition: width 0.5s ease-in-out;
   }
-
+  
   .stats-loading {
     display: flex;
     flex-direction: column;
@@ -3593,8 +3592,8 @@
     .detail-map-container {
       width: 100%;
       height: 320px; /* Adjust height when stacked */
-    }
-    
+  }
+  
     .info-label {
       width: 110px; /* Further adjust for medium screens */
     }
@@ -3627,7 +3626,7 @@
       font-size: 1.1rem;
       padding-bottom: 0.6rem;
       margin-bottom: 0.8rem;
-    }
+  }
     .tag {
       font-size: 0.8rem;
       padding: 0.35rem 0.8rem;
@@ -3638,43 +3637,43 @@
     .info-label {
       width: 100px;
       font-size: 0.85rem;
-    }
+  }
     .visit-info-item {
       gap: 0.75rem;
     }
     
     .stats-charts {
-      flex-direction: column; 
-      align-items: center; 
+    flex-direction: column;
+    align-items: center;
       gap: 1.25rem;
-    }
+  }
 
     .chart-container {
       flex-basis: 100%; /* Full width for each chart container */
       max-width: 100%; /* Allow full width on mobile */
       padding: 0.75rem;
       min-height: 342px; /* Equalize height for mobile */
-    }
+  }
 
     .age-chart-wrapper {
       max-width: 286px; /* Increased from 260px by 10% */
       height: 286px; /* Increased from 260px by 10% */
-    }
+  }
 
     .gender-icons-wrapper {
       gap: 1.5rem; 
-    }
+  }
 
     .icon-container {
       width: 70px; /* Smaller icons */
     }
     .modal-footer {
       padding: 1rem 1.25rem;
-    }
+  }
     .cancel-btn {
       padding: 0.5rem 1rem;
-      font-size: 0.85rem;
-    }
+    font-size: 0.85rem;
+  }
     .review-header {
       flex-direction: column;
       align-items: flex-start;
@@ -3688,32 +3687,32 @@
     }
     .place-detail-modal {
       max-height: calc(100vh - 2rem);
-    }
+  }
     .modal-header {
       padding: 0.75rem 1rem;
-    }
+  }
     .modal-title-location h3 {
       font-size: 1.1rem;
-    }
+  }
     .modal-location {
       font-size: 0.8rem;
-    }
+  }
     .modal-content {
       padding: 1rem;
       gap: 1rem;
     }
     .visual-section {
       gap: 1rem;
-    }
+  }
     .detail-image-container, .detail-map-container {
       height: 220px;
     }
     .detail-section {
       padding: 1rem;
-    }
+  }
     .detail-section h4 {
       font-size: 1rem;
-    }
+  }
     .info-label {
       width: auto; /* Allow full width */
       margin-bottom: 0.2rem;

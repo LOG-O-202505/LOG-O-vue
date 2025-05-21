@@ -970,18 +970,18 @@ export default {
       
       // 프로미스로 스크립트 로드 처리
       await new Promise((resolve) => {
-        script.onload = () => {
+      script.onload = () => {
           console.log("Kakao Maps SDK script loaded");
-          window.kakao.maps.load(() => {
+        window.kakao.maps.load(() => {
             console.log("Kakao Maps API and libraries are loaded");
             resolve();
-          });
-        };
+        });
+      };
         script.onerror = () => {
           console.error("Failed to load Kakao Maps SDK");
           resolve(); // 에러 발생해도 진행
         };
-        document.head.appendChild(script);
+      document.head.appendChild(script);
       });
       
       await initGeocoderAndMap();
@@ -1227,7 +1227,7 @@ export default {
         if (callback && typeof callback === 'function') {
           callback(fallbackCoords); 
         }
-        return;
+          return;
       }
 
       try {
@@ -1242,7 +1242,7 @@ export default {
             };
             console.log(`Geocoded coordinates for ${address}:`, coords);
             if (callback && typeof callback === 'function') {
-              callback(coords);
+            callback(coords);
             }
           } else {
             console.warn(`Geocoding failed for: ${searchAddress}, status: ${status}. Result:`, result);
@@ -1252,7 +1252,7 @@ export default {
             };
             console.log("Using fallback coordinates after geocoding failure.");
             if (callback && typeof callback === 'function') {
-              callback(fallbackCoords);
+            callback(fallbackCoords);
             }
           }
         });
@@ -1264,7 +1264,7 @@ export default {
         };
         console.log("Using fallback coordinates due to geocoding error.");
         if (callback && typeof callback === 'function') {
-          callback(errorCoords);
+        callback(errorCoords);
         }
       }
     };
@@ -1463,18 +1463,18 @@ export default {
       placeMemo.value = '';
 
       // 지도가 생성되기 전에 모달을 먼저 나타내어 사용자 경험 개선
-      requestAnimationFrame(() => {
-        const detailModal = document.querySelector('.place-detail-modal');
-        if (detailModal) {
-          detailModal.classList.add('slide-in');
-        }
-        
-        // 텍스트 영역 높이 초기화
-        if (memoTextarea.value) {
-          memoTextarea.value.style.height = '60px';
-          memoTextarea.value.classList.remove('expanded');
-        }
-      });
+        requestAnimationFrame(() => {
+          const detailModal = document.querySelector('.place-detail-modal');
+          if (detailModal) {
+            detailModal.classList.add('slide-in');
+          }
+          
+          // 텍스트 영역 높이 초기화
+          if (memoTextarea.value) {
+            memoTextarea.value.style.height = '60px';
+            memoTextarea.value.classList.remove('expanded');
+          }
+        });
 
       // 지도 초기화를 비동기적으로 처리
       nextTick(async () => {
@@ -1559,7 +1559,7 @@ export default {
         // 새로운 상세 지도 인스턴스 생성 및 저장
         detailMapInstance.value = new window.kakao.maps.Map(mapElement, mapOptions);
         console.log("Detail map created successfully");
-        
+
         // 마커 생성
         new window.kakao.maps.Marker({
           position: placePosition,
@@ -1572,7 +1572,7 @@ export default {
             detailMapInstance.value.relayout();
             console.log("Detail map relayout called");
           }
-        }, 650); 
+        }, 650);
 
       } catch (error) {
         console.error("Error initializing detail map:", error);
@@ -1644,13 +1644,13 @@ export default {
         alert('시간은 HH:MM 형식으로 입력해 주세요.');
         return;
       }
-      
+
       // 좌표 추출
       const coords = {
         lat: parseFloat(selectedPlace.value.y),
         lng: parseFloat(selectedPlace.value.x)
       };
-      
+
       // 새 일정 아이템 생성
       const newItem = {
         id: Date.now(), // 고유 ID 생성
@@ -1664,22 +1664,22 @@ export default {
       console.log('추가할 새 일정:', newItem);
       console.log('현재 선택된 날짜:', selectedDay.value);
       console.log('현재 tripDays 상태:', JSON.parse(JSON.stringify(tripDays.value)));
-      
+
       // 선택한 날짜의 일정에 추가
       if (!tripDays.value[selectedDay.value].items) {
         tripDays.value[selectedDay.value].items = [];
       }
-      
+
       tripDays.value[selectedDay.value].items.push(newItem);
-      
+
       // 모달 닫기
       closePlaceSearch();
-      
+
       // 활성 날짜를 선택한 날짜로 변경 (다른 날짜에 일정을 추가한 경우)
       if (selectedDay.value !== activeDay.value) {
         activeDay.value = selectedDay.value;
       }
-      
+
       // 강제 화면 갱신 - 일정 추가 후 즉시 실행
       forceRefresh();
       
@@ -1953,7 +1953,7 @@ export default {
           
           if (addedCount > 0) {
             displayToast(`총 ${addedCount}건의 결제 내역이 추가되었습니다!!`, 'success');
-            closeReceiptUpload();
+        closeReceiptUpload();
           } else {
             // Changed alert to displayToast
             displayToast('영수증에서 유효한 결제 내역을 찾을 수 없습니다.', 'error');
