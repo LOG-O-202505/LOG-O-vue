@@ -122,7 +122,7 @@ export const imageToEngDescription = async (imageFile, signal, englishLocationNa
     console.log("이미지 설명 생성 API 호출 시작...");
     
     // 지역 이름이 있으면 프롬프트에 포함
-    let prompt = 'Please express the atmosphere, objects, objects, etc. in 2-3 lines for the photo. The address of the photo is as follows.';
+    let prompt = `Please describe this image in 2-3 concise sentences, focusing on the main visual elements, atmosphere, and suitable visitor context (couples, friends, families, etc.). Include what activities are available or appropriate for the setting.`;
     if (englishLocationName) {
       //prompt = `Please express the atmosphere, objects, objects, etc. in 2-3 lines for the photo. The address of the photo is ${englishLocationName}.`;
       prompt = `Please describe this image in 2-3 concise sentences, focusing on the main visual elements, atmosphere, and suitable visitor context (couples, friends, families, etc.). Include what activities are available or appropriate for the setting. The location is ${englishLocationName}.`;
