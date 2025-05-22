@@ -60,6 +60,11 @@
                   <span class="timing-label">벡터 검색:</span>
                   <span class="timing-value">{{ searchDuration }}초</span>
                 </div>
+                <div class="timing-divider"></div>
+                <div class="timing-total">
+                  <span class="timing-label">처리 시간:</span>
+                  <span class="timing-value">{{ totalProcessingTime }}초</span>
+                </div>
               </div>
             </div>
             <input type="file" ref="fileInput" @change="handleFileChange" accept="image/*" class="hidden-input">
@@ -76,7 +81,7 @@
           <div class="panel-content" :class="{ 'no-padding': isLoading }">
             <div v-if="isLoading" class="loading-state">
               <div class="loading-spinner-container">
-                <LoadingSpinner 
+                <ProcessSpinner 
                   :currentPhase="loadingPhase"
                   :imageAnalysisDuration="imageAnalysisDuration"
                   :meaningAnalysisDuration="meaningAnalysisDuration"
@@ -179,7 +184,7 @@
 import { ref, computed, onMounted, watch, nextTick } from "vue";
 import { useStore } from "vuex";
 import Header from "@/components/Header.vue";
-import LoadingSpinner from "@/components/LoadingSpinner.vue";
+import ProcessSpinner from "@/components/ProcessSpinner.vue";
 import Chart from 'chart.js/auto'; // Import Chart.js
 import PlaceDetailModal from "@/components/PlaceDetailModal.vue";
 import SearchResultPanel from "@/components/SearchResultPanel.vue";
@@ -196,7 +201,7 @@ export default {
 
   components: {
     Header,
-    LoadingSpinner,
+    ProcessSpinner,
     PlaceDetailModal,
     SearchResultPanel
   },
@@ -465,22 +470,26 @@ export default {
         // Convert the object to a flat vector array
         const featuresVector = createFeaturesVector(vectorResultObject);
 
-            analysisResult.value = {
+        analysisResult.value = {
           p_vector: featuresVector, // Now an array [0.7, 0.3, ...]
           imageDescription: vectorResultObject.imageDescription // Preserve description if needed
         };
 
-            loadingPhase.value = 'search';
-            const searchStartTime = performance.now();
+        loadingPhase.value = 'search';
+        const searchStartTime = performance.now();
         await searchSimilarHandler(); // Uses analysisResult.value.p_vector
         searchDuration.value = ((performance.now() - searchStartTime) / 1000).toFixed(1);
+          
+        // 검색 결과 처리 상태를 1.5초간 표시
+        loadingPhase.value = 'processingResults';
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        loadingPhase.value = 'completed';
 
       } catch (error) {
         if (error.name === "AbortError") console.log("분석 취소됨");
         else console.error("분석 오류:", error);
         // Fallback or error display logic
       } finally {
-        loadingPhase.value = 'completed';
         isLoading.value = false;
         abortController.value = null;
       }
@@ -628,10 +637,18 @@ export default {
       } finally { isLoadingStats.value = false; }
     };
 
+    const totalProcessingTime = computed(() => {
+      if (!imageAnalysisDuration.value || !meaningAnalysisDuration.value || !searchDuration.value) return null;
+      const total = parseFloat(imageAnalysisDuration.value) + 
+                   parseFloat(meaningAnalysisDuration.value) + 
+                   parseFloat(searchDuration.value);
+      return total.toFixed(1);
+    });
+
     return {
       // Core
       imageFile, imagePreview, isLoading, analysisResult, searchResults, sortedSearchResults, formattedSearchResults,
-      fileInput, loadingPhase, imageAnalysisDuration, meaningAnalysisDuration, searchDuration,
+      fileInput, loadingPhase, imageAnalysisDuration, meaningAnalysisDuration, searchDuration, totalProcessingTime,
       triggerFileInput, handleFileChange, analyzeCurrentImage, reset, searchSimilarHandler, cancelAnalysis,
       // Hero
       showHero, heroImageSrc, heroTitle, heroSubtitle, heroHeight,
@@ -800,14 +817,46 @@ export default {
 .btn-danger:hover { background-color: #c0392b; }
 .hidden-input { display: none; }
 
-.analysis-timing { margin-top: 1rem; padding: 1rem; border-radius: 8px; background-color: #f8f9fa; border: 1px solid #eef2f7; }
-.timing-item { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.85rem; }
-.timing-item:last-child { margin-bottom: 0; }
+.analysis-timing { 
+  margin-top: 1rem; 
+  padding: 1rem; 
+  border-radius: 8px; 
+  background-color: #f8f9fa; 
+  border: 1px solid #eef2f7; 
+}
+.timing-item { 
+  display: flex; 
+  justify-content: space-between; 
+  margin-bottom: 0.5rem; 
+  font-size: 0.85rem; 
+}
+.timing-item:last-of-type {
+  margin-bottom: 0.75rem; /* 마지막 항목 아래 여백 추가 */
+}
+.timing-divider {
+  height: 1px;
+  background-color: #eef2f7;
+  margin: 0.75rem 0;
+}
+.timing-total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
 .timing-label { color: #5f6b7a; }
-.timing-value { font-weight: 600; color: var(--logo-blue, #48b0e4); }
+.timing-value { 
+  font-weight: 600; 
+  color: var(--logo-blue, #48b0e4); 
+}
+.timing-total .timing-value {
+  color: #10b981; /* 총 처리 시간은 녹색으로 표시 */
+}
 
 /* Analysis Panel Specifics (from original LogoSearch, adapt to KS panel style) */
-.loading-state { display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; min-height: 300px; }
+.loading-state { display: flex; align-items: stretch; justify-content: center; height: 100%; width: 100%; min-height: 300px; }
+.loading-spinner-container { display: flex; width: 100%; height: 100%; }
 .guide-state { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 100%; padding: 2rem; }
 .guide-description { font-size: 1rem; line-height: 1.6; color: #495057; margin-bottom: 1.5rem; }
 .analysis-table-container { overflow: auto; border-radius: 8px; height: 100%; border: 1px solid #eef2f7; }
