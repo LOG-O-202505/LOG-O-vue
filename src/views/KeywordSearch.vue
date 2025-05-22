@@ -97,7 +97,10 @@
                   <span class="rank-number">{{ index + 1 }}</span>
                 </div>
                 <div class="result-image-container">
-                  <img v-if="result._source.p_image" :src="`data:image/jpeg;base64,${result._source.p_image}`" :alt="result._source.p_name" class="result-image">
+                  <img v-if="result._source.p_image" 
+                    :src="getImageUrl(result._source.p_image)" 
+                    :alt="result._source.p_name" 
+                    class="result-image">
                   <div v-else class="placeholder-image">이미지 없음</div>
                 </div>
                 <div class="result-info">
@@ -473,6 +476,19 @@ export default {
       }
     };
     
+    // 이미지 URL 생성 함수
+    const getImageUrl = (imageData) => {
+      if (!imageData) return null;
+      
+      // 이미 data:image 형식이면 그대로 반환
+      if (imageData.startsWith('data:image')) {
+        return imageData;
+      }
+      
+      // base64 문자열만 있으면 접두사 추가
+      return `data:image/jpeg;base64,${imageData}`;
+    };
+    
     return {
       searchKeyword,
       lastSearchKeyword,
@@ -502,7 +518,8 @@ export default {
       ageStats,
       genderStats,
       totalStatsVisits,
-      isLoadingStats
+      isLoadingStats,
+      getImageUrl
     };
   }
 };

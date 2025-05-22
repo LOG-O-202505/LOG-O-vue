@@ -3,8 +3,8 @@
     <div class="place-detail-modal" @click.stop>
       <div class="modal-header">
         <div class="modal-title-location">
-          <h3>{{ detail.name || detail.p_name }}</h3>
-          <div class="modal-location">{{ detail.address || detail.p_address }}</div>
+          <h3>{{ getPlaceName }}</h3>
+          <div class="modal-location">{{ getPlaceAddress }}</div>
         </div>
         <div class="modal-actions">
           <button class="heart-btn" :class="{ 'active': isInWishlist }"
@@ -30,7 +30,7 @@
         <!-- 이미지와 지도 섹션 (수평 레이아웃) -->
         <div class="visual-section">
           <div class="detail-image-container">
-            <img v-if="detail.p_image" :src="`data:image/jpeg;base64,${detail.p_image}`" :alt="detail.name || detail.p_name || '여행지 이미지'"
+            <img v-if="displayImageUrl" :src="displayImageUrl" :alt="getPlaceName || '여행지 이미지'"
               class="detail-image">
             <div v-else class="placeholder-image">이미지 없음</div>
           </div>
@@ -42,11 +42,11 @@
         </div>
         
         <!-- 태그 섹션 -->
-        <div v-if="detail.p_tags && detail.p_tags.length > 0" class="detail-section">
+        <div v-if="getPlaceTags && getPlaceTags.length > 0" class="detail-section">
           <h4>태그</h4>
           <div class="tag-list">
             <span 
-              v-for="(tag, index) in detail.p_tags" 
+              v-for="(tag, index) in getPlaceTags" 
               :key="index" 
               class="tag" 
               @click="$emit('apply-keyword', tag); closeModal();"
@@ -57,13 +57,13 @@
         </div>
 
         <!-- 설명 섹션 -->
-        <div v-if="detail.p_description" class="detail-section">
+        <div v-if="getPlaceDescription" class="detail-section">
           <h4>설명</h4>
-          <p class="detail-description">{{ detail.p_description }}</p>
+          <p class="detail-description">{{ getPlaceDescription }}</p>
         </div>
         
         <!-- 특성 분석 섹션 -->
-        <div v-if="detail.p_vector" class="detail-section">
+        <div v-if="dimensionValues.length > 0" class="detail-section">
           <h4>특성 분석</h4>
           <div class="detail-dimensions">
             <div v-for="(value, index) in dimensionValues" :key="index" class="dimension-item">
@@ -105,11 +105,11 @@
                             <path class="icon-background" d="M123.25,82.17H35.42C13.84,82.17-2.72,101.3.37,122.66l11.55,79.69c1.17,8.06,8.07,14.03,16.21,14.03h2.43l14.06,116.16h69.42l14.06-116.16h2.51c8.11,0,14.99-5.96,16.15-13.98l11.56-79.94c2.97-21.29-13.57-40.29-35.07-40.29Z" />
                             <circle class="icon-background" cx="79.33" cy="37.42" r="37.42" transform="translate(-3.23 67.06) rotate(-45)" />
                           </g>
-                          <g :style="{ mask: 'url(#male-mask-' + detail._id + ')' }">
+                          <g :style="{ mask: 'url(#male-mask-' + getMaskId + ')' }">
                             <path d="M123.25,82.17H35.42C13.84,82.17-2.72,101.3.37,122.66l11.55,79.69c1.17,8.06,8.07,14.03,16.21,14.03h2.43l14.06,116.16h69.42l14.06-116.16h2.51c8.11,0,14.99-5.96,16.15-13.98l11.56-79.94c2.97-21.29-13.57-40.29-35.07-40.29Z" fill="#4c7bd8"/>
                             <circle cx="79.33" cy="37.42" r="37.42" transform="translate(-3.23 67.06) rotate(-45)" fill="#4c7bd8"/>
                           </g>
-                          <mask :id="`male-mask-${detail._id}`">
+                          <mask :id="`male-mask-${getMaskId}`">
                             <rect x="0" y="0" width="100%" height="100%" fill="white"/>
                             <rect x="0" y="0" :height="`calc(100% * (1 - (${malePercentage} / 100)))`" width="100%" fill="black"/>
                           </mask>
@@ -125,11 +125,11 @@
                             <circle class="icon-background" cx="78.68" cy="37.42" r="37.42" transform="translate(24.18 105.4) rotate(-76.72)" />
                             <path class="icon-background" d="M156.76,187.25l-24.97-94.01c-.03-.1-.06-.2-.09-.29-2.35-6.46-8.49-10.77-15.37-10.77H41.02c-6.89,0-13.03,4.31-15.37,10.77-.03.1-.06.19-.09.29L.59,187.25s-5.18,20.11,15.14,23.87h.31l-6.41,33.76h24.91l12.45,87.66h63.38l12.45-87.66h24.91l-6.41-33.76h.3c19.58-3.22,15.15-23.87,15.15-23.87Z" />
                           </g>
-                          <g :style="{ mask: 'url(#female-mask-' + detail._id + ')' }">
+                          <g :style="{ mask: 'url(#female-mask-' + getMaskId + ')' }">
                             <circle cx="78.68" cy="37.42" r="37.42" transform="translate(24.18 105.4) rotate(-76.72)" fill="#e5518d"/>
                             <path d="M156.76,187.25l-24.97-94.01c-.03-.1-.06-.2-.09-.29-2.35-6.46-8.49-10.77-15.37-10.77H41.02c-6.89,0-13.03,4.31-15.37,10.77-.03.1-.06.19-.09.29L.59,187.25s-5.18,20.11,15.14,23.87h.31l-6.41,33.76h24.91l12.45,87.66h63.38l12.45-87.66h24.91l-6.41-33.76h.3c19.58-3.22,15.15-23.87,15.15-23.87Z" fill="#e5518d"/>
                           </g>
-                          <mask :id="`female-mask-${detail._id}`">
+                          <mask :id="`female-mask-${getMaskId}`">
                             <rect x="0" y="0" width="100%" height="100%" fill="white"/>
                             <rect x="0" y="0" :height="`calc(100% * (1 - (${femalePercentage} / 100)))`" width="100%" fill="black"/>
                           </mask>
@@ -214,6 +214,35 @@ export default {
     let ageChart = null;
     const detailMapContainer = ref(null);
     
+    const displayImageUrl = computed(() => {
+      if (!props.detail) {
+        return null;
+      }
+      
+      let imageUrl = null;
+      
+      // LogoSearch(searchSimilarImages)와 KeywordSearch(searchImagesByKeyword) 양쪽 모두 처리
+      if (props.detail._source && props.detail._source.p_image) {
+        // Elasticsearch _source 직접 포함된 경우 (searchSimilarImages 형식)
+        imageUrl = props.detail._source.p_image;
+      } else if (props.detail.p_image) {
+        // _source가 추출된 경우 (일반 형식)
+        imageUrl = props.detail.p_image;
+      }
+      
+      // base64 이미지 처리 (prefix가 없는 경우 추가)
+      if (imageUrl) {
+        // 이미 "data:image/" 접두어가 있는지 확인
+        if (!imageUrl.startsWith('data:image/')) {
+          // base64 문자열만 있는 경우 적절한 접두어 추가
+          imageUrl = `data:image/jpeg;base64,${imageUrl}`;
+        }
+        console.log("이미지 URL 처리 완료:", imageUrl.substring(0, 50) + "...");
+      }
+      
+      return imageUrl;
+    });
+
     // 차원 영어-한글 매핑
     const dimensionLabels = [
       "자연 요소",
@@ -235,10 +264,20 @@ export default {
     
     // p_vector 배열에서 차원 값 가져오기
     const dimensionValues = computed(() => {
-      if (!props.detail || !props.detail.p_vector) {
+      if (!props.detail) {
         return [];
       }
-      return props.detail.p_vector;
+      
+      // LogoSearch(searchSimilarImages)와 KeywordSearch(searchImagesByKeyword) 양쪽 모두 처리
+      if (props.detail._source && props.detail._source.p_vector) {
+        // Elasticsearch _source 직접 포함된 경우 (searchSimilarImages 형식)
+        return props.detail._source.p_vector;
+      } else if (props.detail.p_vector) {
+        // _source가 추출된 경우 (일반 형식)
+        return props.detail.p_vector;
+      }
+      
+      return [];
     });
     
     // 리뷰 날짜 포맷팅
@@ -374,9 +413,18 @@ export default {
         let lat = 37.5665; // 기본값: 서울시청
         let lng = 126.9780;
         
-        if (props.detail && props.detail.location_data) {
-          // 위치 데이터가 있는 경우 실제 위치 표시
-          const locationData = props.detail.location_data;
+        // LogoSearch(searchSimilarImages)와 KeywordSearch(searchImagesByKeyword) 양쪽 모두 처리
+        let locationData = null;
+        
+        if (props.detail._source && props.detail._source.location_data) {
+          // Elasticsearch _source 직접 포함된 경우 (searchSimilarImages 형식)
+          locationData = props.detail._source.location_data;
+        } else if (props.detail.location_data) {
+          // _source가 추출된 경우 (일반 형식)
+          locationData = props.detail.location_data;
+        }
+        
+        if (locationData) {
           lat = locationData.latitude || lat;
           lng = locationData.longitude || lng;
         }
@@ -400,9 +448,17 @@ export default {
         marker.setMap(kakaoMap);
         
         // 인포윈도우 추가
+        // LogoSearch와 KeywordSearch 형식 모두 처리
+        let placeName = '여행지';
+        if (props.detail._source) {
+          placeName = props.detail._source.p_name || placeName;
+        } else {
+          placeName = props.detail.name || props.detail.p_name || placeName;
+        }
+        
         const infoContent = `
           <div style="padding: 5px; text-align: center;">
-            <span style="font-weight: bold;">${props.detail.name || props.detail.p_name || '여행지'}</span>
+            <span style="font-weight: bold;">${placeName}</span>
           </div>
         `;
         
@@ -466,6 +522,8 @@ export default {
         nextTick(() => {
           // 약간의 지연 추가로 모달 애니메이션 완료 후 지도 초기화
           setTimeout(() => {
+            console.log("모달 표시 후 지도 초기화 시작");
+            console.log("장소 상세 데이터 형식:", props.detail._source ? "ElasticSearch 직접 포맷" : "추출된 포맷");
             initDetailMap();
           }, 300);
         });
@@ -482,23 +540,83 @@ export default {
       if (props.show) {
         nextTick(() => {
           setTimeout(() => {
+            console.log("초기 마운트 시 지도 초기화 시작");
+            console.log("장소 상세 데이터 형식:", props.detail._source ? "ElasticSearch 직접 포맷" : "추출된 포맷");
             initDetailMap();
           }, 300);
         });
       }
     });
     
+    // 컴포넌트 속성과 데이터 추출을 위한 computed 속성 추가
+    const getPlaceName = computed(() => {
+      if (!props.detail) return "";
+      
+      if (props.detail._source) {
+        return props.detail._source.p_name || "";
+      }
+      
+      return props.detail.name || props.detail.p_name || "";
+    });
+
+    const getPlaceAddress = computed(() => {
+      if (!props.detail) return "";
+      
+      if (props.detail._source) {
+        return props.detail._source.p_address || "";
+      }
+      
+      return props.detail.address || props.detail.p_address || "";
+    });
+
+    const getPlaceTags = computed(() => {
+      if (!props.detail) return [];
+      
+      if (props.detail._source && props.detail._source.p_tags) {
+        return props.detail._source.p_tags;
+      }
+      
+      return props.detail.p_tags || [];
+    });
+
+    const getPlaceDescription = computed(() => {
+      if (!props.detail) return "";
+      
+      if (props.detail._source) {
+        return props.detail._source.p_description || "";
+      }
+      
+      return props.detail.p_description || "";
+    });
+    
+    // SVG 마스크를 위한 안전한 ID 생성
+    const getMaskId = computed(() => {
+      if (props.detail && props.detail._id) {
+        return props.detail._id;
+      } else if (props.detail && props.detail._source && props.detail._source.p_id) {
+        return `p${props.detail._source.p_id}`;
+      }
+      return 'place' + Math.floor(Math.random() * 1000000); // 안전한 랜덤 ID
+    });
+    
     return {
       closeModal,
-      dimensionValues,
-      getDimensionLabel,
       formatReviewDate,
+      ageChartCanvas,
+      getDimensionLabel,
+      dimensionValues,
       totalAgeVisits,
       malePercentage,
       femalePercentage,
-      ageChartCanvas,
+      renderAgeChart,
       getColorForAge,
-      detailMapContainer
+      detailMapContainer,
+      displayImageUrl,
+      getPlaceName,
+      getPlaceAddress,
+      getPlaceTags,
+      getPlaceDescription,
+      getMaskId
     };
   }
 };
@@ -656,7 +774,9 @@ export default {
   height: 100%;
   object-fit: cover;
 }
-.detail-map .kakao-map-error { /* Style for map error message */
+
+/* 카카오 맵 오류 메시지 스타일 */
+.detail-map .kakao-map-error {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -666,6 +786,19 @@ export default {
   text-align: center;
   padding: 20px;
   font-size: 0.9rem;
+}
+
+/* 이미지 플레이스홀더 스타일 */
+.placeholder-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background-color: #f0f2f5;
+  color: #95a5a6;
+  font-size: 1rem;
+  font-weight: 500;
 }
 
 /* 각 섹션 스타일 */

@@ -4,17 +4,17 @@ export const regionSpecialtyData = {
   "default": {
     name: "대한민국",
     description: "동아시아 한반도 남부에 위치한 대한민국은 5천년의 역사와 풍부한 문화유산을 지닌 나라입니다. 사계절이 뚜렷하고, K-Pop·K-Food 등 한류 문화와 첨단 IT, 아름다운 자연과 현대 도시가 공존하는 역동적인 국가입니다.",
-    image: "/",
+    image: "/assets/images/korea_main.jpg",
     specialties: [
       {
         name: "김치",
         description: "배추 등의 채소에 고춧가루, 마늘 등의 양념을 버무려 발효시킨 한국의 대표적인 전통 발효 식품입니다.",
-        image: "/"
+        image: "/img/kimchi.jpg"
       },
       {
         name: "한복",
         description: "화려한 색상과 부드러운 곡선이 특징인 한국의 전통 의상으로, 여성은 저고리와 치마, 남성은 저고리와 바지를 기본으로 합니다.",
-        image: "/"
+        image: "/img/hanbook.jpg"
       }
     ]
   },
@@ -28,12 +28,12 @@ export const regionSpecialtyData = {
       {
         name: "북촌한옥마을",
         description: "경복궁과 창덕궁 사이에 위치한 전통 한옥 밀집 지역으로, 조선시대 양반들이 거주했던 주거지입니다.",
-        image: "/"
+        image: "/img/bukchon.jpg"
       },
       {
         name: "경복궁",
         description: "1395년 조선 왕조 창건과 함께 건설된 조선의 법궁으로, 근정전, 경회루 등 웅장하고 아름다운 건축물이 조화롭게 배치되어 있습니다.",
-        image: "/"
+        image: "/img/gyeongbokgung.jpg"
       }
     ]
   },
@@ -342,7 +342,7 @@ export const regionSpecialtyData = {
     ]
   }
   
-  };
+};
   
 
 export const sigSpecialtyData = {
@@ -1046,7 +1046,7 @@ export const sigSpecialtyData = {
   description: "경기도의 도청 소재지이자 역사와 현대가 공존하는 도시입니다. 유네스코 세계문화유산 수원화성과 다양한 먹거리가 유명합니다.",
   image: "/",
   specialties: [
-    { name: "수원화성", description: "정조대왕이 축조한 조선 후기의 성곽으로 산책과 역사 체험이 가능합니다.", image: "/" },
+    { name: "수원화성", description: "정조대왕이 축조한 조선 후기의 성곽으로, 산책과 역사 체험이 가능합니다.", image: "/" },
     { name: "수원갈비", description: "두툼한 소갈비에 특제 양념을 더한 수원의 대표 한식 바비큐입니다.", image: "/" }
   ]
 },

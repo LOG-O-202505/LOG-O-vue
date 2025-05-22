@@ -876,8 +876,27 @@ export default {
   z-index: 1; opacity: 0; transition: opacity 0.3s ease;
 }
 .result-card:hover .result-image-container::before { opacity: 1; }
-.result-image { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1); }
+.result-image { 
+  width: 100%; 
+  height: 100%; 
+  object-fit: cover; 
+  transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
 .result-card:hover .result-image { transform: scale(1.07); }
+
+/* 이미지 없을 때 표시할 플레이스홀더 */
+.placeholder-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background-color: #f0f2f5;
+  color: #95a5a6;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
 .result-rank { /* from KS */
   position: absolute; top: 12px; right: 12px; display: flex; align-items: center; justify-content: center;
   gap: 5px; padding: 4px 10px; background: linear-gradient(135deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));

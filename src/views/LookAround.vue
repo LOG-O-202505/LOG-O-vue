@@ -2298,6 +2298,9 @@
   
   .region-info {
     position: relative;
+    display: flex; /* Add flex display */
+    flex-direction: column; /* Stack children vertically */
+    height: 100%; /* Make .region-info fill .region-info-panel */
   }
   
   .region-title {
@@ -2305,13 +2308,17 @@
     font-weight: 700;
     margin-bottom: 1rem;
     color: #48b0e4;
+    flex-shrink: 0; /* Prevent title from shrinking */
   }
   
   .region-description {
     font-size: 0.95rem;
     line-height: 1.6;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.5rem;
     color: #555;
+    flex-grow: 1; /* Allow description to take available space */
+    overflow-y: auto; /* Add scroll if content overflows */
+    min-height: 100px; /* Ensure a minimum height, adjust as needed */
   }
   
   /* 상세 지도 섹션 - 제거하고 map-section 안에 통합 */
@@ -2411,6 +2418,9 @@
     background-color: #fff;
     border-radius: 8px;
     overflow: hidden;
+    flex-shrink: 0; /* Prevent specialties section from shrinking */
+    /* Adjust padding-bottom if necessary for minimal gap, or ensure parent has no extra padding */
+    padding-bottom: 0.5rem; /* Example: minimal bottom padding */
   }
   
   .specialties-grid {

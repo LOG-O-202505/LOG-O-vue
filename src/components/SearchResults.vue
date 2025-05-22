@@ -22,7 +22,7 @@
         <div class="result-rank">{{ index + 1 }}</div>
         <div class="result-card">
           <div class="result-image-container">
-            <img :src="result.imageUrl" :alt="result.name" class="result-image">
+            <img :src="getImageUrl(result.imageUrl)" :alt="result.name" class="result-image">
           </div>
           <div class="result-info">
             <h4 class="result-name">{{ result.name }}</h4>
@@ -56,6 +56,20 @@ export default {
     results: {
       type: Array,
       default: () => []
+    }
+  },
+  methods: {
+    // 이미지 URL 생성 함수
+    getImageUrl(imageData) {
+      if (!imageData) return null;
+      
+      // 이미 data:image 형식이면 그대로 반환
+      if (typeof imageData === 'string' && imageData.startsWith('data:image')) {
+        return imageData;
+      }
+      
+      // base64 문자열만 있으면 접두사 추가
+      return `data:image/jpeg;base64,${imageData}`;
     }
   }
 }
