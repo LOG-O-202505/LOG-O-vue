@@ -145,180 +145,23 @@
     </div>
   
     <!-- 장소 상세 모달 수정 -->
-    <div v-if="showDetailModal" class="modal-overlay" @click="closeDetailModal">
-      <div class="place-detail-modal" @click.stop>
-        <div class="modal-header">
-          <div class="modal-title-location">
-            <h3>{{ selectedDetail.name }}</h3>
-            <div class="modal-location">{{ selectedDetail.address }}</div>
-          </div>
-          <div class="modal-actions">
-            <button class="heart-btn" :class="{ 'active': isInWishlist(selectedDetail.id) }"
-              @click="toggleWishlist(selectedDetail)" title="여행 계획에 추가">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path
-                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
-                </path>
-              </svg>
-            </button>
-            <button class="close-btn" @click="closeDetailModal">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-        </div>
-        <div class="modal-content">
-          <!-- 이미지와 지도 섹션 (수평 레이아웃) -->
-          <div class="visual-section">
-            <div class="detail-image-container">
-              <img v-if="selectedDetail.p_image" :src="`data:image/jpeg;base64,${selectedDetail.p_image}`" :alt="selectedDetail.name"
-                class="detail-image">
-              <div v-else class="placeholder-image">이미지 없음</div>
-            </div>
-                
-            <!-- 지도 영역 -->
-            <div class="detail-map-container">
-              <div id="detailMap" ref="detailMapModalContainerRef" class="detail-map"></div>
-            </div>
-          </div>
-          
-          <!-- 태그 섹션 -->
-          <div v-if="selectedDetail.tags && selectedDetail.tags.length > 0" class="detail-section">
-            <h4>태그</h4>
-            <div class="tag-list">
-              <span v-for="(tag, index) in selectedDetail.tags" :key="index" class="tag">{{ tag }}</span>
-            </div>
-          </div>
-
-          <!-- 설명 섹션 -->
-          <div v-if="selectedDetail.description" class="detail-section">
-            <h4>설명</h4>
-            <p class="detail-description">{{ selectedDetail.description }}</p>
-          </div>
-          
-          <!-- 연령대별 방문 통계 섹션 -->
-          <div v-if="!isLoadingStats" class="detail-section stats-section">
-            <h4>연령대별 방문 통계 (총 {{ totalStatsVisits }}건 인증)</h4>
-            <div v-if="ageStats.length > 0 || genderStats.length > 0" class="stats-charts">
-              <!-- 연령대별 원형 그래프 -->
-              <div class="chart-container">
-                <h5>연령대별 방문 비율</h5>
-                <div class="age-chart-wrapper">
-                  <div v-if="totalAgeVisits === 0" class="no-age-data">
-                    <p>연령대 데이터가 없습니다</p>
-                  </div>
-                  <canvas v-else ref="ageChartCanvas"></canvas>
-                </div>
-              </div>
-              
-              <!-- 성별 아이콘 그래프 -->
-              <div class="chart-container">
-                <h5>성별 방문 비율</h5>
-                <div v-if="totalStatsVisits > 0" class="gender-chart-container">
-                  <div class="gender-icons-wrapper">
-                    <div class="gender-figure-container">
-                      <!-- 남성 아이콘 -->
-                      <div class="gender-icon male">
-                        <div class="icon-container">
-                          <svg viewBox="0 0 158.66 332.54" class="male-icon-svg">
-                            <g>
-                              <path class="icon-background" d="M123.25,82.17H35.42C13.84,82.17-2.72,101.3.37,122.66l11.55,79.69c1.17,8.06,8.07,14.03,16.21,14.03h2.43l14.06,116.16h69.42l14.06-116.16h2.51c8.11,0,14.99-5.96,16.15-13.98l11.56-79.94c2.97-21.29-13.57-40.29-35.07-40.29Z" />
-                              <circle class="icon-background" cx="79.33" cy="37.42" r="37.42" transform="translate(-3.23 67.06) rotate(-45)" />
-                            </g>
-                            <g :style="{ mask: 'url(#male-mask-' + selectedDetail.id + ')' }">
-                              <path d="M123.25,82.17H35.42C13.84,82.17-2.72,101.3.37,122.66l11.55,79.69c1.17,8.06,8.07,14.03,16.21,14.03h2.43l14.06,116.16h69.42l14.06-116.16h2.51c8.11,0,14.99-5.96,16.15-13.98l11.56-79.94c2.97-21.29-13.57-40.29-35.07-40.29Z" fill="#4c7bd8"/>
-                              <circle cx="79.33" cy="37.42" r="37.42" transform="translate(-3.23 67.06) rotate(-45)" fill="#4c7bd8"/>
-                            </g>
-                            <mask :id="`male-mask-${selectedDetail.id}`">
-                              <rect x="0" y="0" width="100%" height="100%" fill="white"/>
-                              <rect x="0" y="0" :height="`calc(100% * (1 - (${malePercentage} / 100)))`" width="100%" fill="black"/>
-                            </mask>
-                          </svg>
-                        </div>
-                        <div class="gender-label-percent">남성 <span class="percent-value">{{ malePercentage }}%</span></div>
-                      </div>
-                      
-                      <!-- 여성 아이콘 -->
-                      <div class="gender-icon female">
-                        <div class="icon-container">
-                          <svg viewBox="0 0 157.19 332.54" class="female-icon-svg">
-                            <g>
-                              <circle class="icon-background" cx="78.68" cy="37.42" r="37.42" transform="translate(24.18 105.4) rotate(-76.72)" fill="#d1d5db"/>
-                              <path class="icon-background" d="M156.76,187.25l-24.97-94.01c-.03-.1-.06-.2-.09-.29-2.35-6.46-8.49-10.77-15.37-10.77H41.02c-6.89,0-13.03,4.31-15.37,10.77-.03.1-.06.19-.09.29L.59,187.25s-5.18,20.11,15.14,23.87h.31l-6.41,33.76h24.91l12.45,87.66h63.38l12.45-87.66h24.91l-6.41-33.76h.3c19.58-3.22,15.15-23.87,15.15-23.87Z" fill="#d1d5db"/>
-                            </g>
-                            <g :style="{ mask: 'url(#female-mask-' + selectedDetail.id + ')' }">
-                              <circle cx="78.68" cy="37.42" r="37.42" transform="translate(24.18 105.4) rotate(-76.72)" fill="#e5518d"/>
-                              <path d="M156.76,187.25l-24.97-94.01c-.03-.1-.06-.2-.09-.29-2.35-6.46-8.49-10.77-15.37-10.77H41.02c-6.89,0-13.03,4.31-15.37,10.77-.03.1-.06.19-.09.29L.59,187.25s-5.18,20.11,15.14,23.87h.31l-6.41,33.76h24.91l12.45,87.66h63.38l12.45-87.66h24.91l-6.41-33.76h.3c19.58-3.22,15.15-23.87,15.15-23.87Z" fill="#e5518d"/>
-                            </g>
-                            <mask :id="`female-mask-${selectedDetail.id}`">
-                              <rect x="0" y="0" width="100%" height="100%" fill="white"/>
-                              <rect x="0" y="0" :height="`calc(100% * (1 - (${femalePercentage} / 100)))`" width="100%" fill="black"/>
-                            </mask>
-                          </svg>
-                        </div>
-                        <div class="gender-label-percent">여성 <span class="percent-value">{{ femalePercentage }}%</span></div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div class="gender-percentage-bar">
-                    <div class="male-percentage" :style="{ width: `${malePercentage}%` }"></div>
-                    <div class="female-percentage" :style="{ width: `${femalePercentage}%` }"></div>
-                  </div>
-                </div>
-                <div v-else class="no-gender-data"><p>성별 데이터가 없습니다</p></div>
-              </div>
-            </div>
-            <div v-else class="no-stats-data"><p>방문 통계 데이터가 없습니다.</p></div>
-          </div>
-          
-          <!-- 통계 로딩 중 -->
-          <div v-if="isLoadingStats" class="detail-section stats-section">
-            <h4>연령대별 방문 통계</h4>
-            <div class="stats-loading">
-              <div class="spinner"></div>
-              <p>통계 데이터를 불러오는 중...</p>
-            </div>
-          </div>
-          
-          <!-- 리뷰 섹션 -->
-          <div v-if="selectedDetail.reviews && selectedDetail.reviews.length > 0" class="detail-section">
-            <h4>방문자 리뷰 ({{ selectedDetail.reviews.length }})</h4>
-            <div class="reviews-container">
-              <div v-for="(review, index) in selectedDetail.reviews" :key="index" class="review-item">
-                <div class="review-header">
-                  <div class="reviewer-info">
-                    <div class="reviewer-name">{{ review.userName }}</div>
-                    <div class="review-date">{{ formatReviewDate(review.date) }}</div>
-                  </div>
-                  <div class="review-rating">
-                    <span v-for="star in 5" :key="star" 
-                      :class="{'star-filled': star <= review.rating, 'star-empty': star > review.rating}">
-                      ★
-                    </span>
-                  </div>
-                </div>
-                <div class="review-content">
-                  {{ review.comment }}
-                </div>
-                </div>
-              </div>
-            </div>
-          </div>
-  
-          <div class="modal-footer">
-            <button class="cancel-btn" @click="closeDetailModal">닫기</button>
-        </div>
-      </div>
-    </div>
+    <PlaceDetailModal
+      :show="showDetailModal"
+      :detail="selectedDetail"
+      :isInWishlist="selectedDetail.id ? isInWishlist(selectedDetail.id) : false"
+      :ageStats="ageStats"
+      :genderStats="genderStats"
+      :totalStatsVisits="totalStatsVisits"
+      :isLoadingStats="isLoadingStats"
+      @close="closeDetailModal"
+      @toggle-wishlist="toggleWishlist"
+      @apply-keyword="applyKeyword"
+    />
   </template>
   
   <script>
   import Header from '@/components/Header.vue';
+  import PlaceDetailModal from '@/components/PlaceDetailModal.vue';
   import { ref, computed, onMounted, watch, nextTick } from 'vue';
   import * as d3 from 'd3';
   import Chart from 'chart.js/auto';
@@ -335,7 +178,8 @@
     name: 'LookAroundAll',
   
     components: {
-      Header
+      Header,
+      PlaceDetailModal
     },
   
     setup() {
@@ -730,6 +574,11 @@
 
         // 로컬 스토리지에 저장
         localStorage.setItem('logo_wishlist', JSON.stringify(wishlistItems.value.map(i => i.id)));
+      };
+      
+      // PlaceDetailModal 컴포넌트 호환성을 위한 함수
+      const applyKeyword = (keyword) => {
+        console.log("LookAround에서는 키워드 적용 기능이 구현되지 않았습니다:", keyword);
       };
       
       // 툴팁 위치 계산
@@ -2209,6 +2058,7 @@
         tooltipStyle,
         mapContainer,
         detailMapContainer,
+        detailMapModalContainerRef,
         getActiveRegion,
         getActiveSig,
         selectRegion,
@@ -2267,7 +2117,9 @@
         // 리뷰 관련
         formatReviewDate,
         // 태그 길이 기반 표시 로직
-        getVisibleTags
+        getVisibleTags,
+        // 키워드 적용 관련 (PlaceDetailModal 호환용)
+        applyKeyword
       };
     }
   };
