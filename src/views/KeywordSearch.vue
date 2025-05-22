@@ -59,100 +59,15 @@
         <p class="loading-text">검색 중<span>.</span><span>.</span><span>.</span></p>
       </div>
       
-      <!-- 결과 영역 (전체 너비) -->
-      <div v-else-if="searchPerformed" class="results-panel-container">
-        <div class="results-panel">
-          <div class="panel-header">
-            <h3 class="panel-title">
-              '{{ lastSearchKeyword }}' 검색 결과 ({{ searchResults.length }}건 중 {{ totalResults }} 개)
-            </h3>
-          </div>
-          
-          <div class="panel-content">
-            <div v-if="searchResults.length === 0" class="no-results">
-              <div class="no-results-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="8" y1="12" x2="16" y2="12"></line>
-                </svg>
-              </div>
-              <p class="no-results-text">검색 결과가 없습니다</p>
-              <p class="no-results-hint">다른 키워드로 다시 시도해보세요</p>
-            </div>
-            
-            <div v-else class="results-grid">
-              <div 
-                v-for="(result, index) in sortedSearchResults" 
-                :key="result._id"
-                class="result-card"
-                @click="openDetailModal(result)"
-              >
-                <div class="result-rank" :class="{ 'with-heart': isInWishlist(result._id) }">
-                  <span v-if="isInWishlist(result._id)" class="heart-indicator active">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                    </svg>
-                  </span>
-                  <span class="rank-number">{{ index + 1 }}</span>
-                </div>
-                <div class="result-image-container">
-                  <img v-if="result._source.p_image" 
-                    :src="getImageUrl(result._source.p_image)" 
-                    :alt="result._source.p_name" 
-                    class="result-image">
-                  <div v-else class="placeholder-image">이미지 없음</div>
-                </div>
-                <div class="result-info">
-                  <h4 class="result-name">{{ result._source.p_name }}</h4>
-                  <div class="result-location">
-                    <span class="location-icon">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                        <circle cx="12" cy="10" r="3"></circle>
-                      </svg>
-                    </span>
-                    {{ result._source.p_address }}
-                  </div>
-                  <div class="result-visit-count">
-                    인증: {{ result._source.visitCount }}회
-                  </div>
-                  <div class="result-similarity">
-                    <span class="similarity-label">유사도:</span>
-                    <div class="similarity-bar-container">
-                      <div class="similarity-bar" :style="{ width: `${(result._score * 100)}%` }"></div>
-                    </div>
-                    <span class="similarity-value">{{ (result._score * 100).toFixed(0) }}%</span>
-                  </div>
-                  <!-- 키워드 표시 영역 -->
-                  <div v-if="result._source.p_tags && result._source.p_tags.length > 0" class="result-tags">
-                    <span 
-                      v-for="(tag, tagIndex) in result._source.p_tags.slice(0, 5)" 
-                      :key="tagIndex" 
-                      class="result-tag"
-                      @click.stop="applyKeyword(tag)"
-                    >
-                      {{ tag }}
-                    </span>
-                  </div>
-                  <!-- 이미지 설명 -->
-                  <div v-if="result._source.p_description" class="result-description">
-                    <div class="description-title">설명:</div>
-                    <p class="description-text">{{ result._source.p_description }}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div v-if="searchResults.length > 0" class="load-more-container">
-              <button v-if="hasMoreResults" @click="loadMoreResults" class="primary-btn load-more-btn">
-                더 보기 ({{ searchResults.length }}/{{ totalResults }})
-              </button>
-              <p v-else class="no-more-results">모든 결과를 불러왔습니다 ({{ searchResults.length }}건)</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- 결과 영역 (전체 너비) - SearchResultPanel 사용 -->
+      <SearchResultPanel
+        v-else-if="searchPerformed"
+        :title="`'${lastSearchKeyword}' 검색 결과 (${searchResults.length}건 중 ${totalResults} 개)`"
+        :destinations="formattedSearchResults"
+        :isLoading="false"
+        :showAll="true"
+        @open-detail="openDetailModal"
+      />
     </div>
     
     <!-- 푸터 -->
@@ -180,6 +95,7 @@
 import { ref, computed, onMounted } from "vue";
 import Header from "@/components/Header.vue";
 import PlaceDetailModal from "@/components/PlaceDetailModal.vue";
+import SearchResultPanel from "@/components/SearchResultPanel.vue";
 import { searchImagesByKeyword } from "@/services/api";
 import config from "@/config.js";
 
@@ -188,7 +104,8 @@ export default {
   
   components: {
     Header,
-    PlaceDetailModal
+    PlaceDetailModal,
+    SearchResultPanel
   },
   
   setup() {
@@ -249,6 +166,27 @@ export default {
     // 더 많은 결과 있는지 확인
     const hasMoreResults = computed(() => {
       return searchResults.value.length < totalResults.value;
+    });
+    
+    // SearchResultPanel 컴포넌트에 전달할 데이터 형식으로 변환
+    const formattedSearchResults = computed(() => {
+      return sortedSearchResults.value.map((result, index) => {
+        return {
+          id: result._id,
+          name: result._source.p_name,
+          address: result._source.p_address,
+          region: result._source.p_region,
+          sig: result._source.p_sig,
+          description: result._source.p_description,
+          tags: result._source.p_tags || [],
+          p_image: result._source.p_image,
+          location_data: result._source.location_data,
+          visitCount: result._source.visitCount || 0,
+          displayRank: index + 1,
+          _score: result._score, // 유사도 점수 보존
+          _source: result._source // 원본 데이터 보존
+        };
+      });
     });
     
     // 컴포넌트 마운트 시 실행
@@ -388,21 +326,34 @@ export default {
     };
     
     // 상세 모달 열기
-    const openDetailModal = (result) => {
-      // _source 필드를 최상위 레벨로 풀어서 저장
-      const detailData = {
-        _id: result._id,
-        _score: result._score,
-        ...result._source,
-        reviews: dummyReviews
-      };
+    const openDetailModal = (destination) => {
+      // SearchResultPanel에서 넘어온 데이터인 경우 (id, name 등의 형태) vs 직접 result에서 열 경우 (_id, _score 등의 형태)
+      let detailData;
+      
+      if (destination.id !== undefined) {
+        // SearchResultPanel에서 넘어온 데이터 처리
+        detailData = {
+          _id: destination.id,
+          _score: destination._score,
+          ...destination._source, // SearchResultPanel에서 원본 _source를 전달
+          reviews: dummyReviews
+        };
+      } else {
+        // 직접 result에서 열 경우 (이전 방식)
+        detailData = {
+          _id: destination._id,
+          _score: destination._score,
+          ...destination._source,
+          reviews: dummyReviews
+        };
+      }
       
       selectedDetail.value = detailData;
       showDetailModal.value = true;
       
       // Load stats for the selected place
-      if (result._source && result._source.p_id) {
-        loadDestinationStats(result._source.p_id);
+      if (detailData.p_id) {
+        loadDestinationStats(detailData.p_id);
       }
     };
     
@@ -514,6 +465,7 @@ export default {
       showDetailModal,
       selectedDetail,
       sortedSearchResults,
+      formattedSearchResults,
       // Stats related
       ageStats,
       genderStats,
@@ -558,8 +510,7 @@ export default {
 }
 
 /* 검색 패널 및 결과 패널 컨테이너 */
-.search-panel-container,
-.results-panel-container {
+.search-panel-container {
   margin-bottom: 1.5rem;
   opacity: 0;
   transform: translateY(20px);
@@ -812,345 +763,6 @@ export default {
   100% { opacity: 0; }
 }
 
-/* 결과 없음 */
-.no-results {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 1rem; /* Added horizontal padding */
-  color: #a0aec0;
-  text-align: center;
-  background-color: #f9fafb; /* Light background */
-  border-radius: 12px;
-  margin: 1rem 0;
-}
-
-.no-results-icon {
-  color: #cbd5e0; /* Lighter icon color */
-  margin-bottom: 1.25rem;
-}
-.no-results-icon svg {
-  width: 50px; /* Adjusted size */
-  height: 50px;
-}
-
-.no-results-text {
-  font-family: 'Noto Sans KR', sans-serif;
-  font-size: 1.1rem; /* Slightly larger */
-  color: #4a5568; /* Darker text */
-  margin: 0 0 0.5rem 0;
-  font-weight: 500;
-}
-
-.no-results-hint {
-  font-family: 'Noto Sans KR', sans-serif;
-  font-size: 0.9rem;
-  color: #718096; /* Slightly darker hint */
-  margin: 0;
-}
-
-/* 결과 그리드 */
-.results-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.8rem;
-  padding: 0.5rem;
-}
-
-.result-card {
-  position: relative;
-  background-color: white;
-  border-radius: 12px; /* Softer radius */
-  overflow: hidden;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.07); /* Refined shadow */
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  cursor: pointer;
-  border: 1px solid #eef2f7; /* Lighter border */
-}
-
-.result-card:hover {
-  transform: translateY(-6px); /* Subtler lift */
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-}
-
-.result-image-container {
-  height: 200px;
-  width: 100%;
-  overflow: hidden;
-  background-color: #f0f0f0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #666;
-  position: relative;
-}
-
-.result-image-container::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(to bottom, transparent 60%, rgba(0, 0, 0, 0.6)); /* Darker gradient */
-  z-index: 1;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.result-card:hover .result-image-container::before {
-  opacity: 1;
-}
-
-.result-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-
-.result-card:hover .result-image {
-  transform: scale(1.07); /* Subtler zoom */
-}
-
-.placeholder-image {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  background-color: #f0f0f0;
-  color: #666;
-  font-size: 0.9rem;
-}
-
-/* 등수 아이콘 스타일 */
-.result-rank {
-  position: absolute;
-  top: 12px; /* Adjusted position */
-  right: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 4px 10px; /* Adjusted padding */
-  background: linear-gradient(135deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
-  color: white;
-  border-radius: 16px; /* More rounded */
-  font-size: 0.75rem; /* Adjusted size */
-  font-weight: 600;
-  z-index: 2;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
-}
-
-.result-rank.with-heart {
-  padding-left: 10px;
-  gap: 7px;
-}
-
-.rank-number {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 14px;
-  text-align: center;
-  line-height: 1;
-}
-
-.heart-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(255, 255, 255, 0.7); /* Slightly more visible */
-  transition: all 0.3s ease;
-}
-
-.heart-indicator.active {
-  color: var(--logo-coral, #ff8e7f);
-  animation: heartbeat 0.8s ease-in-out;
-}
-
-.heart-indicator svg {
-  fill: transparent;
-  transition: fill 0.3s ease;
-}
-
-.heart-indicator.active svg {
-  fill: var(--logo-coral, #ff8e7f);
-}
-
-@keyframes heartbeat {
-  0%, 100% { transform: scale(1); }
-  30% { transform: scale(1.25); }
-  60% { transform: scale(1.1); }
-}
-
-.result-info {
-  padding: 1rem 1.2rem; /* Adjusted padding */
-  position: relative;
-}
-
-.result-name {
-  font-size: 1.05rem; /* Adjusted size */
-  font-weight: 600;
-  color: #34495e; /* Darker, more neutral */
-  margin: 0 0 0.4rem 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: color 0.3s ease;
-}
-
-.result-card:hover .result-name {
-  color: var(--logo-blue, #48b0e4);
-}
-
-.result-location {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem; /* Adjusted gap */
-  font-size: 0.8rem; /* Adjusted size */
-  color: #7f8c8d; /* Softer grey */
-  margin-bottom: 0.6rem;
-}
-
-.result-visit-count {
-  font-size: 0.8rem;
-  color: #27ae60; /* Greener */
-  font-weight: 500;
-  margin-bottom: 0.5rem;
-  background-color: #eafaf1;
-  padding: 2px 6px;
-  border-radius: 4px;
-  display: inline-block;
-}
-
-.location-icon {
-  color: var(--logo-blue, #48b0e4);
-}
-
-/* 유사도 표시 개선 */
-.result-similarity {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8rem;
-  color: #7f8c8d;
-  margin-bottom: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.similarity-label {
-  font-weight: 500;
-  color: #7f8c8d;
-}
-
-.similarity-bar-container {
-  flex-grow: 1;
-  height: 7px; /* Slightly thinner */
-  background-color: #e8eaed; /* Lighter background */
-  border-radius: 4px;
-  overflow: hidden;
-  /* box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05); Removed for flatter look */
-}
-
-.similarity-bar {
-  height: 100%;
-  background: linear-gradient(90deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
-  border-radius: 4px;
-  transition: width 1s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-
-.similarity-value {
-  font-weight: 600;
-  color: var(--logo-blue, #48b0e4);
-  font-size: 0.85rem;
-}
-
-/* 결과 카드 태그 */
-.result-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-top: 0.6rem; /* Adjusted margin */
-}
-
-.result-tag {
-  font-size: 0.7rem; /* Smaller tags */
-  padding: 0.25rem 0.6rem;
-  background-color: #eef2f7; /* Lighter grey */
-  color: #5f6b7a; /* Darker grey text */
-  border-radius: 12px;
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.result-tag:hover {
-  background-color: #dde2e7;
-  color: #34495e;
-  transform: translateY(-1px);
-}
-
-/* 더 불러오기 버튼 */
-.load-more-container {
-  display: flex;
-  justify-content: center;
-  margin-top: 2rem;
-}
-
-.load-more-btn {
-  padding: 10px 24px; /* Adjusted padding */
-  background: linear-gradient(135deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
-  color: white;
-  border: none;
-  border-radius: 25px; /* More rounded */
-  font-weight: 600;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 10px rgba(var(--logo-blue-rgb, 72, 176, 228), 0.2);
-}
-
-.load-more-btn:hover {
-  background: linear-gradient(135deg, #3a9cd1, #67a58d);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 12px rgba(var(--logo-blue-rgb, 72, 176, 228), 0.25);
-}
-
-.no-more-results {
-  color: #95a5a6; /* Softer grey */
-  font-size: 0.9rem;
-}
-
-/* 결과 카드 설명 영역 */
-.result-description {
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid #eef2f7; /* Lighter border */
-}
-
-.description-title {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #5f6b7a; /* Darker grey */
-  margin-bottom: 0.25rem;
-}
-
-.description-text {
-  font-size: 0.8rem;
-  color: #7f8c8d; /* Softer grey */
-  margin: 0;
-  line-height: 1.5; /* Improved line height */
-  max-height: 4.5em; /* 3 lines with 1.5 line height */
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  -webkit-box-orient: vertical;
-}
-
 /* 푸터 */
 .footer {
   background: #2c3e50; /* Solid dark color */
@@ -1167,31 +779,8 @@ export default {
   letter-spacing: 0.3px;
 }
 
-/* 등수 랭킹 컬러 */
-.result-card:nth-child(1) .result-rank {
-  background: linear-gradient(135deg, #ffdf70, #ffc107); /* Gold */
-}
-
-.result-card:nth-child(2) .result-rank {
-  background: linear-gradient(135deg, #e0e0e0, #b0b0b0); /* Silver */
-}
-
-.result-card:nth-child(3) .result-rank {
-  background: linear-gradient(135deg, #e09b5b, #cd7f32); /* Bronze */
-}
-
 /* 반응형 조정 */
-@media (max-width: 768px) {
-  .results-grid {
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); /* Smaller cards on mobile */
-  }
-}
-
 @media (max-width: 600px) {
-  .results-grid {
-    grid-template-columns: 1fr;
-  }
-  
   .search-input-container {
     flex-direction: column;
   }

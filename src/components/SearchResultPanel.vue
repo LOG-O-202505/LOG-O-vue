@@ -1,67 +1,85 @@
 <template>
   <div class="popular-destinations-section">
     <h3 class="section-title">{{ title }}</h3>
-    
+
     <!-- 로딩 표시 -->
     <div v-if="isLoading" class="loading-container">
       <div class="spinner"></div>
       <p>인기 여행지 정보를 가져오는 중...</p>
     </div>
-    
+
     <!-- 결과가 없을 때 -->
     <div v-else-if="destinations.length === 0" class="no-results">
-      <p>해당 지역에 인기 여행지 데이터가 없습니다.</p>
+      <div class="no-results-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="8" y1="12" x2="16" y2="12"></line>
+        </svg>
+      </div>
+      <p class="no-results-text">검색 결과가 없습니다</p>
+      <p class="no-results-hint">다른 키워드로 다시 시도해보세요</p>
     </div>
-    
+
     <!-- 결과 표시 -->
-    <div v-else class="destinations-grid">
-      <div 
-        v-for="destination in displayDestinations" 
-        :key="destination.id" 
-        class="destination-card"
-        @click="$emit('open-detail', destination)"
-      >
-        <div class="destination-rank" :class="{ 'with-heart': isInWishlist(destination.id) }">
+    <div v-else class="results-grid">
+      <div v-for="destination in displayDestinations" :key="destination.id" class="result-card"
+        @click="$emit('open-detail', destination)">
+        <div class="result-rank" :class="{ 'with-heart': isInWishlist(destination.id) }">
           <span v-if="isInWishlist(destination.id)" class="heart-indicator active">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+              <path
+                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
+              </path>
             </svg>
           </span>
           <span class="rank-number">{{ destination.displayRank }}</span>
         </div>
-        <div class="destination-image"> <!-- This div is now a container -->
-          <img 
-            v-if="destination.p_image" 
-            :src="`data:image/jpeg;base64,${destination.p_image}`" 
-            :alt="destination.name || '여행지 이미지'" 
-            class="destination-actual-image"
-          >
-          <div v-else class="destination-placeholder">
-            <svg class="placeholder-icon" xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-            <span class="placeholder-text">이미지 준비중</span>
-          </div>
+        <div class="result-image-container">
+          <img v-if="destination.p_image" :src="`data:image/jpeg;base64,${destination.p_image}`"
+            :alt="destination.name || '여행지 이미지'" class="result-image">
+          <div v-else class="placeholder-image">이미지 없음</div>
         </div>
-        <div class="destination-content">
-          <h4>{{ destination.name }}</h4>
-          <div class="destination-location">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-              <circle cx="12" cy="10" r="3"></circle>
-            </svg>
-            <span>{{ destination.address }}</span>
+        <div class="result-info">
+          <h4 class="result-name">{{ destination.name }}</h4>
+          <div class="result-location">
+            <span class="location-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+            </span>
+            {{ destination.address }}
           </div>
-          <div class="visit-count">
-            <span class="count-label">방문 인증:</span>
-            <span class="count-value">{{ destination.visitCount }}회</span>
+          <div class="result-visit-count">
+            인증: {{ destination.visitCount }}회
           </div>
-          <div class="destination-tags">
-            <span v-for="tag in getVisibleTags(destination.tags)" :key="tag" class="tag">{{ tag }}</span>
+          <div v-if="destination._score" class="result-similarity">
+            <span class="similarity-label">유사도:</span>
+            <div class="similarity-bar-container">
+              <div class="similarity-bar" :style="{ width: `${(destination._score * 100)}%` }"></div>
+            </div>
+            <span class="similarity-value">{{ (destination._score * 100).toFixed(0) }}%</span>
           </div>
+          <!-- 키워드 표시 영역 -->
+          <div v-if="destination.tags && destination.tags.length > 0" class="result-tags">
+            <span v-for="(tag, tagIndex) in getVisibleTags(destination.tags)" :key="tagIndex" class="result-tag"
+              @click.stop="$parent.applyKeyword && $parent.applyKeyword(tag)">
+              {{ tag }}
+            </span>
+          </div>
+          <!-- 이미지 설명 -->
+          <div v-if="destination.description" class="result-description">
+            <div class="description-title">설명:</div>
+            <p class="description-text">{{ destination.description }}</p>
+          </div>
+          
         </div>
       </div>
     </div>
-    
+
     <!-- 더 많은 여행지 버튼 추가 -->
     <div class="view-more-container" v-if="destinations.length > 30 && !showAll">
       <button class="view-more-button" @click="$emit('show-all')">
@@ -74,7 +92,7 @@
 <script>
 export default {
   name: 'SearchResultPanel',
-  
+
   props: {
     title: {
       type: String,
@@ -93,7 +111,7 @@ export default {
       default: false
     }
   },
-  
+
   computed: {
     // 표시할 여행지 목록 (showAll에 따라 전체 또는 30개만 표시)
     displayDestinations() {
@@ -104,12 +122,12 @@ export default {
       return this.destinations.slice(0, maxItems);
     }
   },
-  
+
   methods: {
     isInWishlist(id) {
       return this.$parent.isInWishlist(id);
     },
-    
+
     getVisibleTags(tags) {
       if (!tags || tags.length === 0) {
         return [];
@@ -134,7 +152,7 @@ export default {
   margin-top: 3rem;
   padding-top: 1rem;
   border-top: 1px solid #e0e0e0;
-  margin-bottom: 3rem; /* 추가된 하단 여백 */
+  margin-bottom: 3rem;
 }
 
 /* 섹션 타이틀 공통 스타일 */
@@ -155,196 +173,25 @@ export default {
   color: #777;
 }
 
-.destinations-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1.5rem;
-  margin-top: 2rem;
-  padding: 0.5rem;
-}
-
-.destination-card {
-  position: relative;
-  background-color: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-  display: flex;
-  flex-direction: column;
-  height: 460px; /* Increased to accommodate larger image */
-}
-
-.destination-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-}
-
-.destination-rank {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 6px 14px;
-  background: linear-gradient(135deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
-  color: white;
-  border-radius: 16px;
-  font-size: 1rem;
-  font-weight: 600;
-  z-index: 2;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
-}
-
-/* 등수 랭킹 컬러 */
-.destination-card:nth-child(1) .destination-rank {
-  background: linear-gradient(135deg, #ffca2c, #ffab00);
-}
-
-.destination-card:nth-child(2) .destination-rank {
-  background: linear-gradient(135deg, #e0e0e0, #b0b0b0);
-}
-
-.destination-card:nth-child(3) .destination-rank {
-  background: linear-gradient(135deg, #d98936, #b0732f);
-}
-
-.destination-image {
-  height: 360px;
-  overflow: hidden;
-  position: relative;
-  background-color: #f8f9fa; /* Default background for the container */
-  transition: transform 0.5s ease; /* Keep this for the hover effect */
-}
-
-.destination-actual-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.destination-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background-color: #e9ecef;
-  text-align: center;
-}
-
-.destination-placeholder .placeholder-icon {
-  width: 50px;
-  height: 50px;
-  margin-bottom: 10px;
-  stroke: #ced4da;
-}
-
-.destination-placeholder .placeholder-text {
-  font-size: 0.9rem;
-  color: #6c757d;
-}
-
-.destination-card:hover .destination-image {
-  transform: scale(1.05);
-}
-
-.destination-content {
-  padding: 1.2rem;
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.destination-content h4 {
-  font-size: 1.2rem;
-  font-weight: 600;
-  margin: 0 0 0.7rem 0;
-  color: #333;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: color 0.3s ease;
-}
-
-.destination-location {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: #666;
-  font-size: 0.9rem;
-  margin-bottom: 0.7rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* 방문 카운트 스타일 */
-.visit-count {
-  display: flex;
-  align-items: center;
-  margin-top: 0.5rem;
-  margin-bottom: 0.7rem;
-}
-
-.count-label {
-  font-size: 0.85rem;
-  color: #666;
-  margin-right: 0.5rem;
-}
-
-.count-value {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #4299e1;
-}
-
-/* 태그 스타일 */
-.destination-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: auto;
-  margin-top: 0.8rem;
-}
-
-.tag {
-  background-color: rgba(72, 176, 228, 0.1);
-  border-radius: 50px;
-  color: #48b0e4;
-  padding: 0.3rem 0.9rem;
-  font-size: 0.9rem;
-  transition: all 0.2s ease;
-}
-
-.tag:hover {
-  background-color: #48b0e4;
-  color: white;
-  transform: translateY(-2px);
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
-}
-
-/* 로딩 컨테이너 스타일 */
+/* 로딩 상태 */
 .loading-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 3rem 0;
+  padding: 4rem 0;
+  color: #6c757d;
+  text-align: center;
 }
 
 .spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid rgba(0, 0, 0, 0.1);
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(72, 176, 228, 0.15);
   border-radius: 50%;
-  border-top-color: #4299e1;
-  animation: spin 1s ease-in-out infinite;
-  margin-bottom: 1rem;
+  border-top-color: #48b0e4;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 1.5rem;
 }
 
 @keyframes spin {
@@ -353,75 +200,141 @@ export default {
   }
 }
 
-.loading-container p {
-  color: #718096;
-  font-size: 0.9rem;
-}
-
-/* 결과 없음 메시지 스타일 */
-.no-results {
-  text-align: center;
-  padding: 3rem 0;
-  color: #718096;
-  font-style: italic;
-}
-
-/* 더 많은 여행지 보기 버튼 */
-.view-more-container {
-  display: flex;
-  justify-content: center;
-  margin-top: 2rem;
-}
-
-.view-more-button, .view-less-button {
-  background-color: #f5f5f5;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 5px;
-  font-size: 0.9rem;
+.loading-text {
+  font-size: 1.1rem;
+  color: #495057;
   font-weight: 500;
-  color: #333;
+}
+
+/* 결과 없음 */
+.no-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1rem;
+  color: #a0aec0;
+  text-align: center;
+  background-color: #f9fafb;
+  border-radius: 12px;
+  margin: 1rem 0;
+}
+
+.no-results-icon {
+  color: #cbd5e0;
+  margin-bottom: 1.25rem;
+}
+
+.no-results-text {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 1.1rem;
+  color: #4a5568;
+  margin: 0 0 0.5rem 0;
+  font-weight: 500;
+}
+
+.no-results-hint {
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 0.9rem;
+  color: #718096;
+  margin: 0;
+}
+
+/* 결과 그리드 */
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.8rem;
+  padding: 0.5rem;
+}
+
+.result-card {
+  position: relative;
+  background-color: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.07);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   cursor: pointer;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  transition: all 0.2s ease;
+  border: 1px solid #eef2f7;
 }
 
-.view-more-button:hover, .view-less-button:hover {
-  background-color: #e0e0e0;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+.result-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
 
-/* 추가된 하트 표시 스타일 */
-.heart-indicator {
+.result-image-container {
+  height: 200px;
+  width: 100%;
+  overflow: hidden;
+  background-color: #f0f0f0;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.7); /* Slightly more visible */
-  transition: all 0.3s ease;
+  color: #666;
+  position: relative;
 }
 
-.heart-indicator.active {
-  color: var(--logo-coral, #ff8e7f);
-  animation: heartbeat 0.8s ease-in-out;
+.result-image-container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, transparent 60%, rgba(0, 0, 0, 0.6));
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
-.heart-indicator svg {
-  fill: transparent;
-  transition: fill 0.3s ease;
+.result-card:hover .result-image-container::before {
+  opacity: 1;
 }
 
-.heart-indicator.active svg {
-  fill: var(--logo-coral, #ff8e7f);
+.result-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-@keyframes heartbeat {
-  0%, 100% { transform: scale(1); }
-  30% { transform: scale(1.25); }
-  60% { transform: scale(1.1); }
+.result-card:hover .result-image {
+  transform: scale(1.07);
 }
 
-.destination-rank.with-heart {
+.placeholder-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background-color: #f0f0f0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+/* 등수 아이콘 스타일 */
+.result-rank {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 4px 10px;
+  background: linear-gradient(135deg, #48b0e4, #76b39d);
+  color: white;
+  border-radius: 16px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  z-index: 2;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+}
+
+.result-rank.with-heart {
   padding-left: 10px;
   gap: 7px;
 }
@@ -435,28 +348,218 @@ export default {
   line-height: 1;
 }
 
+/* 하트 표시 스타일 */
+.heart-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.7);
+  transition: all 0.3s ease;
+}
+
+.heart-indicator.active {
+  color: #ff8e7f;
+  animation: heartbeat 0.8s ease-in-out;
+}
+
+.heart-indicator svg {
+  fill: transparent;
+  transition: fill 0.3s ease;
+}
+
+.heart-indicator.active svg {
+  fill: #ff8e7f;
+}
+
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  30% { transform: scale(1.25); }
+  60% { transform: scale(1.1); }
+}
+
+/* 등수 랭킹 컬러 */
+.result-card:nth-child(1) .result-rank {
+  background: linear-gradient(135deg, #ffdf70, #ffc107);
+}
+
+.result-card:nth-child(2) .result-rank {
+  background: linear-gradient(135deg, #e0e0e0, #b0b0b0);
+}
+
+.result-card:nth-child(3) .result-rank {
+  background: linear-gradient(135deg, #e09b5b, #cd7f32);
+}
+
+/* 결과 정보 영역 */
+.result-info {
+  padding: 1rem 1.2rem;
+  position: relative;
+}
+
+.result-name {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #34495e;
+  margin: 0 0 0.4rem 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.3s ease;
+}
+
+.result-card:hover .result-name {
+  color: #48b0e4;
+}
+
+.result-location {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: #7f8c8d;
+  margin-bottom: 0.6rem;
+}
+
+.location-icon {
+  color: #48b0e4;
+}
+
+.result-visit-count {
+  font-size: 0.8rem;
+  color: #27ae60;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  background-color: #eafaf1;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+/* 유사도 표시 */
+.result-similarity {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #7f8c8d;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.similarity-label {
+  font-weight: 500;
+  color: #7f8c8d;
+}
+
+.similarity-bar-container {
+  flex-grow: 1;
+  height: 7px;
+  background-color: #e8eaed;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.similarity-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #48b0e4, #76b39d);
+  border-radius: 4px;
+  transition: width 1s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.similarity-value {
+  font-weight: 600;
+  color: #48b0e4;
+  font-size: 0.85rem;
+}
+
+/* 장소 설명 스타일 */
+.result-description {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #eef2f7;
+}
+
+.description-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #5f6b7a;
+  margin-bottom: 0.25rem;
+}
+
+.description-text {
+  font-size: 0.8rem;
+  color: #7f8c8d;
+  margin: 0;
+  line-height: 1.5;
+  max-height: 4.5em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+/* 태그 스타일 */
+.result-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+}
+
+.result-tag {
+  font-size: 0.7rem;
+  padding: 0.25rem 0.6rem;
+  background-color: #eef2f7;
+  color: #5f6b7a;
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.result-tag:hover {
+  background-color: #dde2e7;
+  color: #34495e;
+  transform: translateY(-1px);
+}
+
+/* 더 많은 여행지 보기 버튼 */
+.view-more-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.view-more-button {
+  padding: 10px 24px;
+  background: linear-gradient(135deg, #48b0e4, #76b39d);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 10px rgba(72, 176, 228, 0.2);
+}
+
+.view-more-button:hover {
+  background: linear-gradient(135deg, #3a9cd1, #67a58d);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(72, 176, 228, 0.25);
+}
+
 /* 반응형 디자인 */
-@media (max-width: 1400px) {
-  .destinations-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-@media (max-width: 1200px) {
-  .destinations-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (max-width: 992px) {
-  .destinations-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
 @media (max-width: 768px) {
-  .destinations-grid {
+  .results-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .results-grid {
     grid-template-columns: 1fr;
   }
 }
-</style> 
+</style>
