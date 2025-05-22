@@ -659,45 +659,61 @@
         return regionSpecialtyData.default;
       });
       
-      // 현재 표시할 인기 여행지 데이터 가져오기 - Elasticsearch 직접 호출 방식으로 변경
+      // 현재 표시할 인기 여행지 데이터 가져오기 - Elasticsearch 직접 호출 방식으로 개선된 방식
       const loadPopularDestinations = async () => {
         try {
           isLoadingDestinations.value = true;
           
-          // Elasticsearch 쿼리 생성
-          let query = {
-            size: 0,
-            aggs: {
-              popular_places: {
-                terms: {
-                  field: "p_id",
-                  size: 30,
-                  order: { "_count": "desc" }
-                },
-                aggs: {
-                  place_details: {
-                    top_hits: {
-                      size: 1,
-                      _source: [
-                        "p_id", "p_name", "p_address", 
-                        "p_region", "p_sig", "p_description", "p_tags", "p_image"
-                      ],
-                      sort: [{ "upload_date": { "order": "desc" } }]
-                    }
-                  }
-                }
-              }
-            }
-          };
+          // 조회할 최대 결과 수
+          const size = 30;
           
-          // 필터 조건 추가 - 시군구 또는 지역으로 필터링
+          // 필터 쿼리 생성 - 시군구 또는 지역으로 필터링
+          let filterQuery = {};
           if (currentMapLevel.value === 'sig' && activeSig.value) {
-            query.query = { term: { p_sig: activeSig.value } };
+            filterQuery = { term: { p_sig: activeSig.value } };
           } else if (activeRegion.value) {
-            query.query = { term: { p_region: activeRegion.value } };
+            filterQuery = { term: { p_region: activeRegion.value } };
           }
           
-          console.log('인기 여행지 조회 쿼리:', JSON.stringify(query, null, 2));
+                     // ES 쿼리 구성 - 개선된 중복 제거 및 정렬 방식
+           const query = {
+             size: size,
+             query: filterQuery.term ? {
+               bool: {
+                 must: [filterQuery]
+               }
+             } : {
+               match_all: {}
+             },
+             // p_id 기준으로 결과 접기 (ES 레벨에서 중복 제거)
+             collapse: {
+               field: "p_id",
+               inner_hits: {
+                 name: "most_recent",
+                 size: 1,
+                 sort: [{ "upload_date": { "order": "desc" } }], // 최신 데이터 먼저
+                 _source: [
+                   "p_id", "p_name", "p_address", "p_region", "p_sig", 
+                   "p_description", "p_tags", "p_image", "location_data"
+                 ]
+               }
+             },
+             // p_id 별 전체 문서 수 집계 (방문 횟수로 사용)
+             aggs: {
+               "popular_places": {
+                 terms: {
+                   field: "p_id",
+                   size: size * 2, // 충분한 후보군 확보
+                   order: { "_count": "desc" } // 방문 횟수 기준 내림차순 정렬
+                 }
+               }
+             },
+             // 실제 결과는 내부 집계로 정렬 (엔진이 더 효율적으로 처리)
+             track_total_hits: true, // 총 히트 수 추적
+             _source: ["p_id"] // 최소한의 소스 필드만 가져오기
+          };
+          
+          console.log('개선된 인기 여행지 조회 쿼리:', JSON.stringify(query, null, 2));
           
           // Elasticsearch 직접 호출
           const response = await fetch(`${config.ES_API}/travel_places/_search`, {
@@ -707,47 +723,113 @@
           });
           
           if (!response.ok) {
+            const errorData = await response.json();
+            console.error('검색 응답 에러 내용:', errorData);
             throw new Error(`Elasticsearch API 오류: ${response.status}`);
           }
           
           const data = await response.json();
+          console.log('ES 검색 결과:', data);
+          
+          // 방문 횟수 집계 맵 생성 (p_id를 키로, 방문 횟수를 값으로)
+          const visitCountsMap = new Map();
+          if (data.aggregations && data.aggregations.popular_places && data.aggregations.popular_places.buckets) {
+            data.aggregations.popular_places.buckets.forEach(bucket => {
+              visitCountsMap.set(bucket.key, bucket.doc_count);
+            });
+          }
+          
+          // p_id 기준으로 정렬된 배열 생성 (방문 횟수 내림차순)
+          const sortedIds = Array.from(visitCountsMap.entries())
+            .sort((a, b) => b[1] - a[1])
+            .map(entry => entry[0]);
+            
+          console.log('정렬된 장소 ID 배열 (상위 10개):', sortedIds.slice(0, 10));
           
           // 결과 처리
-          if (data && data.aggregations && data.aggregations.popular_places) {
-            const results = data.aggregations.popular_places.buckets.map((bucket, index) => {
-              const placeDetails = bucket.place_details.hits.hits[0]._source;
+          if (data && data.hits && data.hits.hits && data.hits.hits.length > 0) {
+            const results = data.hits.hits.map((hit, index) => {
+              // 기본 반환값 준비
+              let placeObj = null;
               
-              // 지역명 및 시군구명 조회
-              const regionName = getRegionNameByCode(placeDetails.p_region);
-              const sigName = getSigNameByCode(placeDetails.p_sig);
+              try {
+                // inner_hits에서 장소 세부 정보 가져오기
+                if (!hit.inner_hits?.most_recent?.hits?.hits?.[0]) {
+                  console.error('inner_hits 데이터 누락:', hit);
+                  return null; // 필요한 데이터가 없는 경우 처리
+                }
+                
+                const innerHit = hit.inner_hits.most_recent.hits.hits[0];
+                const placeDetails = innerHit._source;
+                const p_id = parseInt(hit.fields?.p_id?.[0] || innerHit._source.p_id);
+                
+                // 지역명 및 시군구명 조회
+                const regionName = getRegionNameByCode(placeDetails.p_region);
+                const sigName = getSigNameByCode(placeDetails.p_sig);
+                
+                // 장소 객체 생성
+                placeObj = {
+                  id: p_id,
+                  name: placeDetails.p_name,
+                  address: placeDetails.p_address,
+                  region: placeDetails.p_region,
+                  regionName,
+                  sig: placeDetails.p_sig,
+                  sigName,
+                  description: placeDetails.p_description,
+                  tags: placeDetails.p_tags || [],
+                  p_image: placeDetails.p_image,
+                  location_data: placeDetails.location_data,
+                  // 집계된 방문 횟수 사용
+                  visitCount: visitCountsMap.get(p_id) || 0,
+                  displayRank: index + 1
+                };
+              } catch (err) {
+                console.error('장소 데이터 처리 오류:', err, hit);
+                return null;
+              }
               
-              return {
-                id: placeDetails.p_id,
-                name: placeDetails.p_name,
-                address: placeDetails.p_address,
-                region: placeDetails.p_region,
-                regionName,
-                sig: placeDetails.p_sig,
-                sigName,
-                description: placeDetails.p_description,
-                tags: placeDetails.p_tags || [],
-                p_image: placeDetails.p_image,
-                visitCount: bucket.doc_count,
-                displayRank: index + 1
-              };
+              return placeObj;
+            }).filter(item => item !== null); // null 항목 제거
+            
+            console.log(`인기 여행지 ${results.length}개 기본 로드 완료`);
+            
+            // 집계 기반 정렬: 방문 횟수 기준 내림차순 정렬
+            // 1. sortedIds 기반으로 정확한 순서 유지
+            // 2. 집계에 없는 결과는 방문 횟수 0으로 맨 뒤에 배치
+            const sortedResults = [];
+            
+            // 먼저 정렬된 ID 순서대로 결과 추가
+            sortedIds.forEach(id => {
+              const found = results.find(item => item.id === id);
+              if (found) {
+                sortedResults.push(found);
+              }
             });
             
-            console.log(`인기 여행지 ${results.length}개 로드 완료`);
-            popularDestinations.value = results;
+            // 집계에 없는 결과 추가 (방문 횟수 0)
+            results.forEach(item => {
+              if (!sortedIds.includes(item.id)) {
+                sortedResults.push(item);
+              }
+            });
+            
+            // 순위 재설정
+            sortedResults.forEach((item, idx) => {
+              item.displayRank = idx + 1;
+            });
+            
+            console.log(`최종 정렬된 인기 여행지 ${sortedResults.length}개 처리 완료`);
+            popularDestinations.value = sortedResults;
             
             // 인기 여행지 데이터를 기반으로 지역 인기도 점수 계산
             // 전국 데이터인 경우 지역별 인기도 계산
             if (!activeRegion.value && !activeSig.value) {
-              calculateRegionScoresFromData(results);
+              calculateRegionScoresFromData(sortedResults);
             } 
             // 특정 지역 선택 시 해당 지역의 시군구별 인기도 계산
             else if (activeRegion.value && !activeSig.value) {
-              calculateSigScoresFromData(results);
+              calculateSigScoresFromData(sortedResults);
             }
           } else {
             console.warn('인기 여행지 데이터 없음');

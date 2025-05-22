@@ -16,7 +16,7 @@
     <!-- 결과 표시 -->
     <div v-else class="destinations-grid">
       <div 
-        v-for="destination in currentDestinations.slice(0, 30)" 
+        v-for="destination in displayDestinations" 
         :key="destination.id" 
         class="destination-card"
         @click="$emit('open-detail', destination)"
@@ -65,7 +65,7 @@
     <!-- 더 많은 여행지 버튼 추가 -->
     <div class="view-more-container" v-if="destinations.length > 30 && !showAll">
       <button class="view-more-button" @click="$emit('show-all')">
-        모든 인기 여행지 보기
+        모든 인기 여행지 {{ destinations.length }}개 보기
       </button>
     </div>
   </div>
@@ -95,8 +95,13 @@ export default {
   },
   
   computed: {
-    currentDestinations() {
-      return this.destinations;
+    // 표시할 여행지 목록 (showAll에 따라 전체 또는 30개만 표시)
+    displayDestinations() {
+      const maxItems = 30;
+      if (this.showAll) {
+        return this.destinations;
+      }
+      return this.destinations.slice(0, maxItems);
     }
   },
   

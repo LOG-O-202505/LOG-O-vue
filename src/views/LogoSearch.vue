@@ -124,75 +124,15 @@
         </div>
       </div>
 
-      <!-- 결과 영역 (전체 너비) -->
-      <div v-if="analysisResult && !isLoading && searchResults.length > 0" class="results-panel-container">
-        <div class="results-panel panel-style"> <!-- Added panel-style -->
-          <div class="panel-header">
-            <h3 class="panel-title">
-              유사 여행지 추천 ({{ searchResults.length }}건)
-            </h3>
-          </div>
-          <div class="panel-content">
-            <div class="results-grid">
-              <div 
-                v-for="(result, index) in sortedSearchResults" 
-                :key="result._id"
-                class="result-card"
-                @click="openDetailModal(result)"
-              >
-                <div class="result-rank" :class="{ 'with-heart': isInWishlist(result._id) }">
-                  <span v-if="isInWishlist(result._id)" class="heart-indicator active">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                    </svg>
-                  </span>
-                  <span class="rank-number">{{ index + 1 }}</span>
-                </div>
-                <div class="result-image-container">
-                  <img v-if="result._source.p_image" :src="`data:image/jpeg;base64,${result._source.p_image}`" :alt="result._source.p_name" class="result-image">
-                  <div v-else class="placeholder-image">이미지 없음</div>
-                </div>
-                <div class="result-info">
-                  <h4 class="result-name">{{ result._source.p_name }}</h4>
-                  <div class="result-location">
-                    <span class="location-icon">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                      <circle cx="12" cy="10" r="3"></circle>
-                    </svg>
-                    </span>
-                    {{ result._source.p_address }}
-                  </div>
-                  <div class="result-visit-count" v-if="result._source.visitCount !== undefined">
-                    인증: {{ result._source.visitCount }}회
-                  </div>
-                  <div class="result-similarity">
-                    <span class="similarity-label">유사도:</span>
-                    <div class="similarity-bar-container">
-                      <div class="similarity-bar" :style="{ width: `${(result._score * 100)}%` }"></div>
-                    </div>
-                    <span class="similarity-value">{{ (result._score * 100).toFixed(0) }}%</span>
-                    </div>
-                  <div v-if="result._source.p_tags && result._source.p_tags.length > 0" class="result-tags">
-                    <span 
-                      v-for="(tag, tagIndex) in result._source.p_tags.slice(0, 5)" 
-                      :key="tagIndex" 
-                      class="result-tag"
-                    >
-                      {{ tag }}
-                    </span>
-                  </div>
-                  <div v-if="result._source.p_description" class="result-description">
-                    <div class="description-title">설명:</div>
-                    <p class="description-text">{{ result._source.p_description }}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- 결과 영역 (전체 너비) - SearchResultPanel 사용 -->
+      <SearchResultPanel
+        v-if="analysisResult && !isLoading && searchResults.length > 0"
+        :title="`유사 여행지 추천 (${searchResults.length}건)`"
+        :destinations="formattedSearchResults"
+        :isLoading="false"
+        :showAll="true"
+        @open-detail="openDetailModal"
+      />
       <div v-else-if="analysisResult && !isLoading && searchResults.length === 0" class="results-panel-container">
         <div class="results-panel panel-style">
             <div class="panel-header">
@@ -242,6 +182,7 @@ import Header from "@/components/Header.vue";
 import LoadingSpinner from "@/components/LoadingSpinner.vue";
 import Chart from 'chart.js/auto'; // Import Chart.js
 import PlaceDetailModal from "@/components/PlaceDetailModal.vue";
+import SearchResultPanel from "@/components/SearchResultPanel.vue";
 import {
   searchSimilarImages,
   createFeaturesVector, // Import createFeaturesVector
@@ -256,7 +197,8 @@ export default {
   components: {
     Header,
     LoadingSpinner,
-    PlaceDetailModal
+    PlaceDetailModal,
+    SearchResultPanel
   },
 
   setup() {
@@ -317,6 +259,27 @@ export default {
     const sortedSearchResults = computed(() => {
       return [...searchResults.value].sort((a, b) => b._score - a._score);
     });
+    
+    // SearchResultPanel 컴포넌트에 전달할 데이터 형식으로 변환
+    const formattedSearchResults = computed(() => {
+      return sortedSearchResults.value.map((result, index) => {
+        return {
+          id: result._id,
+          name: result._source.p_name,
+          address: result._source.p_address,
+          region: result._source.p_region,
+          sig: result._source.p_sig,
+          description: result._source.p_description,
+          tags: result._source.p_tags || [], 
+          p_image: result._source.p_image,
+          location_data: result._source.location_data,
+          visitCount: result._source.visitCount || 0,
+          displayRank: index + 1,
+          _score: result._score, // 유사도 점수 보존
+          _source: result._source // 원본 데이터 보존
+        };
+      });
+    });
 
     const dummyReviews = [
       { userName: "여행자김", rating: 5, date: "2025-03-15T09:30:00", comment: "정말 아름다운 장소였습니다." },
@@ -376,16 +339,34 @@ export default {
       }
     });
 
-    const openDetailModal = (result) => {
-      const detailData = {
-        _id: result._id,
-        _score: result._score,
-        ...result._source, // This should contain p_name, p_address, p_image, p_tags, p_description, p_vector, location_data, p_id
-        reviews: dummyReviews 
-      };
+    const openDetailModal = (destination) => {
+      console.log('상세 모달 열기 요청된 데이터:', destination);
+      
+      // SearchResultPanel에서 넘어온 데이터인 경우 (id, name 등의 형태) vs 직접 result에서 열 경우 (_id, _score 등의 형태)
+      let detailData;
+      
+      if (destination.id !== undefined) {
+        // SearchResultPanel에서 넘어온 데이터 처리
+        detailData = {
+          _id: destination.id,
+          _score: destination._score,
+          ...destination._source, // SearchResultPanel에서 원본 _source를 전달
+          reviews: dummyReviews
+        };
+      } else {
+        // 직접 result에서 열 경우 (이전 방식)
+        detailData = {
+          _id: destination._id,
+          _score: destination._score,
+          ...destination._source,
+          reviews: dummyReviews
+        };
+      }
+      
       selectedDetail.value = detailData;
       showDetailModal.value = true;
 
+      // p_id 기반으로 통계 로드
       if (detailData.p_id) {
         loadDestinationStats(detailData.p_id);
       } else {
@@ -520,9 +501,16 @@ export default {
       try {
         // showActionStatus("유사 여행지 검색 중...", "pending");
         // searchSimilarImages expects a flat array for featuresVector
-        const results = await searchSimilarImages(analysisResult.value.p_vector, 20); // Fetch more results
-        searchResults.value = results; // results is an array of hits
-        // showActionStatus(`검색 완료: ${results.length}개 결과`, "success");
+        const results = await searchSimilarImages(analysisResult.value.p_vector, 30); // 30개 결과 요청으로 변경
+        searchResults.value = results; // 이제 ES 레벨에서 중복 제거된 결과 반환
+        console.log(`검색 완료: ${results.length}개 결과, 첫번째 결과:`, 
+          results.length > 0 ? {
+            id: results[0]._id,
+            p_id: results[0]._source.p_id,
+            name: results[0]._source.p_name,
+            score: results[0]._score,
+            visitCount: results[0]._source.visitCount || 0
+          } : null);
       } catch (error) {
         // showActionStatus(`검색 오류: ${error.message}`, "error");
         console.error("유사 이미지 검색 오류:", error);
@@ -642,7 +630,7 @@ export default {
 
     return {
       // Core
-      imageFile, imagePreview, isLoading, analysisResult, searchResults, sortedSearchResults,
+      imageFile, imagePreview, isLoading, analysisResult, searchResults, sortedSearchResults, formattedSearchResults,
       fileInput, loadingPhase, imageAnalysisDuration, meaningAnalysisDuration, searchDuration,
       triggerFileInput, handleFileChange, analyzeCurrentImage, reset, searchSimilarHandler, cancelAnalysis,
       // Hero

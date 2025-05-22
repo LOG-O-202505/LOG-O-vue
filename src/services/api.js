@@ -650,22 +650,47 @@ export const saveToElasticsearch = async (
  * @param {number} limit - 검색 결과 제한
  * @returns {Promise<Array<Object>>} - 검색 결과
  */
-export const searchSimilarImages = async (featuresVector, limit = 10) => {
+export const searchSimilarImages = async (featuresVector, limit = 30) => {
   try {
     console.log('유사 이미지 검색 시작');
     console.log('검색 API 주소:', `${config.ES_API}/travel_places/_search`);
     
-    // 중복 필터링을 위해 더 많은 결과를 요청
-    const fetchSize = Math.max(limit * 3, 50); // 요청된 limit의 3배 또는 최소 50개
-    
-    // KNN 검색 쿼리 구성
-    const query = {
+    // KNN 검색 쿼리 구성 - collapse와 aggregation 추가
+    const searchBody = {
+      size: limit, // 요청한 개수만큼 가져오기
       knn: {
         field: "p_vector",
         query_vector: featuresVector,
-        k: fetchSize, // 더 많은 결과 요청
-        num_candidates: Math.max(fetchSize * 2, 100) // 최소 100개 이상 후보 검토
-      }
+        k: limit * 3, // 충분한 후보군 확보
+        num_candidates: Math.max(limit * 5, 150) // 더 많은 후보군 검토
+      },
+      collapse: { // ES 레벨에서 p_id 기준 중복 제거
+        field: "p_id",
+        inner_hits: {
+          name: "most_relevant",
+          size: 0, // inner_hits 내용은 필요 없음
+          sort: [
+            { "_score": "desc" }, // 1순위: 유사도 점수
+            { "upload_date": "desc" } // 2순위: 최신 업로드
+          ]
+        }
+      },
+      aggs: { // p_id별 전체 문서 수 집계 (visitCount)
+        "visits_per_pid": {
+          "terms": {
+            "field": "p_id",
+            "size": limit * 2 // 충분한 크기로 설정
+          }
+        }
+      },
+      sort: [
+        { "_score": "desc" } // 유사도 높은 순으로 정렬
+      ],
+      _source: [
+        "p_id", "p_name", "p_address", "p_region", "p_sig", 
+        "p_tags", "p_description", "p_description_en", 
+        "p_image", "p_vector", "u_age", "u_gender", "location_data"
+      ]
     };
     
     // config에서 Elasticsearch API URL 사용
@@ -674,14 +699,11 @@ export const searchSimilarImages = async (featuresVector, limit = 10) => {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        size: fetchSize,
-        query: query,
-        _source: ["p_id", "p_name", "p_address", "p_region", "p_sig", "p_tags", "p_description", "p_description_en", "p_image", "p_vector", "u_age", "u_gender", "location_data"]
-      })
+      body: JSON.stringify(searchBody)
     });
     
     console.log('검색 응답 상태:', response.status, response.statusText);
+    console.log('검색 응답 내용:', await response);
     
     if (!response.ok) {
       const errorData = await response.json();
@@ -692,101 +714,51 @@ export const searchSimilarImages = async (featuresVector, limit = 10) => {
     const result = await response.json();
     let hits = result.hits.hits;
     
-    console.log('원본 검색 결과 수:', hits.length);
+    console.log('ES 검색 결과 수:', hits.length);
     
-    // 중복 p_id 제거 (가장 높은 스코어만 유지)
-    const uniqueResultsById = new Map();
-    
-    for (const hit of hits) {
+    // p_id별 방문 횟수(visitCount)를 위한 맵 생성
+    const visitCountsMap = new Map();
+    if (result.aggregations && result.aggregations.visits_per_pid && result.aggregations.visits_per_pid.buckets) {
+      result.aggregations.visits_per_pid.buckets.forEach(bucket => {
+        visitCountsMap.set(bucket.key, bucket.doc_count);
+      });
+    }
+    console.log('Aggregation-based visit counts map:', visitCountsMap);
+
+    // 각 hit에 visitCount 속성 추가 및 점수 정규화
+    hits.forEach(hit => {
       const p_id = hit._source.p_id;
-      // p_id가 없거나 유효하지 않은 경우 건너뛰기
-      if (p_id === undefined || p_id === null) {
-        console.warn('유효하지 않은 p_id를 가진 결과 건너뜀:', hit);
-        continue;
+      // aggregations에서 가져온 실제 전체 방문 횟수로 설정
+      hit._source.visitCount = visitCountsMap.get(p_id) || 0;
+      
+      // 점수 정규화 (KNN 검색에서는 이미 0-1 범위이므로 추가 정규화는 선택적)
+      if (result.hits.max_score > 0 && hit._score > 1) {
+        hit._score = hit._score / result.hits.max_score;
       }
-      if (!uniqueResultsById.has(p_id) || hit._score > uniqueResultsById.get(p_id)._score) {
-        uniqueResultsById.set(p_id, hit);
-      }
-    }
+    });
     
-    // Map에서 값들만 추출하여 배열로 변환
-    const uniqueResults = Array.from(uniqueResultsById.values());
+    // 전체 검색 결과 로깅
+    console.log('최종 처리된 검색 결과 수:', hits.length);
+    console.log('유사 이미지 검색 전체 결과:', JSON.stringify({
+      totalResults: hits.length,
+      firstResult: hits.length > 0 ? {
+        id: hits[0]._source.p_id,
+        name: hits[0]._source.p_name,
+        score: hits[0]._score,
+        visitCount: hits[0]._source.visitCount
+      } : null,
+      results: hits.slice(0, 3).map(hit => ({
+        id: hit._source.p_id,
+        score: hit._score,
+        name: hit._source.p_name,
+        visitCount: hit._source.visitCount,
+        hasImage: !!hit._source.p_image,
+        region: hit._source.p_region,
+        sig: hit._source.p_sig
+      }))
+    }, null, 2));
     
-    // 점수 기준 내림차순 정렬
-    uniqueResults.sort((a, b) => b._score - a._score);
-
-    // 각 unique p_id에 대한 총 방문 횟수 가져오기
-    const pIdsToFetchCountsFor = uniqueResults.map(hit => hit._source.p_id).filter(id => id !== undefined && id !== null);
-
-    if (pIdsToFetchCountsFor.length > 0) {
-      const countQuery = {
-        size: 0, // 집계만 필요
-        query: {
-          terms: {
-            p_id: pIdsToFetchCountsFor
-          }
-        },
-        aggs: {
-          visits_per_pid: {
-            terms: {
-              field: "p_id",
-              size: pIdsToFetchCountsFor.length // 모든 p_id 커버
-            }
-          }
-        }
-      };
-
-      try {
-        const countResponse = await fetch(`${config.ES_API}/travel_places/_search`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(countQuery)
-        });
-
-        if (countResponse.ok) {
-          const countData = await countResponse.json();
-          const visitCountsMap = new Map();
-          if (countData.aggregations && countData.aggregations.visits_per_pid && countData.aggregations.visits_per_pid.buckets) {
-            countData.aggregations.visits_per_pid.buckets.forEach(bucket => {
-              visitCountsMap.set(bucket.key, bucket.doc_count);
-            });
-          }
-          // uniqueResults에 visitCount 추가
-          uniqueResults.forEach(hit => {
-            const p_id = hit._source.p_id;
-            hit._source.visitCount = visitCountsMap.get(p_id) || 0;
-          });
-        } else {
-          console.error('p_id별 방문 횟수 조회 실패:', await countResponse.text());
-          uniqueResults.forEach(hit => { hit._source.visitCount = 0; }); // 실패 시 0으로 초기화
-        }
-      } catch (aggError) {
-        console.error('p_id별 방문 횟수 집계 중 오류:', aggError);
-        uniqueResults.forEach(hit => { hit._source.visitCount = 0; }); // 오류 시 0으로 초기화
-      }
-    } else {
-      // p_id가 없는 경우 (이론적으로 uniqueResults가 비어있을 때)
-      uniqueResults.forEach(hit => {
-        hit._source.visitCount = 0;
-      });
-    }
-    
-    // KNN 검색에서의 점수는 이미 코사인 유사도(0-1 범위)이므로 추가 정규화는 필요 없음
-    // 그러나 혹시 모를 경우를 위해 점수가 1을 초과하면 정규화 수행
-    if (uniqueResults.length > 0 && uniqueResults[0]._score > 1) {
-      const maxScore = uniqueResults[0]._score;
-      uniqueResults.forEach(hit => {
-        hit._score = hit._score / maxScore; // 정규화
-      });
-    }
-    
-    // 요청된 limit에 맞게 결과 제한
-    const limitedResults = uniqueResults.slice(0, limit);
-    
-    console.log('중복 제거 후 결과 수:', uniqueResults.length);
-    console.log('최종 반환 결과 수:', limitedResults.length);
-    
-    return limitedResults;
+    return hits;
   } catch (error) {
     console.error('검색 오류 타입:', error.name);
     console.error('검색 오류 메시지:', error.message);
