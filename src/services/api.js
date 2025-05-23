@@ -698,25 +698,25 @@ export const searchSimilarImages = async (featuresVector, limit = 30, regionFilt
     };
 
     // 필터 조건 구성
-    const filters = [];
-    
+      const filters = [];
+      
     // 기존 문자열 기반 필터 (하위 호환성)
-    if (regionFilter) {
-      filters.push({
-        term: {
-          "p_region.keyword": regionFilter
-        }
-      });
-    }
-    
-    if (sigFilter) {
-      filters.push({
-        term: {
-          "p_sig.keyword": sigFilter
-        }
-      });
-    }
-    
+      if (regionFilter) {
+        filters.push({
+          term: {
+            "p_region.keyword": regionFilter
+          }
+        });
+      }
+      
+      if (sigFilter) {
+        filters.push({
+          term: {
+            "p_sig.keyword": sigFilter
+          }
+        });
+      }
+      
     // 새로운 정수 기반 필터
     if (p_region !== null && p_region !== undefined) {
       filters.push({

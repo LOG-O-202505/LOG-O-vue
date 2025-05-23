@@ -264,9 +264,8 @@ import SearchResultPanel from "@/components/SearchResultPanel.vue";
 // Add D3.js and GeoJSON imports
 import * as d3 from 'd3';
 import ctprvnGeoJson from '@/assets/ctprvn.json';
-import propertiesData from '@/assets/extracted_ctprvn.json';
 import sigGeoJson from '@/assets/sig.json';
-import sigPropertiesData from '@/assets/extracted_properties.json';
+import regionMapping from '@/data/regionMapping.js';
 import {
   searchSimilarImages,
   createFeaturesVector, // Import createFeaturesVector
@@ -761,38 +760,50 @@ export default {
     const selectedRegion = ref(null);
     const selectedSig = ref(null);
     const showDetailMap = ref(false);
+    const mousePosition = ref({ x: 0, y: 0 }); // 마우스 위치 추가
+    const sigMousePosition = ref({ x: 0, y: 0 }); // 시군구 마우스 위치 추가
 
     const tooltipStyle = computed(() => {
-      if (!hoveredRegion.value) return {};
-      const { x, y } = hoveredRegion.value;
-      return { left: `${x}px`, top: `${y}px` };
+      return {
+        left: `${mousePosition.value.x}px`,
+        top: `${mousePosition.value.y - 40}px`
+      };
     });
 
     const sigTooltipStyle = computed(() => {
-      if (!hoveredSig.value) return {};
-      const { x, y } = hoveredSig.value;
-      return { left: `${x}px`, top: `${y}px` };
+      return {
+        left: `${sigMousePosition.value.x}px`,
+        top: `${sigMousePosition.value.y - 40}px`
+      };
     });
 
     const getSelectedRegionName = () => {
-      if (!selectedRegion.value || !regionDataMap.value) {
+      if (!selectedRegion.value) {
         return '';
       }
-      // ctprvn_cd는 보통 문자열이므로, selectedRegion.value도 문자열로 비교합니다.
-      const regionData = regionDataMap.value.find(d => String(d.ctprvn_cd) === String(selectedRegion.value));
-      const result = regionData ? regionData.ctp_nm : '';
-      return result;
+      // selectedRegion.value를 2자리 문자열로 변환하여 regionMapping에서 찾기
+      const regionCode = String(selectedRegion.value).padStart(2, '0');
+      const regionData = regionMapping[regionCode];
+      return regionData ? regionData.name : '';
     };
 
     const getSelectedSigName = () => {
-      if (!selectedSig.value || !sigDataMap.value) {
+      if (!selectedSig.value) {
         return '';
       }
-      // SIG_CD는 숫자일 수 있으므로, selectedSig.value도 숫자로 비교합니다. (GeoJSON에 따라 다를 수 있음)
-      // GeoJSON properties의 SIG_CD가 문자열이면 String()으로, 숫자면 Number()로 변환하여 비교합니다.
-      // 현재 sig.json의 SIG_CD는 문자열이므로 String()으로 비교합니다.
-      const sigData = sigDataMap.value.find(d => String(d.SIG_CD) === String(selectedSig.value));
-      return sigData ? sigData.SIG_KOR_NM : '';
+      
+      // selectedSig.value에서 앞 2자리로 region 찾기
+      const sigCode = String(selectedSig.value);
+      const regionCode = sigCode.substring(0, 2);
+      const regionData = regionMapping[regionCode];
+      
+      if (!regionData || !regionData.children) {
+        return '';
+      }
+      
+      // children 배열에서 해당 sig 찾기
+      const sigData = regionData.children.find(child => child.code === sigCode);
+      return sigData ? sigData.name : '';
     };
 
     const goBackMap = () => {
@@ -832,14 +843,16 @@ export default {
         return;
       }
       
-      selectedSig.value = sig;
+        selectedSig.value = sig;
       // Filter search results by sig
-      searchSimilarHandlerWithSig(sig);
+        searchSimilarHandlerWithSig(sig);
     };
 
     // D3.js map data and state
-    const regionDataMap = ref(propertiesData);
-    const sigDataMap = ref(sigPropertiesData);
+    // regionMapping은 일반 객체로 사용
+    // Remove unused variables
+    // const regionDataMap = ref(propertiesData);
+    // const sigDataMap = ref(sigPropertiesData);
 
     // Main map rendering function
     const renderMap = () => {
@@ -910,17 +923,28 @@ export default {
         // Add hover events
         regionPaths.on('mouseover', function (event, d) {
           const regionCode = d.properties.CTPRVN_CD;
-          const regionData = regionDataMap.value.find(r => r.ctprvn_cd === regionCode);
+          // regionMapping에서 지역명 찾기
+          const regionCodeStr = String(regionCode).padStart(2, '0');
+          const regionData = regionMapping[regionCodeStr];
           
-          hoveredRegion.value = { x: event.pageX, y: event.pageY };
-          hoveredRegionName.value = regionData ? regionData.ctp_nm : '';
+          hoveredRegion.value = regionCode;
+          hoveredRegionName.value = regionData ? regionData.name : '';
+          
+          // 툴팁 위치 설정 - LookAround.vue와 동일한 방식
+          const bounds = this.getBoundingClientRect();
+          mousePosition.value = {
+            x: bounds.left + bounds.width / 2,
+            y: bounds.top
+          };
           
           // 선택된 지역이 아닌 경우에만 호버 효과 적용
-          if (regionCode !== selectedRegion.value) {
+          if (parseInt(regionCode, 10) !== selectedRegion.value) {
             d3.select(this)
+              .transition()
+              .duration(200)
               .attr('fill', '#E2E8F0')
               .attr('stroke', '#A0AEC0')
-              .attr('stroke-width', 1.2);
+              .attr('stroke-width', 1.5);
           }
         });
 
@@ -929,9 +953,11 @@ export default {
           hoveredRegionName.value = '';
           
           // 선택된 지역이 아닌 경우에만 원래 색상으로 복원
-          const regionCode = d.properties.CTPRVN_CD;
+          const regionCode = parseInt(d.properties.CTPRVN_CD, 10);
           if (regionCode !== selectedRegion.value) {
             d3.select(this)
+              .transition()
+              .duration(200)
               .attr('fill', '#EDF2F7')
               .attr('stroke', '#CBD5E0')
               .attr('stroke-width', 0.7);
@@ -940,10 +966,26 @@ export default {
 
         // Add click events
         regionPaths.on('click', function (event, d) {
-          const regionCode = d.properties.CTPRVN_CD;
-          // CTPRVN_CD를 정수로 변환
-          const regionInt = parseInt(regionCode, 10);
-          handleRegionClick(regionInt);
+          const regionCode = parseInt(d.properties.CTPRVN_CD, 10);
+          
+          // 이전에 선택된 지역의 스타일 초기화
+          if (selectedRegion.value !== null && selectedRegion.value !== regionCode) {
+            g.selectAll('path')
+              .filter(function(d) {
+                return parseInt(d.properties.CTPRVN_CD, 10) === selectedRegion.value;
+              })
+              .attr('fill', '#EDF2F7')
+              .attr('stroke', '#CBD5E0')
+              .attr('stroke-width', 0.7);
+          }
+          
+          // 새로운 지역 선택 및 스타일 적용
+          d3.select(this)
+            .attr('fill', '#4299E1')
+            .attr('stroke', '#2B6CB0')
+            .attr('stroke-width', 1.5);
+          
+          handleRegionClick(regionCode);
         });
 
         console.log("Map rendered successfully");
@@ -1046,17 +1088,34 @@ export default {
         // Add hover events
         sigPaths.on('mouseover', function (event, d) {
           const sigCode = d.properties.SIG_CD;
-          const sigData = sigDataMap.value.find(s => s.SIG_CD === sigCode);
+          // regionMapping에서 시군구명 찾기
+          const regionCode = String(sigCode).substring(0, 2);
+          const regionData = regionMapping[regionCode];
+          let sigName = '';
           
-          hoveredSig.value = { x: event.pageX, y: event.pageY };
-          hoveredSigName.value = sigData ? sigData.SIG_KOR_NM : '';
+          if (regionData && regionData.children) {
+            const sigData = regionData.children.find(child => child.code === String(sigCode));
+            sigName = sigData ? sigData.name : '';
+          }
+          
+          hoveredSig.value = sigCode;
+          hoveredSigName.value = sigName;
+          
+          // 툴팁 위치 설정 - LookAround.vue와 동일한 방식
+          const bounds = this.getBoundingClientRect();
+          sigMousePosition.value = {
+            x: bounds.left + bounds.width / 2,
+            y: bounds.top
+          };
           
           // 선택된 지역이 아닌 경우에만 호버 효과 적용
           if (parseInt(sigCode, 10) !== selectedSig.value) {
             d3.select(this)
+              .transition()
+              .duration(200)
               .attr('fill', '#E2E8F0')
               .attr('stroke', '#A0AEC0')
-              .attr('stroke-width', 1.2);
+              .attr('stroke-width', 1.5);
           }
         });
 
@@ -1065,9 +1124,11 @@ export default {
           hoveredSigName.value = '';
           
           // 선택된 지역이 아닌 경우에만 원래 색상으로 복원
-          const sigCode = d.properties.SIG_CD;
-          if (parseInt(sigCode, 10) !== selectedSig.value) {
+          const sigCode = parseInt(d.properties.SIG_CD, 10);
+          if (sigCode !== selectedSig.value) {
             d3.select(this)
+              .transition()
+              .duration(200)
               .attr('fill', '#EDF2F7')
               .attr('stroke', '#CBD5E0')
               .attr('stroke-width', 0.7);
@@ -1076,10 +1137,35 @@ export default {
 
         // Add click events
         sigPaths.on('click', function (event, d) {
-          const sigCode = d.properties.SIG_CD;
-          // SIG_CD를 정수로 변환
-          const sigInt = parseInt(sigCode, 10);
-          handleSigClick(sigInt);
+          const sigCode = parseInt(d.properties.SIG_CD, 10);
+          
+          // 이전에 선택된 시군구의 스타일 초기화
+          if (selectedSig.value !== null && selectedSig.value !== sigCode) {
+            g.selectAll('path')
+              .filter(function(d) {
+                return parseInt(d.properties.SIG_CD, 10) === selectedSig.value;
+              })
+              .attr('fill', '#EDF2F7')
+              .attr('stroke', '#CBD5E0')
+              .attr('stroke-width', 0.7);
+          }
+          
+          // 새로운 시군구 선택 및 스타일 적용
+          if (selectedSig.value === sigCode) {
+            // 같은 시군구를 다시 클릭한 경우
+            d3.select(this)
+              .attr('fill', '#EDF2F7')
+              .attr('stroke', '#CBD5E0')
+              .attr('stroke-width', 0.7);
+          } else {
+            // 새로운 시군구를 선택한 경우
+            d3.select(this)
+              .attr('fill', '#4299E1')
+              .attr('stroke', '#2B6CB0')
+              .attr('stroke-width', 1.5);
+          }
+          
+          handleSigClick(sigCode);
         });
 
       } catch (error) {
@@ -1203,6 +1289,7 @@ export default {
       hoveredSig, hoveredSigName, selectedRegion, selectedSig, showDetailMap,
       tooltipStyle, sigTooltipStyle, getSelectedRegionName, getSelectedSigName, goBackMap,
       renderMap, renderDetailMap, handleRegionClick, handleSigClick,
+      mousePosition, sigMousePosition, // 새로 추가된 변수들
       // Misc
       formatSimilarityScore, actionStatus,
       applyKeyword
