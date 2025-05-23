@@ -690,13 +690,13 @@
                field: "p_id",
                inner_hits: {
                  name: "most_recent",
-                 size: 1,
+                      size: 1,
                  sort: [{ "upload_date": { "order": "desc" } }], // 최신 데이터 먼저
-                 _source: [
+                      _source: [
                    "p_id", "p_name", "p_address", "p_region", "p_sig", 
                    "p_description", "p_tags", "p_image", "location_data"
                  ]
-               }
+                    }
              },
              // p_id 별 전체 문서 수 집계 (방문 횟수로 사용)
              aggs: {
@@ -762,28 +762,28 @@
                 const innerHit = hit.inner_hits.most_recent.hits.hits[0];
                 const placeDetails = innerHit._source;
                 const p_id = parseInt(hit.fields?.p_id?.[0] || innerHit._source.p_id);
-                
-                // 지역명 및 시군구명 조회
-                const regionName = getRegionNameByCode(placeDetails.p_region);
-                const sigName = getSigNameByCode(placeDetails.p_sig);
-                
+              
+              // 지역명 및 시군구명 조회
+              const regionName = getRegionNameByCode(placeDetails.p_region);
+              const sigName = getSigNameByCode(placeDetails.p_sig);
+              
                 // 장소 객체 생성
                 placeObj = {
                   id: p_id,
-                  name: placeDetails.p_name,
-                  address: placeDetails.p_address,
-                  region: placeDetails.p_region,
-                  regionName,
-                  sig: placeDetails.p_sig,
-                  sigName,
-                  description: placeDetails.p_description,
-                  tags: placeDetails.p_tags || [],
-                  p_image: placeDetails.p_image,
+                name: placeDetails.p_name,
+                address: placeDetails.p_address,
+                region: placeDetails.p_region,
+                regionName,
+                sig: placeDetails.p_sig,
+                sigName,
+                description: placeDetails.p_description,
+                tags: placeDetails.p_tags || [],
+                p_image: placeDetails.p_image,
                   location_data: placeDetails.location_data,
                   // 집계된 방문 횟수 사용
                   visitCount: visitCountsMap.get(p_id) || 0,
-                  displayRank: index + 1
-                };
+                displayRank: index + 1
+              };
               } catch (err) {
                 console.error('장소 데이터 처리 오류:', err, hit);
                 return null;

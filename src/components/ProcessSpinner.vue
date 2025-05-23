@@ -6,12 +6,16 @@
       <!-- 단계 1: AI 이미지 분석 -->
       <div
         class="process-item"
-        :class="{ 'process-active': currentPhase === 'imageAnalysis', 'process-completed': isPhaseCompleted('imageAnalysis') }"
+        :class="{ 
+          'process-active': currentPhase === 'imageAnalysis', 
+          'process-completed': isPhaseCompleted('imageAnalysis'),
+          'process-waiting': !isPhaseCompleted('imageAnalysis') && currentPhase !== 'imageAnalysis'
+        }"
       >
         <div class="process-icon-container">
           <!-- 진행 중인 프로세스 -->
           <div v-if="currentPhase === 'imageAnalysis'" class="loading-spinner">
-            <div class="spinner-circle"></div>
+            <img src="../assets/flight.gif" alt="Loading" class="flight-spinner" />
           </div>
           
           <!-- 완료된 프로세스 -->
@@ -22,7 +26,9 @@
           </div>
           
           <!-- 대기 중인 프로세스 -->
-          <div v-else class="pending-icon"></div>
+          <div v-else class="waiting-spinner">
+            <div class="spinner-circle-gray"></div>
+          </div>
         </div>
         
         <div class="process-info">
@@ -38,17 +44,20 @@
           >
             AI 이미지 분석
           </div>
-          <div v-if="imageAnalysisDuration" class="elapsed-time">
-            {{ formattedDuration(imageAnalysisDuration) }}
+          <div v-if="imageAnalysisDuration || currentPhase === 'imageAnalysis'" class="elapsed-time">
+            {{ currentPhase === 'imageAnalysis' ? getCurrentDuration('imageAnalysis') : formattedDuration(imageAnalysisDuration) }}
+          </div>
+          <div v-else-if="!isPhaseCompleted('imageAnalysis') && currentPhase !== 'imageAnalysis'" class="elapsed-time waiting-time">
+            0.0초
           </div>
         </div>
         
         <div class="process-status">
           <!-- 상태 표시 -->
           <div 
-            :class="[
+        :class="[
               'status-text',
-              {
+          {
                 'completed': isPhaseCompleted('imageAnalysis'),
                 'processing': currentPhase === 'imageAnalysis',
                 'pending': !isPhaseCompleted('imageAnalysis') && currentPhase !== 'imageAnalysis'
@@ -66,23 +75,29 @@
       <!-- 단계 2: AI 의미 분석 -->
       <div
         class="process-item"
-        :class="{ 'process-active': currentPhase === 'meaningAnalysis', 'process-completed': isPhaseCompleted('meaningAnalysis') }"
+        :class="{ 
+          'process-active': currentPhase === 'meaningAnalysis', 
+          'process-completed': isPhaseCompleted('meaningAnalysis'),
+          'process-waiting': !isPhaseCompleted('meaningAnalysis') && currentPhase !== 'meaningAnalysis'
+        }"
       >
         <div class="process-icon-container">
           <!-- 진행 중인 프로세스 -->
           <div v-if="currentPhase === 'meaningAnalysis'" class="loading-spinner">
-            <div class="spinner-circle"></div>
+            <img src="../assets/flight.gif" alt="Loading" class="flight-spinner" />
           </div>
           
           <!-- 완료된 프로세스 -->
           <div v-else-if="isPhaseCompleted('meaningAnalysis')" class="check-icon-container">
-            <svg viewBox="0 0 24 24" class="check-icon">
-              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"></path>
-            </svg>
+                <svg viewBox="0 0 24 24" class="check-icon">
+                  <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"></path>
+                </svg>
           </div>
           
           <!-- 대기 중인 프로세스 -->
-          <div v-else class="pending-icon"></div>
+          <div v-else class="waiting-spinner">
+            <div class="spinner-circle-gray"></div>
+          </div>
         </div>
         
         <div class="process-info">
@@ -98,8 +113,11 @@
           >
             AI 의미 분석
           </div>
-          <div v-if="meaningAnalysisDuration" class="elapsed-time">
-            {{ formattedDuration(meaningAnalysisDuration) }}
+          <div v-if="meaningAnalysisDuration || currentPhase === 'meaningAnalysis'" class="elapsed-time">
+            {{ currentPhase === 'meaningAnalysis' ? getCurrentDuration('meaningAnalysis') : formattedDuration(meaningAnalysisDuration) }}
+          </div>
+          <div v-else-if="!isPhaseCompleted('meaningAnalysis') && currentPhase !== 'meaningAnalysis'" class="elapsed-time waiting-time">
+            0.0초
           </div>
         </div>
         
@@ -120,19 +138,23 @@
               currentPhase === 'meaningAnalysis' ? '처리중' : '대기중' 
             }}
           </div>
-        </div>
-      </div>
+              </div>
+            </div>
 
       <!-- 단계 3: AI 키워드 추출 (TripPlan에서만 사용) -->
       <div
         v-if="showExtendedPhases"
         class="process-item"
-        :class="{ 'process-active': currentPhase === 'keywordExtraction', 'process-completed': isPhaseCompleted('keywordExtraction') }"
+        :class="{ 
+          'process-active': currentPhase === 'keywordExtraction', 
+          'process-completed': isPhaseCompleted('keywordExtraction'),
+          'process-waiting': !isPhaseCompleted('keywordExtraction') && currentPhase !== 'keywordExtraction'
+        }"
       >
         <div class="process-icon-container">
           <!-- 진행 중인 프로세스 -->
           <div v-if="currentPhase === 'keywordExtraction'" class="loading-spinner">
-            <div class="spinner-circle"></div>
+            <img src="../assets/flight.gif" alt="Loading" class="flight-spinner" />
           </div>
           
           <!-- 완료된 프로세스 -->
@@ -143,7 +165,9 @@
           </div>
           
           <!-- 대기 중인 프로세스 -->
-          <div v-else class="pending-icon"></div>
+          <div v-else class="waiting-spinner">
+            <div class="spinner-circle-gray"></div>
+          </div>
         </div>
         
         <div class="process-info">
@@ -159,8 +183,11 @@
           >
             AI 키워드 추출
           </div>
-          <div v-if="keywordExtractionDuration" class="elapsed-time">
-            {{ formattedDuration(keywordExtractionDuration) }}
+          <div v-if="keywordExtractionDuration || currentPhase === 'keywordExtraction'" class="elapsed-time">
+            {{ currentPhase === 'keywordExtraction' ? getCurrentDuration('keywordExtraction') : formattedDuration(keywordExtractionDuration) }}
+          </div>
+          <div v-else-if="!isPhaseCompleted('keywordExtraction') && currentPhase !== 'keywordExtraction'" class="elapsed-time waiting-time">
+            0.0초
           </div>
         </div>
         
@@ -187,12 +214,16 @@
       <!-- 마지막 단계: 벡터 검색/저장 -->
       <div
         class="process-item"
-        :class="{ 'process-active': currentPhase === 'search' || currentPhase === 'vectorSaving', 'process-completed': currentPhase === 'processingResults' || currentPhase === 'completed' }"
+        :class="{ 
+          'process-active': currentPhase === 'search' || currentPhase === 'vectorSaving', 
+          'process-completed': currentPhase === 'processingResults' || currentPhase === 'completed',
+          'process-waiting': !['search', 'vectorSaving', 'processingResults', 'completed'].includes(currentPhase)
+        }"
       >
         <div class="process-icon-container">
           <!-- 진행 중인 프로세스 -->
           <div v-if="currentPhase === 'search' || currentPhase === 'vectorSaving'" class="loading-spinner">
-            <div class="spinner-circle"></div>
+            <img src="../assets/flight.gif" alt="Loading" class="flight-spinner" />
           </div>
           
           <!-- 완료된 프로세스 -->
@@ -203,7 +234,9 @@
           </div>
           
           <!-- 대기 중인 프로세스 -->
-          <div v-else class="pending-icon"></div>
+          <div v-else class="waiting-spinner">
+            <div class="spinner-circle-gray"></div>
+          </div>
         </div>
         
         <div class="process-info">
@@ -219,8 +252,11 @@
           >
             {{ showExtendedPhases ? '벡터 저장' : '벡터 검색' }}
           </div>
-          <div v-if="searchDuration" class="elapsed-time">
-            {{ formattedDuration(searchDuration) }}
+          <div v-if="searchDuration || currentPhase === 'search' || currentPhase === 'vectorSaving'" class="elapsed-time">
+            {{ (currentPhase === 'search' || currentPhase === 'vectorSaving') ? getCurrentDuration('search') : formattedDuration(searchDuration) }}
+          </div>
+          <div v-else-if="!['search', 'vectorSaving', 'processingResults', 'completed'].includes(currentPhase)" class="elapsed-time waiting-time">
+            0.0초
           </div>
         </div>
         
@@ -243,16 +279,20 @@
           </div>
         </div>
       </div>
-      
+          
       <!-- 결과 처리 단계 -->
       <div
         class="process-item"
-        :class="{ 'process-active': currentPhase === 'processingResults', 'process-completed': currentPhase === 'completed' }"
+        :class="{ 
+          'process-active': currentPhase === 'processingResults', 
+          'process-completed': currentPhase === 'completed',
+          'process-waiting': !['processingResults', 'completed'].includes(currentPhase)
+        }"
       >
         <div class="process-icon-container">
           <!-- 진행 중인 프로세스 -->
           <div v-if="currentPhase === 'processingResults'" class="loading-spinner">
-            <div class="spinner-circle"></div>
+            <img src="../assets/flight.gif" alt="Loading" class="flight-spinner" />
           </div>
           
           <!-- 완료된 프로세스 -->
@@ -263,7 +303,9 @@
           </div>
           
           <!-- 대기 중인 프로세스 -->
-          <div v-else class="pending-icon"></div>
+          <div v-else class="waiting-spinner">
+            <div class="spinner-circle-gray"></div>
+          </div>
         </div>
         
         <div class="process-info">
@@ -278,6 +320,12 @@
             ]"
           >
             결과 처리
+          </div>
+          <div v-if="processingResultsDuration || currentPhase === 'processingResults'" class="elapsed-time">
+            {{ currentPhase === 'processingResults' ? getCurrentDuration('processingResults') : formattedDuration(processingResultsDuration) }}
+          </div>
+          <div v-else-if="!['processingResults', 'completed'].includes(currentPhase)" class="elapsed-time waiting-time">
+            0.0초
           </div>
         </div>
         
@@ -346,9 +394,67 @@ export default {
       type: [Number, String],
       default: null
     },
+    processingResultsDuration: {
+      type: [Number, String],
+      default: null
+    },
     showExtendedPhases: {
       type: Boolean,
       default: false
+    }
+  },
+  data() {
+    return {
+      startTimes: {
+        imageAnalysis: null,
+        meaningAnalysis: null,
+        keywordExtraction: null,
+        search: null,
+        processingResults: null
+      },
+      currentDurations: {
+        imageAnalysis: 0,
+        meaningAnalysis: 0,
+        keywordExtraction: 0,
+        search: 0,
+        processingResults: 0
+      },
+      timerInterval: null
+    };
+  },
+  watch: {
+    currentPhase: {
+      immediate: true,
+      handler(newPhase, oldPhase) {
+        // Start timer for the new phase
+        if (newPhase !== 'completed' && newPhase !== oldPhase) {
+          this.startTimes[newPhase] = Date.now();
+          
+          // Clear previous interval if exists
+          if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+          }
+          
+          // Start new interval for the current phase
+          this.timerInterval = setInterval(() => {
+            if (this.startTimes[newPhase]) {
+              const elapsed = (Date.now() - this.startTimes[newPhase]) / 1000;
+              this.currentDurations[newPhase] = elapsed.toFixed(1);
+            }
+          }, 100);
+        }
+        
+        // Clear interval when completed
+        if (newPhase === 'completed' && this.timerInterval) {
+          clearInterval(this.timerInterval);
+        }
+      }
+    }
+  },
+  beforeUnmount() {
+    // Clean up interval when component is destroyed
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
     }
   },
   computed: {
@@ -369,7 +475,7 @@ export default {
         return '분석이 완료되었습니다';
       }
       return '처리 중입니다';
-    },
+  },
     isPhaseCompleted() {
       return (phase) => {
         const phases = ['imageAnalysis', 'meaningAnalysis', 'keywordExtraction', 'search', 'vectorSaving', 'processingResults', 'completed'];
@@ -381,7 +487,7 @@ export default {
     // 시간 형식화 함수
     formattedDuration() {
       return (duration) => {
-        if (!duration) return '';
+        if (!duration) return '0.0초';
         const parsedDuration = parseFloat(duration);
         return `${parsedDuration}초`;
       };
@@ -411,6 +517,11 @@ export default {
     // 전체 단계 수
     totalSteps() {
       return this.showExtendedPhases ? 5 : 4;
+    }
+  },
+  methods: {
+    getCurrentDuration(phase) {
+      return `${this.currentDurations[phase]}초`;
     }
   }
 }
@@ -470,19 +581,28 @@ export default {
   min-height: 160px;
   background-color: transparent;
   position: relative;
+  overflow: visible; /* gif가 컨테이너를 벗어날 수 있도록 */
 }
 
 .process-item.process-active {
   background-color: rgba(255, 255, 255, 0.7);
-  border-color: #10b981;
+  border-color: #3b82f6; /* Blue border for active */
   border-width: 2px;
-  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.1);
+  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.1);
   transition: all 0.5s ease;
 }
 
 .process-item.process-completed {
   background-color: rgba(16, 185, 129, 0.05);
-  border-color: #d1fae5;
+  border-color: #10b981; /* Green border for completed */
+  border-width: 2px;
+  transition: all 0.5s ease;
+}
+
+.process-item.process-waiting {
+  background-color: rgba(255, 255, 255, 0.7);
+  border-color: #9ca3af; /* Gray border for waiting */
+  border-width: 2px;
   transition: all 0.5s ease;
 }
 
@@ -497,8 +617,25 @@ export default {
   justify-content: center;
 }
 
+/* gif 스피너를 위한 특별한 컨테이너 */
+.process-icon-container .loading-spinner {
+  width: 128px;  /* gif용 특별 사이즈 */
+  height: 128px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
 /* 로딩 스피너 */
 .loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 대기 스피너 (회색) */
+.waiting-spinner {
   width: 100%;
   height: 100%;
   display: flex;
@@ -513,6 +650,22 @@ export default {
   border-top-color: #10b981; /* 에메랄드 색상 */
   border-radius: 50%;
   animation: spin 1s linear infinite;
+}
+
+.spinner-circle-gray {
+  width: 32px;
+  height: 32px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-top-color: #9ca3af; /* 회색 */
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Flight GIF 스피너 */
+.flight-spinner {
+  width: 128px;
+  height: 128px;
+  object-fit: contain;
 }
 
 /* 체크 아이콘 */
@@ -533,7 +686,7 @@ export default {
   animation: checkAppear 0.5s ease forwards;
 }
 
-/* 대기 중 아이콘 */
+/* 대기 중 아이콘 - 더 이상 사용하지 않음 */
 .pending-icon {
   width: 12px;
   height: 12px;
@@ -563,7 +716,7 @@ export default {
 }
 
 .process-name.active {
-  color: #000;
+  color: #3b82f6; /* Blue for active */
 }
 
 .process-name.pending {
@@ -576,20 +729,21 @@ export default {
   bottom: 8px;
   font-size: 12px;
   color: #6b7280;
-  opacity: 0;
-  transform: translateY(10px);
+  opacity: 1; /* Always show */
+  transform: translateY(0);
   transition: all 0.3s ease;
 }
 
+.elapsed-time.waiting-time {
+  color: #9ca3af; /* Gray for waiting */
+}
+
 .process-active .elapsed-time {
-  opacity: 1;
-  transform: translateY(0);
+  color: #3b82f6; /* Blue for active */
 }
 
 .process-completed .elapsed-time {
-  opacity: 1;
-  transform: translateY(0);
-  color: #10b981;
+  color: #10b981; /* Green for completed */
 }
 
 /* 상태 표시 */
@@ -726,4 +880,30 @@ export default {
   color: var(--logo-blue, #48b0e4); 
   text-align: center; 
 }
+
+.panel-header {
+  padding: 1.2rem 1.5rem;
+  background: #fff;
+  border-bottom: 2px solid #eef2f7;
+  position: relative;
+}
+
+/* 밑줄 효과 제거를 위해 ::after 가상 요소 삭제 */
+/* .panel-header::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(to right, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+} */
+
+/* 호버 효과도 제거 */
+/* .panel-style:hover .panel-header::after {
+  transform: scaleX(1);
+} */
 </style>

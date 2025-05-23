@@ -64,8 +64,8 @@
                 <div class="timing-total">
                   <span class="timing-label">처리 시간:</span>
                   <span class="timing-value">{{ totalProcessingTime }}초</span>
-                </div>
               </div>
+            </div>
             </div>
             <input type="file" ref="fileInput" @change="handleFileChange" accept="image/*" class="hidden-input">
           </div>
@@ -86,6 +86,7 @@
                   :imageAnalysisDuration="imageAnalysisDuration"
                   :meaningAnalysisDuration="meaningAnalysisDuration"
                   :searchDuration="searchDuration"
+                  :processingResultsDuration="processingResultsDuration"
                 />
               </div>
             </div>
@@ -140,10 +141,10 @@
       />
       <div v-else-if="analysisResult && !isLoading && searchResults.length === 0" class="results-panel-container">
         <div class="results-panel panel-style">
-            <div class="panel-header">
+          <div class="panel-header">
               <h3 class="panel-title">유사 여행지 추천</h3>
-            </div>
-            <div class="panel-content">
+          </div>
+          <div class="panel-content">
               <div class="no-results">
                 <div class="no-results-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
@@ -153,8 +154,8 @@
                 </div>
                 <p class="no-results-text">추천할 만한 유사 여행지가 없습니다.</p>
                 <p class="no-results-hint">다른 이미지로 다시 시도해보세요.</p>
-            </div>
-          </div>
+                </div>
+                  </div>
         </div>
       </div>
     </div>
@@ -231,6 +232,7 @@ export default {
     const imageAnalysisDuration = ref(null);
     const meaningAnalysisDuration = ref(null);
     const searchDuration = ref(null);
+    const processingResultsDuration = ref(null);
 
     // Modal related state (from KeywordSearch.vue)
     const showDetailModal = ref(false);
@@ -264,7 +266,7 @@ export default {
     const sortedSearchResults = computed(() => {
       return [...searchResults.value].sort((a, b) => b._score - a._score);
     });
-    
+
     // SearchResultPanel 컴포넌트에 전달할 데이터 형식으로 변환
     const formattedSearchResults = computed(() => {
       return sortedSearchResults.value.map((result, index) => {
@@ -346,7 +348,7 @@ export default {
 
     const openDetailModal = (destination) => {
       console.log('상세 모달 열기 요청된 데이터:', destination);
-      
+
       // SearchResultPanel에서 넘어온 데이터인 경우 (id, name 등의 형태) vs 직접 result에서 열 경우 (_id, _score 등의 형태)
       let detailData;
       
@@ -365,7 +367,7 @@ export default {
           _score: destination._score,
           ...destination._source,
           reviews: dummyReviews
-        };
+      };
       }
       
       selectedDetail.value = detailData;
@@ -454,6 +456,7 @@ export default {
         imageAnalysisDuration.value = null;
         meaningAnalysisDuration.value = null;
         searchDuration.value = null;
+        processingResultsDuration.value = null;
         abortController.value = new AbortController();
 
         try {
@@ -470,19 +473,21 @@ export default {
         // Convert the object to a flat vector array
         const featuresVector = createFeaturesVector(vectorResultObject);
 
-        analysisResult.value = {
+            analysisResult.value = {
           p_vector: featuresVector, // Now an array [0.7, 0.3, ...]
           imageDescription: vectorResultObject.imageDescription // Preserve description if needed
         };
 
-        loadingPhase.value = 'search';
-        const searchStartTime = performance.now();
+            loadingPhase.value = 'search';
+            const searchStartTime = performance.now();
         await searchSimilarHandler(); // Uses analysisResult.value.p_vector
         searchDuration.value = ((performance.now() - searchStartTime) / 1000).toFixed(1);
           
         // 검색 결과 처리 상태를 1.5초간 표시
         loadingPhase.value = 'processingResults';
+        const processingResultsStartTime = performance.now();
         await new Promise(resolve => setTimeout(resolve, 1500));
+        processingResultsDuration.value = ((performance.now() - processingResultsStartTime) / 1000).toFixed(1);
         loadingPhase.value = 'completed';
 
       } catch (error) {
@@ -638,17 +643,18 @@ export default {
     };
 
     const totalProcessingTime = computed(() => {
-      if (!imageAnalysisDuration.value || !meaningAnalysisDuration.value || !searchDuration.value) return null;
+      if (!imageAnalysisDuration.value || !meaningAnalysisDuration.value || !searchDuration.value || !processingResultsDuration.value) return null;
       const total = parseFloat(imageAnalysisDuration.value) + 
                    parseFloat(meaningAnalysisDuration.value) + 
-                   parseFloat(searchDuration.value);
+                   parseFloat(searchDuration.value) +
+                   parseFloat(processingResultsDuration.value);
       return total.toFixed(1);
     });
 
     return {
       // Core
       imageFile, imagePreview, isLoading, analysisResult, searchResults, sortedSearchResults, formattedSearchResults,
-      fileInput, loadingPhase, imageAnalysisDuration, meaningAnalysisDuration, searchDuration, totalProcessingTime,
+      fileInput, loadingPhase, imageAnalysisDuration, meaningAnalysisDuration, searchDuration, processingResultsDuration, totalProcessingTime,
       triggerFileInput, handleFileChange, analyzeCurrentImage, reset, searchSimilarHandler, cancelAnalysis,
       // Hero
       showHero, heroImageSrc, heroTitle, heroSubtitle, heroHeight,
@@ -716,25 +722,8 @@ export default {
 .panel-header {
   padding: 1.2rem 1.5rem;
   background: #fff;
-  border-bottom: 1px solid #eef2f7;
+  border-bottom: 2px solid #eef2f7;
   position: relative;
-}
-
-.panel-header::after {
-  content: "";
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(to right, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.3s ease;
-}
-
-.panel-style:hover .panel-header::after { /* Apply hover to .panel-style */
-  transform: scaleX(1);
 }
 
 .panel-title {
@@ -818,17 +807,17 @@ export default {
 .hidden-input { display: none; }
 
 .analysis-timing { 
-  margin-top: 1rem; 
+  margin-top: 1rem;
   padding: 1rem; 
   border-radius: 8px; 
   background-color: #f8f9fa; 
   border: 1px solid #eef2f7; 
 }
 .timing-item { 
-  display: flex; 
+  display: flex;
   justify-content: space-between; 
-  margin-bottom: 0.5rem; 
-  font-size: 0.85rem; 
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
 }
 .timing-item:last-of-type {
   margin-bottom: 0.75rem; /* 마지막 항목 아래 여백 추가 */
@@ -846,8 +835,8 @@ export default {
   color: #2c3e50;
 }
 .timing-label { color: #5f6b7a; }
-.timing-value { 
-  font-weight: 600; 
+.timing-value {
+  font-weight: 600;
   color: var(--logo-blue, #48b0e4); 
 }
 .timing-total .timing-value {
@@ -913,10 +902,10 @@ export default {
   z-index: 1; opacity: 0; transition: opacity 0.3s ease;
 }
 .result-card:hover .result-image-container::before { opacity: 1; }
-.result-image { 
-  width: 100%; 
-  height: 100%; 
-  object-fit: cover; 
+.result-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 .result-card:hover .result-image { transform: scale(1.07); }
