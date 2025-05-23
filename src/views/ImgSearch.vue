@@ -582,7 +582,7 @@
           
           console.log("API 요청 내용:", JSON.stringify(apiRequestBody, null, 2).substring(0, 500) + "...");
           
-          const response = await fetch('http://localhost:11434/api/generate', {
+          const response = await fetch(`${config.OLLAMA_API}/api/generate`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -627,7 +627,7 @@
           
           console.log("API 요청 내용:", JSON.stringify(apiRequestBody, null, 2));
           
-          const response = await fetch('http://localhost:11434/api/generate', {
+          const response = await fetch(`${config.OLLAMA_API}/api/generate`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -715,7 +715,7 @@
           
           console.log("API 요청 내용:", JSON.stringify(apiRequestBody, null, 2).substring(0, 500) + "...");
           
-          const response = await fetch('http://localhost:11434/api/generate', {
+          const response = await fetch(`${config.OLLAMA_API}/api/generate`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -760,7 +760,7 @@
           
           console.log("API 요청 내용:", JSON.stringify(apiRequestBody, null, 2));
           
-          const response = await fetch('http://localhost:11434/api/generate', {
+          const response = await fetch(`${config.OLLAMA_API}/api/generate`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
