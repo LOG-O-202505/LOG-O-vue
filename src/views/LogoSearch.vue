@@ -60,7 +60,12 @@
                   <span class="timing-label">벡터 검색:</span>
                   <span class="timing-value">{{ searchDuration }}초</span>
                 </div>
+                <div class="timing-divider"></div>
+                <div class="timing-total">
+                  <span class="timing-label">처리 시간:</span>
+                  <span class="timing-value">{{ totalProcessingTime }}초</span>
               </div>
+            </div>
             </div>
             <input type="file" ref="fileInput" @change="handleFileChange" accept="image/*" class="hidden-input">
           </div>
@@ -76,23 +81,42 @@
           <div class="panel-content" :class="{ 'no-padding': isLoading }">
             <div v-if="isLoading" class="loading-state">
               <div class="loading-spinner-container">
-                <LoadingSpinner 
+                <ProcessSpinner 
                   :currentPhase="loadingPhase"
                   :imageAnalysisDuration="imageAnalysisDuration"
                   :meaningAnalysisDuration="meaningAnalysisDuration"
                   :searchDuration="searchDuration"
+                  :processingResultsDuration="processingResultsDuration"
                 />
               </div>
             </div>
             <div v-else-if="!analysisResult" class="guide-state">
-              <div class="guide-icon">
-                <!-- SVG for guide -->
-              </div>
-              <p class="guide-description">
-                원하는 분위기의 이미지를 업로드하면 AI가 분석하여 유사한 여행지를 추천해드립니다
-              </p>
-              <div class="steps-container">
-                <!-- Style for steps -->
+              <div class="ai-intro-section">
+                <div class="ai-intro-content">
+                  <div class="ai-intro-tag">AI 이미지 분석 서비스</div>
+                  <h3 class="ai-intro-heading">
+                    Llava와 Llama와 함께<br />
+                    가고 싶은 여행지를<br />
+                    사진으로 찾아보세요!!
+                  </h3>
+                </div>
+                <div class="ai-mascot-section">
+                  <div class="ai-mascot-container">
+                    <div class="ai-logo-item">
+                      <img src="@/assets/img/llava-color.png" alt="Llava 마스코트" class="ai-mascot-image" />
+                      <div class="ai-mascot-name">Llava</div>
+                      <div class="ai-mascot-desc">이미지 분석</div>
+                    </div>
+                    <div class="plus-connector">
+                      <div class="plus-circle">+</div>
+                    </div>
+                    <div class="ai-logo-item">
+                      <img src="@/assets/img/meta.png" alt="Llama 마스코트" class="ai-mascot-image" />
+                      <div class="ai-mascot-name">Llama</div>
+                      <div class="ai-mascot-desc">의미 분석</div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
             <div v-else class="analysis-table-container">
@@ -135,10 +159,10 @@
       />
       <div v-else-if="analysisResult && !isLoading && searchResults.length === 0" class="results-panel-container">
         <div class="results-panel panel-style">
-            <div class="panel-header">
+          <div class="panel-header">
               <h3 class="panel-title">유사 여행지 추천</h3>
-            </div>
-            <div class="panel-content">
+          </div>
+          <div class="panel-content">
               <div class="no-results">
                 <div class="no-results-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
@@ -148,8 +172,8 @@
                 </div>
                 <p class="no-results-text">추천할 만한 유사 여행지가 없습니다.</p>
                 <p class="no-results-hint">다른 이미지로 다시 시도해보세요.</p>
-            </div>
-          </div>
+                </div>
+                  </div>
         </div>
       </div>
     </div>
@@ -179,7 +203,7 @@
 import { ref, computed, onMounted, watch, nextTick } from "vue";
 import { useStore } from "vuex";
 import Header from "@/components/Header.vue";
-import LoadingSpinner from "@/components/LoadingSpinner.vue";
+import ProcessSpinner from "@/components/ProcessSpinner.vue";
 import Chart from 'chart.js/auto'; // Import Chart.js
 import PlaceDetailModal from "@/components/PlaceDetailModal.vue";
 import SearchResultPanel from "@/components/SearchResultPanel.vue";
@@ -196,7 +220,7 @@ export default {
 
   components: {
     Header,
-    LoadingSpinner,
+    ProcessSpinner,
     PlaceDetailModal,
     SearchResultPanel
   },
@@ -226,6 +250,7 @@ export default {
     const imageAnalysisDuration = ref(null);
     const meaningAnalysisDuration = ref(null);
     const searchDuration = ref(null);
+    const processingResultsDuration = ref(null);
 
     // Modal related state (from KeywordSearch.vue)
     const showDetailModal = ref(false);
@@ -259,7 +284,7 @@ export default {
     const sortedSearchResults = computed(() => {
       return [...searchResults.value].sort((a, b) => b._score - a._score);
     });
-    
+
     // SearchResultPanel 컴포넌트에 전달할 데이터 형식으로 변환
     const formattedSearchResults = computed(() => {
       return sortedSearchResults.value.map((result, index) => {
@@ -341,7 +366,7 @@ export default {
 
     const openDetailModal = (destination) => {
       console.log('상세 모달 열기 요청된 데이터:', destination);
-      
+
       // SearchResultPanel에서 넘어온 데이터인 경우 (id, name 등의 형태) vs 직접 result에서 열 경우 (_id, _score 등의 형태)
       let detailData;
       
@@ -360,7 +385,7 @@ export default {
           _score: destination._score,
           ...destination._source,
           reviews: dummyReviews
-        };
+      };
       }
       
       selectedDetail.value = detailData;
@@ -449,6 +474,7 @@ export default {
         imageAnalysisDuration.value = null;
         meaningAnalysisDuration.value = null;
         searchDuration.value = null;
+        processingResultsDuration.value = null;
         abortController.value = new AbortController();
 
         try {
@@ -474,13 +500,19 @@ export default {
             const searchStartTime = performance.now();
         await searchSimilarHandler(); // Uses analysisResult.value.p_vector
         searchDuration.value = ((performance.now() - searchStartTime) / 1000).toFixed(1);
+          
+        // 검색 결과 처리 상태를 1.5초간 표시
+        loadingPhase.value = 'processingResults';
+        const processingResultsStartTime = performance.now();
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        processingResultsDuration.value = ((performance.now() - processingResultsStartTime) / 1000).toFixed(1);
+        loadingPhase.value = 'completed';
 
       } catch (error) {
         if (error.name === "AbortError") console.log("분석 취소됨");
         else console.error("분석 오류:", error);
         // Fallback or error display logic
       } finally {
-        loadingPhase.value = 'completed';
         isLoading.value = false;
         abortController.value = null;
       }
@@ -628,10 +660,19 @@ export default {
       } finally { isLoadingStats.value = false; }
     };
 
+    const totalProcessingTime = computed(() => {
+      if (!imageAnalysisDuration.value || !meaningAnalysisDuration.value || !searchDuration.value || !processingResultsDuration.value) return null;
+      const total = parseFloat(imageAnalysisDuration.value) + 
+                   parseFloat(meaningAnalysisDuration.value) + 
+                   parseFloat(searchDuration.value) +
+                   parseFloat(processingResultsDuration.value);
+      return total.toFixed(1);
+    });
+
     return {
       // Core
       imageFile, imagePreview, isLoading, analysisResult, searchResults, sortedSearchResults, formattedSearchResults,
-      fileInput, loadingPhase, imageAnalysisDuration, meaningAnalysisDuration, searchDuration,
+      fileInput, loadingPhase, imageAnalysisDuration, meaningAnalysisDuration, searchDuration, processingResultsDuration, totalProcessingTime,
       triggerFileInput, handleFileChange, analyzeCurrentImage, reset, searchSimilarHandler, cancelAnalysis,
       // Hero
       showHero, heroImageSrc, heroTitle, heroSubtitle, heroHeight,
@@ -699,25 +740,8 @@ export default {
 .panel-header {
   padding: 1.2rem 1.5rem;
   background: #fff;
-  border-bottom: 1px solid #eef2f7;
+  border-bottom: 2px solid #eef2f7;
   position: relative;
-}
-
-.panel-header::after {
-  content: "";
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(to right, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.3s ease;
-}
-
-.panel-style:hover .panel-header::after { /* Apply hover to .panel-style */
-  transform: scaleX(1);
 }
 
 .panel-title {
@@ -800,14 +824,46 @@ export default {
 .btn-danger:hover { background-color: #c0392b; }
 .hidden-input { display: none; }
 
-.analysis-timing { margin-top: 1rem; padding: 1rem; border-radius: 8px; background-color: #f8f9fa; border: 1px solid #eef2f7; }
-.timing-item { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.85rem; }
-.timing-item:last-child { margin-bottom: 0; }
+.analysis-timing { 
+  margin-top: 1rem;
+  padding: 1rem; 
+  border-radius: 8px; 
+  background-color: #f8f9fa; 
+  border: 1px solid #eef2f7; 
+}
+.timing-item { 
+  display: flex;
+  justify-content: space-between; 
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+}
+.timing-item:last-of-type {
+  margin-bottom: 0.75rem; /* 마지막 항목 아래 여백 추가 */
+}
+.timing-divider {
+  height: 1px;
+  background-color: #eef2f7;
+  margin: 0.75rem 0;
+}
+.timing-total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
 .timing-label { color: #5f6b7a; }
-.timing-value { font-weight: 600; color: var(--logo-blue, #48b0e4); }
+.timing-value {
+  font-weight: 600;
+  color: var(--logo-blue, #48b0e4); 
+}
+.timing-total .timing-value {
+  color: #10b981; /* 총 처리 시간은 녹색으로 표시 */
+}
 
 /* Analysis Panel Specifics (from original LogoSearch, adapt to KS panel style) */
-.loading-state { display: flex; align-items: center; justify-content: center; height: 100%; width: 100%; min-height: 300px; }
+.loading-state { display: flex; align-items: stretch; justify-content: center; height: 100%; width: 100%; min-height: 300px; }
+.loading-spinner-container { display: flex; width: 100%; height: 100%; }
 .guide-state { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; height: 100%; padding: 2rem; }
 .guide-description { font-size: 1rem; line-height: 1.6; color: #495057; margin-bottom: 1.5rem; }
 .analysis-table-container { overflow: auto; border-radius: 8px; height: 100%; border: 1px solid #eef2f7; }
@@ -864,10 +920,10 @@ export default {
   z-index: 1; opacity: 0; transition: opacity 0.3s ease;
 }
 .result-card:hover .result-image-container::before { opacity: 1; }
-.result-image { 
-  width: 100%; 
-  height: 100%; 
-  object-fit: cover; 
+.result-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 .result-card:hover .result-image { transform: scale(1.07); }
@@ -1117,4 +1173,224 @@ export default {
   stroke: #e53e3e; /* Red stroke for active modal heart */
 }
 
+/* AI Intro Section Styles - Inspired by OnboardingPage.vue feature-section */
+.ai-intro-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 3rem;
+  min-height: 350px;
+  opacity: 0;
+  transform: translateY(30px);
+  animation: fadeInUpDelayed 1s ease-out 0.3s forwards;
+}
+
+@keyframes fadeInUpDelayed {
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+.ai-intro-content {
+  flex: 1;
+  text-align: center;
+}
+
+.ai-intro-tag {
+  display: inline-block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #4285f4;
+  margin-bottom: 1.5rem;
+  font-family: 'Noto Sans KR', sans-serif;
+  position: relative;
+  padding-left: 1rem;
+}
+
+.ai-intro-tag::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #4285f4;
+}
+
+.ai-intro-heading {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 0;
+  line-height: 1.3;
+  font-family: 'Noto Sans KR', sans-serif;
+  /* Wave gradient animation similar to OnboardingPage */
+  background: linear-gradient(270deg,
+      #A0BBE8 0%,
+      #4A90E2 15%,
+      #3D7DD8 25%,
+      #A0BBE8 35%,
+      #A0BBE8 65%,
+      #4A90E2 75%,
+      #3D7DD8 85%,
+      #A0BBE8 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: waveAnimation 6s linear infinite;
+}
+
+@keyframes waveAnimation {
+  0% {
+    background-position: -100% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+.ai-mascot-section {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.ai-mascot-container {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.ai-logo-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.8s ease-out 0.5s forwards;
+}
+
+.ai-logo-item:nth-child(3) {
+  animation-delay: 0.7s;
+}
+
+.ai-mascot-image {
+  width: 100px;
+  height: 100px;
+  background-color: white;
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  object-fit: contain;
+  margin-bottom: 0.75rem;
+}
+
+.ai-mascot-image:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15);
+}
+
+.ai-mascot-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 0.3rem;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.ai-mascot-desc {
+  font-size: 0.9rem;
+  color: #7f8c8d;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.plus-connector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.8);
+  animation: fadeInScale 0.8s ease-out 0.6s forwards;
+}
+
+@keyframes fadeInScale {
+  to { 
+    opacity: 1; 
+    transform: scale(1); 
+  }
+}
+
+.plus-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4285f4, #34a853);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* Responsive styles for AI intro section */
+@media (max-width: 768px) {
+  .ai-intro-section {
+    flex-direction: column;
+    gap: 2rem;
+    padding: 2rem 1rem;
+    min-height: 300px;
+  }
+  
+  .ai-intro-content {
+    text-align: center;
+  }
+  
+  .ai-intro-heading {
+    font-size: 1.5rem;
+  }
+  
+  .ai-mascot-container {
+    gap: 1rem;
+  }
+  
+  .ai-mascot-image {
+    width: 80px;
+    height: 80px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ai-intro-heading {
+    font-size: 1.3rem;
+  }
+  
+  .ai-mascot-container {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .plus-connector {
+    transform: rotate(90deg);
+  }
+}
 </style>

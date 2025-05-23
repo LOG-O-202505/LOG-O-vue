@@ -336,8 +336,8 @@ export default {
           _id: destination.id,
           _score: destination._score,
           ...destination._source, // SearchResultPanel에서 원본 _source를 전달
-          reviews: dummyReviews
-        };
+        reviews: dummyReviews
+      };
       } else {
         // 직접 result에서 열 경우 (이전 방식)
         detailData = {
@@ -549,27 +549,9 @@ export default {
 
 .panel-header {
   padding: 1.2rem 1.5rem;
-  background: #fff; /* Clean white background */
-  border-bottom: 1px solid #eef2f7; /* Lighter border */
+  background: #fff;
+  border-bottom: 2px solid #eef2f7;
   position: relative;
-}
-
-.panel-header::after {
-  content: "";
-  position: absolute;
-  bottom: -1px; /* Align with border */
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background: linear-gradient(to right, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.3s ease;
-}
-
-.search-panel:hover .panel-header::after,
-.results-panel:hover .panel-header::after {
-  transform: scaleX(1);
 }
 
 .panel-title {
@@ -584,21 +566,6 @@ export default {
   display: inline-block;
   left: 50%;
   transform: translateX(-50%);
-}
-
-.panel-title::after {
-  /* Optional: remove this if the header ::after is preferred */
-  content: "";
-  position: absolute;
-  bottom: -6px; /* Adjusted position */
-  left: 10%; /* Shorter underline */
-  width: 80%;
-  height: 2.5px;
-  background: var(--logo-blue, #48b0e4);
-  border-radius: 1px;
-  transform: scaleX(0.5);
-  transform-origin: center;
-  transition: transform 0.3s ease-out;
 }
 
 .panel-content {
