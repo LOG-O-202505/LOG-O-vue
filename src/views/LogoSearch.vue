@@ -91,14 +91,32 @@
               </div>
             </div>
             <div v-else-if="!analysisResult" class="guide-state">
-              <div class="guide-icon">
-                <!-- SVG for guide -->
-              </div>
-              <p class="guide-description">
-                원하는 분위기의 이미지를 업로드하면 AI가 분석하여 유사한 여행지를 추천해드립니다
-              </p>
-              <div class="steps-container">
-                <!-- Style for steps -->
+              <div class="ai-intro-section">
+                <div class="ai-intro-content">
+                  <div class="ai-intro-tag">AI 이미지 분석 서비스</div>
+                  <h3 class="ai-intro-heading">
+                    Llava와 Llama와 함께<br />
+                    가고 싶은 여행지를<br />
+                    사진으로 찾아보세요!!
+                  </h3>
+                </div>
+                <div class="ai-mascot-section">
+                  <div class="ai-mascot-container">
+                    <div class="ai-logo-item">
+                      <img src="@/assets/img/llava-color.png" alt="Llava 마스코트" class="ai-mascot-image" />
+                      <div class="ai-mascot-name">Llava</div>
+                      <div class="ai-mascot-desc">이미지 분석</div>
+                    </div>
+                    <div class="plus-connector">
+                      <div class="plus-circle">+</div>
+                    </div>
+                    <div class="ai-logo-item">
+                      <img src="@/assets/img/meta.png" alt="Llama 마스코트" class="ai-mascot-image" />
+                      <div class="ai-mascot-name">Llama</div>
+                      <div class="ai-mascot-desc">의미 분석</div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
             <div v-else class="analysis-table-container">
@@ -1155,4 +1173,224 @@ export default {
   stroke: #e53e3e; /* Red stroke for active modal heart */
 }
 
+/* AI Intro Section Styles - Inspired by OnboardingPage.vue feature-section */
+.ai-intro-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 3rem;
+  min-height: 350px;
+  opacity: 0;
+  transform: translateY(30px);
+  animation: fadeInUpDelayed 1s ease-out 0.3s forwards;
+}
+
+@keyframes fadeInUpDelayed {
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+.ai-intro-content {
+  flex: 1;
+  text-align: center;
+}
+
+.ai-intro-tag {
+  display: inline-block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #4285f4;
+  margin-bottom: 1.5rem;
+  font-family: 'Noto Sans KR', sans-serif;
+  position: relative;
+  padding-left: 1rem;
+}
+
+.ai-intro-tag::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #4285f4;
+}
+
+.ai-intro-heading {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 0;
+  line-height: 1.3;
+  font-family: 'Noto Sans KR', sans-serif;
+  /* Wave gradient animation similar to OnboardingPage */
+  background: linear-gradient(270deg,
+      #A0BBE8 0%,
+      #4A90E2 15%,
+      #3D7DD8 25%,
+      #A0BBE8 35%,
+      #A0BBE8 65%,
+      #4A90E2 75%,
+      #3D7DD8 85%,
+      #A0BBE8 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: waveAnimation 6s linear infinite;
+}
+
+@keyframes waveAnimation {
+  0% {
+    background-position: -100% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+.ai-mascot-section {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.ai-mascot-container {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.ai-logo-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.8s ease-out 0.5s forwards;
+}
+
+.ai-logo-item:nth-child(3) {
+  animation-delay: 0.7s;
+}
+
+.ai-mascot-image {
+  width: 100px;
+  height: 100px;
+  background-color: white;
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  object-fit: contain;
+  margin-bottom: 0.75rem;
+}
+
+.ai-mascot-image:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15);
+}
+
+.ai-mascot-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 0.3rem;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.ai-mascot-desc {
+  font-size: 0.9rem;
+  color: #7f8c8d;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.plus-connector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.8);
+  animation: fadeInScale 0.8s ease-out 0.6s forwards;
+}
+
+@keyframes fadeInScale {
+  to { 
+    opacity: 1; 
+    transform: scale(1); 
+  }
+}
+
+.plus-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4285f4, #34a853);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* Responsive styles for AI intro section */
+@media (max-width: 768px) {
+  .ai-intro-section {
+    flex-direction: column;
+    gap: 2rem;
+    padding: 2rem 1rem;
+    min-height: 300px;
+  }
+  
+  .ai-intro-content {
+    text-align: center;
+  }
+  
+  .ai-intro-heading {
+    font-size: 1.5rem;
+  }
+  
+  .ai-mascot-container {
+    gap: 1rem;
+  }
+  
+  .ai-mascot-image {
+    width: 80px;
+    height: 80px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ai-intro-heading {
+    font-size: 1.3rem;
+  }
+  
+  .ai-mascot-container {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .plus-connector {
+    transform: rotate(90deg);
+  }
+}
 </style>
