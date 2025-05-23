@@ -645,15 +645,18 @@ export const saveToElasticsearch = async (
 };
 
 /**
- * 유사한 이미지 검색
- * @param {Array<number>} featuresVector - 특성 벡터
+ * 유사 이미지 검색 (ES에서 KNN 검색 수행)
+ * @param {Array<number>} featuresVector - 검색할 벡터
  * @param {number} limit - 검색 결과 제한
+ * @param {string} regionFilter - 지역 필터 (p_region)
+ * @param {string} sigFilter - 시군구 필터 (p_sig)
  * @returns {Promise<Array<Object>>} - 검색 결과
  */
-export const searchSimilarImages = async (featuresVector, limit = 30) => {
+export const searchSimilarImages = async (featuresVector, limit = 30, regionFilter = null, sigFilter = null) => {
   try {
     console.log('유사 이미지 검색 시작');
     console.log('검색 API 주소:', `${config.ES_API}/travel_places/_search`);
+    console.log('지역 필터:', regionFilter, '시군구 필터:', sigFilter);
     
     // KNN 검색 쿼리 구성 - collapse와 aggregation 추가
     const searchBody = {
@@ -692,6 +695,54 @@ export const searchSimilarImages = async (featuresVector, limit = 30) => {
         "p_image", "p_vector", "u_age", "u_gender", "location_data"
       ]
     };
+
+    // 지역 필터 또는 시군구 필터가 있는 경우 query 추가
+    if (regionFilter || sigFilter) {
+      const filters = [];
+      
+      if (regionFilter) {
+        filters.push({
+          term: {
+            "p_region.keyword": regionFilter
+          }
+        });
+      }
+      
+      if (sigFilter) {
+        filters.push({
+          term: {
+            "p_sig.keyword": sigFilter
+          }
+        });
+      }
+      
+      // KNN과 필터를 결합
+      searchBody.query = {
+        bool: {
+          filter: filters
+        }
+      };
+      
+      // KNN 검색에 filter를 추가
+      if (searchBody.knn.filter) {
+        // 기존 filter가 있다면 must로 결합
+        searchBody.knn.filter = {
+          bool: {
+            must: [
+              searchBody.knn.filter,
+              ...filters
+            ]
+          }
+        };
+      } else {
+        // 새로운 filter 추가
+        searchBody.knn.filter = filters.length === 1 ? filters[0] : {
+          bool: {
+            must: filters
+          }
+        };
+      }
+    }
     
     // config에서 Elasticsearch API URL 사용
     const response = await fetch(`${config.ES_API}/travel_places/_search`, {

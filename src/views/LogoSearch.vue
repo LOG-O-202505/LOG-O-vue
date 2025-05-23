@@ -119,54 +119,82 @@
 
       <!-- 분석 결과 섹션 (분석 완료 후 표시) -->
       <div v-if="analysisResult && !isLoading" class="analysis-results-container">
-        <div class="analysis-results-panel panel-style">
+        <!-- 왼쪽 패널: 분석 결과 테이블 -->
+        <div class="analysis-results-left-panel panel-style">
           <div class="panel-header">
             <h3 class="panel-title">상세 분석 결과</h3>
           </div>
           <div class="panel-content">
-            <div class="analysis-results-content">
-              <!-- 왼쪽: 분석 결과 테이블 -->
-              <div class="results-left">
-                <div class="analysis-table-container">
-                  <table class="analysis-table">
-                    <thead>
-                      <tr>
-                        <th>분석 항목</th>
-                        <th style="text-align: center;">점수</th>
-                        <th>그래프</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <template v-if="Array.isArray(dimensionResults)">
-                        <tr v-for="(score, index) in dimensionResults" :key="'dim-'+index">
-                          <td class="dimension-name">{{ getDimensionLabel(index) }}</td>
-                          <td class="dimension-score">{{ typeof score === 'number' ? score.toFixed(1) : score }}</td>
-                          <td class="dimension-bar">
-                            <div class="bar-container">
-                              <div class="bar" :style="{ width: `${typeof score === 'number' ? score * 100 : 0}%` }"></div>
-                            </div>
-                          </td>
-                        </tr>
-                      </template>
-                    </tbody>
-                  </table>
+            <div class="analysis-table-container">
+              <table class="analysis-table">
+                <thead>
+                  <tr>
+                    <th>분석 항목</th>
+                    <th style="text-align: center;">점수</th>
+                    <th>그래프</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template v-if="Array.isArray(dimensionResults)">
+                    <tr v-for="(score, index) in dimensionResults" :key="'dim-'+index">
+                      <td class="dimension-name">{{ getDimensionLabel(index) }}</td>
+                      <td class="dimension-score">{{ typeof score === 'number' ? score.toFixed(1) : score }}</td>
+                      <td class="dimension-bar">
+                        <div class="bar-container">
+                          <div class="bar" :style="{ width: `${typeof score === 'number' ? score * 100 : 0}%` }"></div>
+                        </div>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 오른쪽 패널: 지역별 검색 지도 -->
+        <div class="analysis-results-right-panel panel-style">
+          <div class="panel-header">
+            <h3 class="panel-title">지역별 검색</h3>
+          </div>
+          <div class="panel-content">
+            <div class="map-search-container">
+              <p class="map-search-description">
+                지도에서 지역을 클릭하여 해당 지역의 유사한 여행지를 찾아보세요.
+              </p>
+              
+              <!-- 뒤로가기 버튼 -->
+              <div v-if="showDetailMap || selectedRegion || selectedSig" class="map-back-button">
+                <button @click="goBackMap" class="back-btn">
+                  <span class="back-icon">←</span>
+                  {{ currentMapLevel === 'sig' ? '광역시구 지도로' : '전체 지도로' }}
+                </button>
+              </div>
+              
+              <!-- 현재 선택된 지역 표시 -->
+              <div v-if="selectedRegion || selectedSig" class="selected-region-info">
+                <div class="region-badge">
+                  <span v-if="selectedSig">{{ getSelectedSigName() }}</span>
+                  <span v-else-if="selectedRegion">{{ getSelectedRegionName() }}</span>
                 </div>
               </div>
-
-              <!-- 오른쪽: 추가 예정 영역 -->
-              <div class="results-right">
-                <div class="coming-soon-content">
-                  <div class="coming-soon-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <polyline points="12,6 12,12 16,14"></polyline>
-                    </svg>
-                  </div>
-                  <h4 class="coming-soon-title">추가 예정</h4>
-                  <p class="coming-soon-description">
-                    더 많은 분석 기능이<br/>
-                    곧 추가될 예정입니다.
-                  </p>
+              
+              <!-- 지도 컨테이너 -->
+              <div class="map-container-wrapper">
+                <!-- 광역시구 지도 -->
+                <div v-show="currentMapLevel === 'ctprvn'" class="map-container" ref="mainMapContainer"></div>
+                
+                <!-- 시군구 상세 지도 -->
+                <div v-show="currentMapLevel === 'sig'" class="map-container" ref="detailMapContainer"></div>
+                
+                <!-- 지역 호버 툴팁 -->
+                <div v-if="hoveredRegion && !hoveredSig" class="region-tooltip" :style="tooltipStyle">
+                  {{ hoveredRegionName }}
+                </div>
+                
+                <!-- 시군구 호버 툴팁 -->
+                <div v-if="hoveredSig" class="sig-tooltip" :style="sigTooltipStyle">
+                  {{ hoveredSigName }}
                 </div>
               </div>
             </div>
@@ -234,6 +262,12 @@ import ImageUpload from "@/components/ImageUpload.vue";
 import Chart from 'chart.js/auto'; // Import Chart.js
 import PlaceDetailModal from "@/components/PlaceDetailModal.vue";
 import SearchResultPanel from "@/components/SearchResultPanel.vue";
+// Add D3.js and GeoJSON imports
+import * as d3 from 'd3';
+import ctprvnGeoJson from '@/assets/ctprvn.json';
+import propertiesData from '@/assets/extracted_ctprvn.json';
+import sigGeoJson from '@/assets/sig.json';
+import sigPropertiesData from '@/assets/extracted_properties.json';
 import {
   searchSimilarImages,
   createFeaturesVector, // Import createFeaturesVector
@@ -717,6 +751,426 @@ export default {
       return total.toFixed(1);
     });
 
+    // D3.js 지도 관련 상태 및 함수
+    const mainMapContainer = ref(null);
+    const detailMapContainer = ref(null);
+    const currentMapLevel = ref('ctprvn'); // 'ctprvn' or 'sig'
+    const hoveredRegion = ref(null);
+    const hoveredRegionName = ref('');
+    const hoveredSig = ref(null);
+    const hoveredSigName = ref('');
+    const selectedRegion = ref(null);
+    const selectedSig = ref(null);
+    const showDetailMap = ref(false);
+
+    const tooltipStyle = computed(() => {
+      if (!hoveredRegion.value) return {};
+      const { x, y } = hoveredRegion.value;
+      return { left: `${x}px`, top: `${y}px` };
+    });
+
+    const sigTooltipStyle = computed(() => {
+      if (!hoveredSig.value) return {};
+      const { x, y } = hoveredSig.value;
+      return { left: `${x}px`, top: `${y}px` };
+    });
+
+    const getSelectedRegionName = () => {
+      const regionData = regionDataMap.value.find(d => d.ctp_nm === selectedRegion.value);
+      return regionData ? regionData.ctp_nm : '';
+    };
+
+    const getSelectedSigName = () => {
+      const sigData = sigDataMap.value.find(d => d.sig_cd === selectedSig.value);
+      return sigData ? sigData.sig_nm : '';
+    };
+
+    const goBackMap = () => {
+      if (currentMapLevel.value === 'sig') {
+        currentMapLevel.value = 'ctprvn';
+        selectedSig.value = null;
+        showDetailMap.value = false;
+        searchSimilarHandler();
+      } else if (currentMapLevel.value === 'ctprvn') {
+        currentMapLevel.value = 'ctprvn';
+        selectedRegion.value = null;
+        showDetailMap.value = false;
+        searchSimilarHandler();
+      }
+    };
+
+    const handleRegionClick = (region) => {
+      selectedRegion.value = region;
+      currentMapLevel.value = 'sig';
+      showDetailMap.value = true;
+      // Filter search results by region
+      searchSimilarHandlerWithRegion(region);
+      // Render detailed map
+      nextTick(() => {
+        renderDetailMap(region);
+      });
+    };
+
+    const handleSigClick = (sig) => {
+      selectedSig.value = sig;
+      // Filter search results by sig
+      searchSimilarHandlerWithSig(sig);
+    };
+
+    // D3.js map data and state
+    const regionDataMap = ref(propertiesData);
+    const sigDataMap = ref(sigPropertiesData);
+
+    // Color functions for map regions based on popularity
+    const getColorByScore = (regionCode) => {
+      // Default color scheme for regions
+      const colors = {
+        '11': '#FF6B6B', // 서울
+        '26': '#4ECDC4', // 부산
+        '27': '#45B7D1', // 대구
+        '28': '#96CEB4', // 인천
+        '29': '#FFEAA7', // 광주
+        '30': '#DDA0DD', // 대전
+        '31': '#98D8C8', // 울산
+        '36': '#F7DC6F', // 세종
+        '41': '#AED6F1', // 경기
+        '42': '#A9DFBF', // 강원
+        '43': '#F9E79F', // 충북
+        '44': '#D7BDE2', // 충남
+        '45': '#F8C471', // 전북
+        '46': '#85C1E9', // 전남
+        '47': '#F1948A', // 경북
+        '48': '#82E0AA', // 경남
+        '50': '#F8D7DA'  // 제주
+      };
+      return colors[regionCode] || '#75D7B8';
+    };
+
+    const getSigColorByScore = () => {
+      // Default color for sig areas
+      return '#87CEEB';
+    };
+
+    // Main map rendering function
+    const renderMap = () => {
+      const container = mainMapContainer.value;
+      if (!container) {
+        console.log("Map container not found");
+        return;
+      }
+
+      // 컨테이너가 DOM에 제대로 렌더링되었는지 확인
+      if (container.clientWidth === 0 || container.clientHeight === 0) {
+        console.log("Map container has no dimensions, retrying...");
+        setTimeout(() => renderMap(), 100);
+        return;
+      }
+
+      console.log(`Rendering map with container size: ${container.clientWidth}x${container.clientHeight}`);
+
+      // Clear existing SVG
+      d3.select(container).selectAll("svg").remove();
+
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+
+      // 최소 크기 확보
+      const minWidth = Math.max(width, 300);
+      const minHeight = Math.max(height, 300);
+
+      // Create SVG
+      const svg = d3.select(container)
+        .append('svg')
+        .attr('width', minWidth)
+        .attr('height', minHeight)
+        .attr('viewBox', [0, 0, minWidth, minHeight])
+        .style('width', '100%')
+        .style('height', '100%');
+
+      // Create map group
+      const g = svg.append('g').attr('class', 'map-group');
+
+      try {
+        // Set up projection
+        const projection = d3.geoIdentity()
+          .reflectY(true)
+          .fitSize([minWidth * 0.85, minHeight * 0.85], ctprvnGeoJson);
+        
+        const path = d3.geoPath().projection(projection);
+        
+        // Center the map
+        g.attr("transform", `translate(${minWidth * 0.075}, ${minHeight * 0.075})`);
+
+        // Draw regions
+        const regionPaths = g.selectAll('path')
+          .data(ctprvnGeoJson.features)
+          .enter()
+          .append('path')
+          .attr('class', 'region')
+          .attr('d', path)
+          .attr('fill', function(d) {
+            if (d && d.properties && d.properties.CTPRVN_CD) {
+              return getColorByScore(d.properties.CTPRVN_CD);
+            }
+            return '#75D7B8';
+          })
+          .attr('stroke', '#2D3748')
+          .attr('stroke-width', 0.7)
+          .style('cursor', 'pointer');
+
+        // Add hover events
+        regionPaths.on('mouseover', function (event, d) {
+          const regionCode = d.properties.CTPRVN_CD;
+          const regionData = regionDataMap.value.find(r => r.ctprvn_cd === regionCode);
+          
+          hoveredRegion.value = { x: event.pageX, y: event.pageY };
+          hoveredRegionName.value = regionData ? regionData.ctp_nm : '';
+          
+          d3.select(this)
+            .transition()
+            .duration(200)
+            .attr('stroke-width', 1.5);
+        });
+
+        regionPaths.on('mouseout', function () {
+          hoveredRegion.value = null;
+          hoveredRegionName.value = '';
+          
+          d3.select(this)
+            .transition()
+            .duration(200)
+            .attr('stroke-width', 0.7);
+        });
+
+        // Add click events
+        regionPaths.on('click', function (event, d) {
+          const regionCode = d.properties.CTPRVN_CD;
+          handleRegionClick(regionCode);
+        });
+
+        console.log("Map rendered successfully");
+
+      } catch (error) {
+        console.error("지도 렌더링 중 오류 발생:", error);
+      }
+    };
+
+    // Detail map rendering function
+    const renderDetailMap = (regionCode) => {
+      const container = detailMapContainer.value;
+      if (!container) {
+        console.log("Detail map container not found");
+        return;
+      }
+
+      // 컨테이너가 DOM에 제대로 렌더링되었는지 확인
+      if (container.clientWidth === 0 || container.clientHeight === 0) {
+        console.log("Detail map container has no dimensions, retrying...");
+        setTimeout(() => renderDetailMap(regionCode), 100);
+        return;
+      }
+
+      console.log(`Rendering detail map with container size: ${container.clientWidth}x${container.clientHeight}`);
+
+      // Clear existing SVG
+      d3.select(container).selectAll("svg").remove();
+
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+
+      // 최소 크기 확보
+      const minWidth = Math.max(width, 300);
+      const minHeight = Math.max(height, 300);
+
+      // Create SVG
+      const svg = d3.select(container)
+        .append('svg')
+        .attr('width', minWidth)
+        .attr('height', minHeight)
+        .attr('viewBox', [0, 0, minWidth, minHeight])
+        .style('width', '100%')
+        .style('height', '100%');
+
+      // Create map group
+      const g = svg.append('g').attr('class', 'map-group');
+
+      try {
+        // Filter features for the selected region
+        const filteredFeatures = sigGeoJson.features.filter(feature => {
+          if (!feature.properties || !feature.properties.SIG_CD) return false;
+          const sigCode = feature.properties.SIG_CD;
+          const sigCodePrefix = sigCode.toString().substring(0, 2);
+          return sigCodePrefix === regionCode.toString();
+        });
+
+        if (filteredFeatures.length === 0) {
+          g.append('text')
+            .attr('x', minWidth / 2)
+            .attr('y', minHeight / 2)
+            .attr('text-anchor', 'middle')
+            .attr('fill', '#333')
+            .text('이 지역의 상세 지도는 준비중입니다.');
+          return;
+        }
+
+        const filteredGeoJson = {
+          type: "FeatureCollection",
+          features: filteredFeatures
+        };
+
+        // Set up projection
+        const projection = d3.geoIdentity()
+          .reflectY(true)
+          .fitSize([minWidth * 0.85, minHeight * 0.85], filteredGeoJson);
+        
+        const path = d3.geoPath().projection(projection);
+        
+        // Center the map
+        g.attr("transform", `translate(${minWidth * 0.075}, ${minHeight * 0.075})`);
+
+        // Draw sig areas
+        const sigPaths = g.selectAll('path')
+          .data(filteredFeatures)
+          .enter()
+          .append('path')
+          .attr('class', 'sig-region')
+          .attr('d', path)
+          .attr('fill', function(d) {
+            if (d && d.properties && d.properties.SIG_CD) {
+              return getSigColorByScore(d.properties.SIG_CD);
+            }
+            return '#87CEEB';
+          })
+          .attr('stroke', '#2D3748')
+          .attr('stroke-width', 0.7)
+          .style('cursor', 'pointer');
+
+        // Add hover events
+        sigPaths.on('mouseover', function (event, d) {
+          const sigCode = d.properties.SIG_CD;
+          const sigData = sigDataMap.value.find(s => s.SIG_CD === sigCode);
+          
+          hoveredSig.value = { x: event.pageX, y: event.pageY };
+          hoveredSigName.value = sigData ? sigData.SIG_KOR_NM : '';
+          
+          d3.select(this)
+            .transition()
+            .duration(200)
+            .attr('stroke-width', 1.5);
+        });
+
+        sigPaths.on('mouseout', function () {
+          hoveredSig.value = null;
+          hoveredSigName.value = '';
+          
+          d3.select(this)
+            .transition()
+            .duration(200)
+            .attr('stroke-width', 0.7);
+        });
+
+        // Add click events
+        sigPaths.on('click', function (event, d) {
+          const sigCode = d.properties.SIG_CD;
+          handleSigClick(sigCode);
+        });
+
+        console.log("Detail map rendered successfully");
+
+      } catch (error) {
+        console.error("상세 지도 렌더링 중 오류 발생:", error);
+      }
+    };
+
+    // Search functions with region filtering
+    const searchSimilarHandlerWithRegion = async (regionCode) => {
+      if (!analysisResult.value || !analysisResult.value.p_vector) return;
+      
+      try {
+        const regionData = regionDataMap.value.find(r => r.ctprvn_cd === regionCode);
+        const regionName = regionData ? regionData.ctp_nm : null;
+        
+        const results = await searchSimilarImages(
+          analysisResult.value.p_vector, 
+          30, 
+          regionName, 
+          null
+        );
+        searchResults.value = results;
+        console.log(`지역 필터 검색 완료 (${regionName}): ${results.length}개 결과`);
+      } catch (error) {
+        console.error("지역별 검색 오류:", error);
+      }
+    };
+
+    const searchSimilarHandlerWithSig = async (sigCode) => {
+      if (!analysisResult.value || !analysisResult.value.p_vector) return;
+      
+      try {
+        const sigData = sigDataMap.value.find(s => s.SIG_CD === sigCode);
+        const sigName = sigData ? sigData.SIG_KOR_NM : null;
+        
+        const results = await searchSimilarImages(
+          analysisResult.value.p_vector, 
+          30, 
+          null, 
+          sigName
+        );
+        searchResults.value = results;
+        console.log(`시군구 필터 검색 완료 (${sigName}): ${results.length}개 결과`);
+      } catch (error) {
+        console.error("시군구별 검색 오류:", error);
+      }
+    };
+
+    // Initialize maps when analysis results are available
+    watch(analysisResult, (newResult) => {
+      if (newResult && !isLoading.value) {
+        // 충분한 지연 후 지도 렌더링
+        setTimeout(() => {
+          nextTick(() => {
+            renderMap();
+          });
+        }, 500);
+      }
+    });
+
+    // Initialize map on mount
+    onMounted(() => {
+      // 컴포넌트 마운트 후 지도 초기화
+      setTimeout(() => {
+        nextTick(() => {
+          if (analysisResult.value) {
+            renderMap();
+          }
+        });
+      }, 300);
+    });
+
+    // 추가: 지도 컨테이너 크기 변경 감지 및 재렌더링
+    const resizeObserver = new ResizeObserver(() => {
+      if (analysisResult.value && !isLoading.value) {
+        setTimeout(() => {
+          nextTick(() => {
+            renderMap();
+          });
+        }, 100);
+      }
+    });
+
+    // ResizeObserver 등록
+    watch(mainMapContainer, (newContainer) => {
+      if (newContainer) {
+        resizeObserver.observe(newContainer);
+      }
+    });
+
+    watch(detailMapContainer, (newContainer) => {
+      if (newContainer) {
+        resizeObserver.observe(newContainer);
+      }
+    });
+
     return {
       // Core
       imageFile, imagePreview, isLoading, analysisResult, searchResults, sortedSearchResults, formattedSearchResults,
@@ -727,15 +1181,20 @@ export default {
       // Hero
       showHero, heroImageSrc, heroTitle, heroSubtitle, heroHeight,
       // Dimensions
-      dimensionResults, getDimensionLabel, // Keep getDimensionLabel from KeywordSearch
+      dimensionResults, getDimensionLabel,
       // Modal
       showDetailModal, selectedDetail, wishlistItems, openDetailModal, closeDetailModal, 
       isInWishlist, toggleWishlist, initDetailMap, formatReviewDate,
       // Stats
       ageStats, genderStats, totalStatsVisits, isLoadingStats, ageChartCanvas,
-      totalAgeVisits, malePercentage, femalePercentage, getColorForAge, // renderAgeChart is called by watch
+      totalAgeVisits, malePercentage, femalePercentage, getColorForAge,
+      // D3.js Map related
+      mainMapContainer, detailMapContainer, currentMapLevel, hoveredRegion, hoveredRegionName,
+      hoveredSig, hoveredSigName, selectedRegion, selectedSig, showDetailMap,
+      tooltipStyle, sigTooltipStyle, getSelectedRegionName, getSelectedSigName, goBackMap,
+      renderMap, renderDetailMap, handleRegionClick, handleSigClick,
       // Misc
-      formatSimilarityScore, actionStatus, // showActionStatus can be added if needed
+      formatSimilarityScore, actionStatus,
       applyKeyword
     };
   }
@@ -1799,33 +2258,108 @@ export default {
   opacity: 0;
   transform: translateY(20px);
   animation: fadeInUp 0.8s ease-out 0.3s forwards;
-}
-
-.analysis-results-panel {
-  /* panel-style에서 상속받은 스타일 사용 */
-}
-
-.analysis-results-content {
   display: grid;
-  grid-template-columns: 1fr 1fr; /* 좌우 동일한 너비 */
+  grid-template-columns: 1fr 1fr; /* 두 패널을 동일한 너비로 배치 */
   gap: 2rem;
-  min-height: 400px;
+  min-height: 500px;
 }
 
-.results-left {
+/* 왼쪽 패널 스타일 */
+.analysis-results-left-panel {
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
 
-.results-right {
+/* 오른쪽 패널 스타일 */
+.analysis-results-right-panel {
+  height: 100%;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+}
+
+/* 분석 테이블 컨테이너 개선 */
+.analysis-table-container {
+  overflow: auto;
+  border-radius: 8px;
+  height: 100%;
+  border: 1px solid #eef2f7;
+  flex: 1;
+  min-height: 400px; /* 최소 높이 보장 */
+}
+
+/* 지도 검색 컨테이너 스타일 개선 */
+.map-search-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1; /* 부모 컨테이너를 가득 채움 */
+}
+
+.map-container-wrapper {
+  flex: 1;
+  position: relative;
+  min-height: 350px; /* 높이 증가 */
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #eef2f7;
+}
+
+.map-container {
+  width: 100%;
+  height: 100%;
+  min-height: 350px; /* 높이 증가 */
   background: linear-gradient(135deg, #f8fdff 0%, #f0f8ff 100%);
-  border-radius: 12px;
-  border: 1px solid rgba(72, 176, 228, 0.1);
-  min-height: 300px;
-  padding: 2rem;
+}
+
+/* 기존 스타일 제거 - 더 이상 사용하지 않음 */
+.analysis-results-content {
+  /* 이 스타일은 제거됨 */
+}
+
+.results-left, .results-right {
+  /* 이 스타일들은 제거됨 */
+}
+
+/* 반응형 디자인 개선 */
+@media (max-width: 1024px) {
+  .analysis-results-container {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    min-height: 700px; /* 세로 배치 시 높이 조정 */
+  }
+  
+  .map-container-wrapper {
+    min-height: 300px;
+  }
+  
+  .map-container {
+    min-height: 300px;
+  }
+  
+  .analysis-table-container {
+    min-height: 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .analysis-results-container {
+    gap: 1rem;
+    min-height: 600px;
+  }
+  
+  .map-container-wrapper {
+    min-height: 250px;
+  }
+  
+  .map-container {
+    min-height: 250px;
+  }
+  
+  .analysis-table-container {
+    min-height: 250px;
+  }
 }
 
 .coming-soon-content {
@@ -1856,5 +2390,170 @@ export default {
   line-height: 1.6;
   margin: 0;
   font-family: 'Noto Sans KR', sans-serif;
+}
+
+/* D3.js Map Styles */
+.map-search-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0 0 0.5rem 0;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.map-search-description {
+  font-size: 0.9rem;
+  color: #666;
+  margin: 0 0 1rem 0;
+  line-height: 1.5;
+}
+
+.map-back-button {
+  margin-bottom: 1rem;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.back-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.back-icon {
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+.selected-region-info {
+  margin-bottom: 1rem;
+}
+
+.region-badge {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  background: linear-gradient(135deg, rgba(72, 176, 228, 0.1), rgba(118, 179, 157, 0.1));
+  border: 1px solid rgba(72, 176, 228, 0.3);
+  border-radius: 16px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--logo-blue, #48b0e4);
+}
+
+.map-container-wrapper {
+  flex: 1;
+  position: relative;
+  min-height: 300px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #eef2f7;
+}
+
+.map-container {
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
+  background: linear-gradient(135deg, #f8fdff 0%, #f0f8ff 100%);
+}
+
+/* Map SVG styles */
+.map-container svg {
+  width: 100%;
+  height: 100%;
+}
+
+.map-container .region {
+  transition: all 0.2s ease;
+}
+
+.map-container .region:hover {
+  filter: brightness(1.1);
+}
+
+.map-container .sig-region {
+  transition: all 0.2s ease;
+}
+
+.map-container .sig-region:hover {
+  filter: brightness(1.1);
+}
+
+/* Tooltip styles */
+.region-tooltip, .sig-tooltip {
+  position: fixed;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 0.5rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  pointer-events: none;
+  z-index: 1000;
+  transform: translate(-50%, -100%);
+  margin-top: -8px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.region-tooltip::after, .sig-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: rgba(0, 0, 0, 0.8);
+}
+
+/* Map responsive styles */
+@media (max-width: 1024px) {
+  .map-container-wrapper {
+    min-height: 250px;
+  }
+  
+  .map-container {
+    min-height: 250px;
+  }
+}
+
+@media (max-width: 768px) {
+  .map-search-title {
+    font-size: 1.1rem;
+  }
+  
+  .map-search-description {
+    font-size: 0.85rem;
+  }
+  
+  .map-container-wrapper {
+    min-height: 200px;
+  }
+  
+  .map-container {
+    min-height: 200px;
+  }
+  
+  .back-btn {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.8rem;
+  }
+  
+  .region-badge {
+    font-size: 0.8rem;
+    padding: 0.3rem 0.6rem;
+  }
 }
 </style>
