@@ -9,7 +9,7 @@
         :class="{ 
           'process-active': currentPhase === 'imageAnalysis', 
           'process-completed': isPhaseCompleted('imageAnalysis'),
-          'process-waiting': !isPhaseCompleted('imageAnalysis') && currentPhase !== 'imageAnalysis'
+          'process-waiting': currentPhase === 'idle' || (!isPhaseCompleted('imageAnalysis') && currentPhase !== 'imageAnalysis')
         }"
       >
         <div class="process-icon-container">
@@ -44,11 +44,17 @@
           >
             AI 이미지 분석
           </div>
-          <div v-if="imageAnalysisDuration || currentPhase === 'imageAnalysis'" class="elapsed-time">
-            {{ currentPhase === 'imageAnalysis' ? getCurrentDuration('imageAnalysis') : formattedDuration(imageAnalysisDuration) }}
-          </div>
-          <div v-else-if="!isPhaseCompleted('imageAnalysis') && currentPhase !== 'imageAnalysis'" class="elapsed-time waiting-time">
-            0.0초
+          <!-- 단일 정보 표시: 상태 또는 시간 -->
+          <div class="process-status-or-time">
+            <div v-if="currentPhase === 'imageAnalysis'" class="current-time">
+              {{ getCurrentDuration('imageAnalysis') }}
+            </div>
+            <div v-else-if="isPhaseCompleted('imageAnalysis')" class="completed-time">
+              {{ formattedDuration(imageAnalysisDuration) }}
+            </div>
+            <div v-else class="waiting-status">
+              대기중
+            </div>
           </div>
         </div>
         
@@ -78,7 +84,7 @@
         :class="{ 
           'process-active': currentPhase === 'meaningAnalysis', 
           'process-completed': isPhaseCompleted('meaningAnalysis'),
-          'process-waiting': !isPhaseCompleted('meaningAnalysis') && currentPhase !== 'meaningAnalysis'
+          'process-waiting': currentPhase === 'idle' || (!isPhaseCompleted('meaningAnalysis') && currentPhase !== 'meaningAnalysis')
         }"
       >
         <div class="process-icon-container">
@@ -113,11 +119,17 @@
           >
             AI 의미 분석
           </div>
-          <div v-if="meaningAnalysisDuration || currentPhase === 'meaningAnalysis'" class="elapsed-time">
-            {{ currentPhase === 'meaningAnalysis' ? getCurrentDuration('meaningAnalysis') : formattedDuration(meaningAnalysisDuration) }}
-          </div>
-          <div v-else-if="!isPhaseCompleted('meaningAnalysis') && currentPhase !== 'meaningAnalysis'" class="elapsed-time waiting-time">
-            0.0초
+          <!-- 단일 정보 표시: 상태 또는 시간 -->
+          <div class="process-status-or-time">
+            <div v-if="currentPhase === 'meaningAnalysis'" class="current-time">
+              {{ getCurrentDuration('meaningAnalysis') }}
+            </div>
+            <div v-else-if="isPhaseCompleted('meaningAnalysis')" class="completed-time">
+              {{ formattedDuration(meaningAnalysisDuration) }}
+            </div>
+            <div v-else class="waiting-status">
+              대기중
+            </div>
           </div>
         </div>
         
@@ -148,7 +160,7 @@
         :class="{ 
           'process-active': currentPhase === 'keywordExtraction', 
           'process-completed': isPhaseCompleted('keywordExtraction'),
-          'process-waiting': !isPhaseCompleted('keywordExtraction') && currentPhase !== 'keywordExtraction'
+          'process-waiting': currentPhase === 'idle' || (!isPhaseCompleted('keywordExtraction') && currentPhase !== 'keywordExtraction')
         }"
       >
         <div class="process-icon-container">
@@ -183,11 +195,17 @@
           >
             AI 키워드 추출
           </div>
-          <div v-if="keywordExtractionDuration || currentPhase === 'keywordExtraction'" class="elapsed-time">
-            {{ currentPhase === 'keywordExtraction' ? getCurrentDuration('keywordExtraction') : formattedDuration(keywordExtractionDuration) }}
-          </div>
-          <div v-else-if="!isPhaseCompleted('keywordExtraction') && currentPhase !== 'keywordExtraction'" class="elapsed-time waiting-time">
-            0.0초
+          <!-- 단일 정보 표시: 상태 또는 시간 -->
+          <div class="process-status-or-time">
+            <div v-if="currentPhase === 'keywordExtraction'" class="current-time">
+              {{ getCurrentDuration('keywordExtraction') }}
+            </div>
+            <div v-else-if="isPhaseCompleted('keywordExtraction')" class="completed-time">
+              {{ formattedDuration(keywordExtractionDuration) }}
+            </div>
+            <div v-else class="waiting-status">
+              대기중
+            </div>
           </div>
         </div>
         
@@ -216,8 +234,8 @@
         class="process-item"
         :class="{ 
           'process-active': currentPhase === 'search' || currentPhase === 'vectorSaving', 
-          'process-completed': currentPhase === 'processingResults' || currentPhase === 'completed',
-          'process-waiting': !['search', 'vectorSaving', 'processingResults', 'completed'].includes(currentPhase)
+          'process-completed': isPhaseCompleted('search'),
+          'process-waiting': currentPhase === 'idle' || !isPhaseCompleted('search') && currentPhase !== 'search' && currentPhase !== 'vectorSaving'
         }"
       >
         <div class="process-icon-container">
@@ -227,7 +245,7 @@
           </div>
           
           <!-- 완료된 프로세스 -->
-          <div v-else-if="currentPhase === 'processingResults' || currentPhase === 'completed'" class="check-icon-container">
+          <div v-else-if="isPhaseCompleted('search')" class="check-icon-container">
             <svg viewBox="0 0 24 24" class="check-icon">
               <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"></path>
             </svg>
@@ -244,19 +262,25 @@
             :class="[
               'process-name',
               {
-                'completed': currentPhase === 'processingResults' || currentPhase === 'completed',
+                'completed': isPhaseCompleted('search'),
                 'active': currentPhase === 'search' || currentPhase === 'vectorSaving',
-                'pending': !['search', 'vectorSaving', 'processingResults', 'completed'].includes(currentPhase)
+                'pending': !isPhaseCompleted('search') && currentPhase !== 'search' && currentPhase !== 'vectorSaving'
               }
             ]"
           >
             {{ showExtendedPhases ? '벡터 저장' : '벡터 검색' }}
           </div>
-          <div v-if="searchDuration || currentPhase === 'search' || currentPhase === 'vectorSaving'" class="elapsed-time">
-            {{ (currentPhase === 'search' || currentPhase === 'vectorSaving') ? getCurrentDuration('search') : formattedDuration(searchDuration) }}
-          </div>
-          <div v-else-if="!['search', 'vectorSaving', 'processingResults', 'completed'].includes(currentPhase)" class="elapsed-time waiting-time">
-            0.0초
+          <!-- 단일 정보 표시: 상태 또는 시간 -->
+          <div class="process-status-or-time">
+            <div v-if="currentPhase === 'search' || currentPhase === 'vectorSaving'" class="current-time">
+              {{ getCurrentDuration('search') }}
+            </div>
+            <div v-else-if="isPhaseCompleted('search')" class="completed-time">
+              {{ formattedDuration(searchDuration) }}
+            </div>
+            <div v-else class="waiting-status">
+              대기중
+            </div>
           </div>
         </div>
         
@@ -266,14 +290,14 @@
             :class="[
               'status-text',
               {
-                'completed': currentPhase === 'processingResults' || currentPhase === 'completed',
+                'completed': isPhaseCompleted('search'),
                 'processing': currentPhase === 'search' || currentPhase === 'vectorSaving',
-                'pending': !['search', 'vectorSaving', 'processingResults', 'completed'].includes(currentPhase)
+                'pending': !isPhaseCompleted('search') && currentPhase !== 'search' && currentPhase !== 'vectorSaving'
               }
             ]"
           >
             {{ 
-              currentPhase === 'completed' || currentPhase === 'processingResults' ? '완료' : 
+              isPhaseCompleted('search') ? '완료' : 
               currentPhase === 'search' || currentPhase === 'vectorSaving' ? '처리중' : '대기중' 
             }}
           </div>
@@ -286,7 +310,8 @@
         :class="{ 
           'process-active': currentPhase === 'processingResults', 
           'process-completed': currentPhase === 'completed',
-          'process-waiting': !['processingResults', 'completed'].includes(currentPhase)
+          'process-waiting': currentPhase === 'idle' || !['processingResults', 'completed'].includes(currentPhase),
+          'total-time-display': currentPhase === 'completed'
         }"
       >
         <div class="process-icon-container">
@@ -315,17 +340,24 @@
               {
                 'completed': currentPhase === 'completed',
                 'active': currentPhase === 'processingResults',
-                'pending': !['processingResults', 'completed'].includes(currentPhase)
+                'pending': !['processingResults', 'completed'].includes(currentPhase),
+                'total-time-title': currentPhase === 'completed'
               }
             ]"
           >
-            결과 처리
+            {{ currentPhase === 'completed' ? '총 처리 시간' : '검색 결과 처리' }}
           </div>
-          <div v-if="processingResultsDuration || currentPhase === 'processingResults'" class="elapsed-time">
-            {{ currentPhase === 'processingResults' ? getCurrentDuration('processingResults') : formattedDuration(processingResultsDuration) }}
-          </div>
-          <div v-else-if="!['processingResults', 'completed'].includes(currentPhase)" class="elapsed-time waiting-time">
-            0.0초
+          <!-- 단일 정보 표시: 상태 또는 시간 -->
+          <div class="process-status-or-time">
+            <div v-if="currentPhase === 'processingResults'" class="current-time">
+              {{ getCurrentDuration('processingResults') }}
+            </div>
+            <div v-else-if="currentPhase === 'completed'" class="total-time-value">
+              {{ formattedTotalTime }}
+            </div>
+            <div v-else class="waiting-status">
+              대기중
+            </div>
           </div>
         </div>
         
@@ -337,7 +369,8 @@
               {
                 'completed': currentPhase === 'completed',
                 'processing': currentPhase === 'processingResults',
-                'pending': !['processingResults', 'completed'].includes(currentPhase)
+                'pending': !['processingResults', 'completed'].includes(currentPhase),
+                'total-status': currentPhase === 'completed'
               }
             ]"
           >
@@ -375,8 +408,8 @@ export default {
   props: {
     currentPhase: {
       type: String,
-      default: 'imageAnalysis',
-      validator: (value) => ['imageAnalysis', 'meaningAnalysis', 'keywordExtraction', 'search', 'vectorSaving', 'processingResults', 'completed'].includes(value)
+      default: 'idle',
+      validator: (value) => ['idle', 'imageAnalysis', 'meaningAnalysis', 'keywordExtraction', 'search', 'vectorSaving', 'processingResults', 'completed'].includes(value)
     },
     imageAnalysisDuration: {
       type: [Number, String],
@@ -517,6 +550,16 @@ export default {
     // 전체 단계 수
     totalSteps() {
       return this.showExtendedPhases ? 5 : 4;
+    },
+    formattedTotalTime() {
+      const imageTime = parseFloat(this.imageAnalysisDuration) || 0;
+      const meaningTime = parseFloat(this.meaningAnalysisDuration) || 0;
+      const keywordTime = parseFloat(this.keywordExtractionDuration) || 0;
+      const searchTime = parseFloat(this.searchDuration) || 0;
+      const processTime = parseFloat(this.processingResultsDuration) || 0;
+      
+      const totalTime = imageTime + meaningTime + (this.showExtendedPhases ? keywordTime : 0) + searchTime + processTime;
+      return `${totalTime.toFixed(1)}초`;
     }
   },
   methods: {
@@ -539,12 +582,13 @@ export default {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   background-color: transparent;
   border-radius: 12px;
-  padding: 24px;
+  padding: 16px;
   width: 100%;
   height: 100%;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
+  min-width: 600px;
 }
 
 .process-title {
@@ -560,9 +604,11 @@ export default {
   flex-direction: row;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: 12px;
   flex: 1;
-  padding: 0 10%;
+  padding: 0 2%;
+  width: 100%;
+  max-width: 100%;
 }
 
 .process-item {
@@ -570,15 +616,15 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 16px;
+  gap: 8px;
+  padding: 12px;
   border-radius: 8px;
   border: 1px solid #eaeaea;
   transition: all 0.5s ease;
   flex: 1;
   min-width: 120px;
-  max-width: 180px;
-  min-height: 160px;
+  max-width: 160px;
+  min-height: 120px;
   background-color: transparent;
   position: relative;
   overflow: visible; /* gif가 컨테이너를 벗어날 수 있도록 */
@@ -619,8 +665,8 @@ export default {
 
 /* gif 스피너를 위한 특별한 컨테이너 */
 .process-icon-container .loading-spinner {
-  width: 128px;  /* gif용 특별 사이즈 */
-  height: 128px;
+  width: 80px;  /* 128px에서 80px로 줄임 */
+  height: 80px;
   position: absolute;
   left: 50%;
   top: 50%;
@@ -644,18 +690,18 @@ export default {
 }
 
 .spinner-circle {
-  width: 32px;
-  height: 32px;
-  border: 4px solid rgba(0, 0, 0, 0.1);
+  width: 24px; /* 32px에서 24px로 줄임 */
+  height: 24px;
+  border: 3px solid rgba(0, 0, 0, 0.1); /* 4px에서 3px로 줄임 */
   border-top-color: #10b981; /* 에메랄드 색상 */
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
 
 .spinner-circle-gray {
-  width: 32px;
-  height: 32px;
-  border: 4px solid rgba(0, 0, 0, 0.1);
+  width: 24px; /* 32px에서 24px로 줄임 */
+  height: 24px;
+  border: 3px solid rgba(0, 0, 0, 0.1); /* 4px에서 3px로 줄임 */
   border-top-color: #9ca3af; /* 회색 */
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -663,15 +709,15 @@ export default {
 
 /* Flight GIF 스피너 */
 .flight-spinner {
-  width: 128px;
-  height: 128px;
+  width: 80px; /* 128px에서 80px로 줄임 */
+  height: 80px;
   object-fit: contain;
 }
 
 /* 체크 아이콘 */
 .check-icon-container {
-  width: 32px;
-  height: 32px;
+  width: 24px; /* 32px에서 24px로 줄임 */
+  height: 24px;
   background-color: #10b981;
   border-radius: 50%;
   display: flex;
@@ -680,8 +726,8 @@ export default {
 }
 
 .check-icon {
-  width: 20px;
-  height: 20px;
+  width: 16px; /* 20px에서 16px로 줄임 */
+  height: 16px;
   fill: white;
   animation: checkAppear 0.5s ease forwards;
 }
@@ -705,10 +751,11 @@ export default {
 }
 
 .process-name {
+  font-size: 0.75rem;
   font-weight: 600;
-  font-size: 14px;
-  margin-bottom: 4px;
-  text-align: center;
+  margin-bottom: 0.5rem;
+  line-height: 1.2;
+  transition: color 0.3s ease;
 }
 
 .process-name.completed {
@@ -716,34 +763,34 @@ export default {
 }
 
 .process-name.active {
-  color: #3b82f6; /* Blue for active */
+  color: #48b0e4;
 }
 
 .process-name.pending {
   color: #9ca3af;
 }
 
-/* 실시간 시간 표시 스타일 */
-.elapsed-time {
-  position: absolute;
-  bottom: 8px;
-  font-size: 12px;
-  color: #6b7280;
-  opacity: 1; /* Always show */
-  transform: translateY(0);
-  transition: all 0.3s ease;
+/* 새로운 상태/시간 표시 스타일 */
+.process-status-or-time {
+  font-size: 0.65rem;
+  font-weight: 500;
+  line-height: 1.2;
+  min-height: 0.8rem;
 }
 
-.elapsed-time.waiting-time {
-  color: #9ca3af; /* Gray for waiting */
+.current-time {
+  color: #48b0e4;
+  font-weight: 600;
 }
 
-.process-active .elapsed-time {
-  color: #3b82f6; /* Blue for active */
+.completed-time {
+  color: #10b981;
+  font-weight: 600;
 }
 
-.process-completed .elapsed-time {
-  color: #10b981; /* Green for completed */
+.waiting-status {
+  color: #9ca3af;
+  font-style: italic;
 }
 
 /* 상태 표시 */
@@ -774,7 +821,7 @@ export default {
 
 /* 진행 상태 표시 */
 .progress-container {
-  margin-top: 24px;
+  margin-top: 16px; /* 24px에서 16px로 줄임 */
   width: 100%;
 }
 
@@ -906,4 +953,34 @@ export default {
 /* .panel-style:hover .panel-header::after {
   transform: scaleX(1);
 } */
+
+/* 총 시간 표시를 위한 특별한 스타일 */
+.process-item.total-time-display {
+  background-color: rgba(59, 130, 246, 0.05);
+  border-color: #3b82f6; /* Blue border for total time */
+  border-width: 3px;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
+  transform: scale(1.02);
+  transition: all 0.5s ease;
+}
+
+.process-item.total-time-display .check-icon-container {
+  background-color: #3b82f6; /* Blue background for total time check icon */
+}
+
+.total-time-value {
+  color: #3b82f6;
+  font-weight: 700;
+  font-size: 0.7rem;
+}
+
+.process-name.total-time-title {
+  color: #3b82f6;
+  font-weight: 700;
+}
+
+.status-text.total-status {
+  color: #3b82f6;
+  font-weight: 600;
+}
 </style>

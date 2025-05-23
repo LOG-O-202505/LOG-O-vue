@@ -53,6 +53,41 @@
         </div>
       </div>
       
+      <!-- AI 키워드 검색 소개 섹션 (검색 전에만 표시) -->
+      <div v-if="!searchPerformed && !isLoading" class="keyword-intro-section">
+        <div class="keyword-intro-content">
+          <div class="keyword-intro-tag">AI 키워드 검색 시스템</div>
+          <h3 class="keyword-intro-heading">
+            기존의 주소, 이름 기반으로 검색은 그만!!
+          </h3>
+          <p class="keyword-intro-description">
+            AI가 생성한 키워드, 설명을 기반으로 더욱 확장된 검색을 경험하세요
+          </p>
+          <div class="keyword-features">
+            <div class="feature-row">
+              <div class="feature-item">
+                <div class="feature-image">
+                  <img src="@/assets/img/llava-color.png" alt="Llava" class="feature-logo" />
+                </div>
+                <div class="feature-text">
+                  <div class="feature-title">Llava를 이용한 <br /> 영어 설명 기반 검색</div>
+                  <div class="feature-desc">이미지를 분석하여 영어로 상세한 설명을 생성하고, 이를 기반으로 유사한 여행지를 찾아드립니다</div>
+                </div>
+              </div>
+              <div class="feature-item">
+                <div class="feature-image">
+                  <img src="@/assets/img/meta.png" alt="Llama" class="feature-logo" />
+                </div>
+                <div class="feature-text">
+                  <div class="feature-title">Llama를 이용한 <br /> 한국어 설명 기반 검색</div>
+                  <div class="feature-desc">AI가 생성한 한국어 키워드와 설명을 통해 더욱 정확하고 직관적인 검색을 제공합니다</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <!-- 로딩 중일 때 로딩 스피너 표시 -->
       <div v-if="isLoading" class="loading-container">
         <div class="spinner"></div>
@@ -763,4 +798,218 @@ export default {
     justify-content: center; /* Center button content */
   }
 }
+
+/* AI 키워드 검색 소개 섹션 - OnboardingPage feature-section visible 스타일 참고 */
+.keyword-intro-section {
+  background: linear-gradient(135deg, #f8fdff 0%, #f0f8ff 100%);
+  border-radius: 16px;
+  padding: 3rem 2rem;
+  margin: 2rem 0;
+  opacity: 0;
+  transform: translateY(30px);
+  animation: fadeInUpDelayed 1s ease-out 0.3s forwards;
+  border: 1px solid rgba(72, 176, 228, 0.1);
+  box-shadow: 0 8px 32px rgba(72, 176, 228, 0.08);
+}
+
+@keyframes fadeInUpDelayed {
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+.keyword-intro-content {
+  text-align: center;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.keyword-intro-tag {
+  display: inline-block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--logo-blue, #48b0e4);
+  margin-bottom: 1.5rem;
+  font-family: 'Noto Sans KR', sans-serif;
+  position: relative;
+  padding-left: 1rem;
+}
+
+.keyword-intro-tag::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 16px;
+  background: linear-gradient(135deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
+  border-radius: 2px;
+}
+
+.keyword-intro-heading {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  line-height: 1.3;
+  font-family: 'Noto Sans KR', sans-serif;
+  /* Wave gradient animation similar to OnboardingPage */
+  background: linear-gradient(270deg,
+      #48b0e4 0%,
+      #76b39d 15%,
+      #3a9cd1 25%,
+      #48b0e4 35%,
+      #48b0e4 65%,
+      #76b39d 75%,
+      #3a9cd1 85%,
+      #48b0e4 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: waveAnimation 6s linear infinite;
+}
+
+@keyframes waveAnimation {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.keyword-intro-description {
+  font-size: 1.1rem;
+  color: #666;
+  margin-bottom: 3rem;
+  line-height: 1.6;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.keyword-features {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.feature-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.feature-item {
+  display: flex;
+  align-items: flex-start;
+  text-align: left;
+  padding: 2rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(72, 176, 228, 0.08);
+  border: 1px solid rgba(72, 176, 228, 0.1);
+  transition: all 0.3s ease;
+  min-width: 0;
+}
+
+.feature-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px rgba(72, 176, 228, 0.15);
+  border-color: rgba(72, 176, 228, 0.2);
+}
+
+.feature-image {
+  margin-right: 1rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, rgba(72, 176, 228, 0.1), rgba(118, 179, 157, 0.1));
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.feature-logo {
+  width: 70%;
+  height: 70%;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.feature-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.feature-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 0.75rem;
+  font-family: 'Noto Sans KR', sans-serif;
+  line-height: 1.4;
+}
+
+.feature-desc {
+  font-size: 0.95rem;
+  color: #666;
+  line-height: 1.6;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+/* 반응형 스타일 for AI 키워드 검색 소개 섹션 */
+@media (max-width: 768px) {
+  .keyword-intro-section {
+    padding: 2rem 1rem;
+    margin: 1rem 0;
+  }
+  
+  .keyword-intro-heading {
+    font-size: 1.6rem;
+  }
+  
+  .keyword-intro-description {
+    font-size: 1rem;
+    margin-bottom: 2rem;
+  }
+  
+  .feature-row {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .feature-item {
+    padding: 1rem;
+  }
+  
+  .feature-image {
+    width: 50px;
+    height: 50px;
+    margin-right: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .keyword-intro-heading {
+    font-size: 1.4rem;
+  }
+  
+  .feature-item {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .feature-image {
+    margin-right: 0;
+    margin-bottom: 0.75rem;
+    width: 50px;
+    height: 50px;
+  }
+}
+
+/* 반응형 조정 */
 </style>

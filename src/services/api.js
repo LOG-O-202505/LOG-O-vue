@@ -152,7 +152,7 @@ export const imageToEngDescription = async (imageFile, signal, englishLocationNa
       fetchOptions.signal = signal;
     }
     
-    const descriptionResponse = await fetch(`http://localhost:11434/api/generate`, fetchOptions);
+    const descriptionResponse = await fetch(`${config.OLLAMA_API}/api/generate`, fetchOptions);
     
     if (!descriptionResponse.ok) {
       console.error("API 응답 상태:", descriptionResponse.status, descriptionResponse.statusText);
@@ -207,7 +207,7 @@ export const EngDescriptionToVector = async (engDescription, signal) => {
       analysisFetchOptions.signal = signal;
     }
     
-    const analysisResponse = await fetch(`http://localhost:11434/api/generate`, analysisFetchOptions);
+    const analysisResponse = await fetch(`${config.OLLAMA_API}/api/generate`, analysisFetchOptions);
     
     if (!analysisResponse.ok) {
       console.error("API 응답 상태:", analysisResponse.status, analysisResponse.statusText);
@@ -2177,7 +2177,7 @@ export const getLocationCodes = (locationData) => {
  */
 export async function enDescToKoDescAndTags(englishDescription, signal) {
   console.log('API Service: ko_3 모델을 이용한 한글 설명과 키워드 추출 시작...');
-  const response = await fetch('http://localhost:11434/api/generate', {
+  const response = await fetch(`${config.OLLAMA_API}/api/generate`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -2275,7 +2275,7 @@ export async function ImgToPayment(receiptFile) {
   console.log('API Service: 전처리된 OCR 결과:', processedText);
 
   console.log('API Service: AI 모델로 영수증 분석 시작 (OCR_basic)...');
-  const aiResponse = await fetch('http://localhost:11434/api/generate', {
+  const aiResponse = await fetch(`${config.OLLAMA_API}/api/generate`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

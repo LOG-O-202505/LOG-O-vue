@@ -173,13 +173,16 @@
             검색 기능
           </h3>
           <p class="feature-description">
-            ElasticSearch를 활용한 직관적이고 자연스러운 검색으로 키워드, 여행지 이름, 설명, 후기 등을 한번에 검색할
-            수 있습니다. 정확한 검색어를 몰라도 연관 검색과 자동 완성 기능으로 원하는 여행지를 쉽고 빠르게 찾아보세요.
+            Llava를 이용한 영문 설명 및 영문 검색 지원, <br /> 
+            Llama를 이용한 한국어 설명 및 키워드 검색 지원, <br />
+            ElasticSearch를 이용한 확장된 검색 경험을 제공합니다. <br />
+            AI가 생성한 정확한 키워드와 설명을 통해 <br />
+            기존의 단순한 텍스트 검색을 넘어선 스마트하고 직관적인 여행지 검색을 경험하세요.
           </p>
           <div class="tech-tags">
-            <span class="tech-tag">ElasticSearch</span>
-            <span class="tech-tag">자연어 처리</span>
-            <span class="tech-tag">통합 검색</span>
+            <span class="tech-tag">Llava 영문 분석</span>
+            <span class="tech-tag">Llama 한국어 처리</span>
+            <span class="tech-tag">ElasticSearch 확장 검색</span>
           </div>
           <a href="/keyword" class="feature-link">
             키워드로 검색하기

@@ -15,72 +15,95 @@
       <div class="top-section">
         <!-- 왼쪽: 이미지 업로드 패널 -->
         <div class="upload-panel panel-style"> <!-- Added panel-style for common styling -->
-          <div class="panel-header">
-            <h3 class="panel-title">이미지 분석 요청</h3>
-          </div>
           <div class="panel-content">
-            <div class="image-container">
-              <img v-if="imagePreview" :src="imagePreview" alt="이미지 미리보기" class="preview-image">
-              <div v-else class="upload-placeholder">
-                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                  <polyline points="21 15 16 10 5 21"></polyline>
-                </svg>
-                <p>이미지를 선택하면 여기에 표시됩니다</p>
-              </div>
+            <!-- ImageUpload 컴포넌트 사용 -->
+            <div class="image-upload-wrapper">
+              <ImageUpload
+                :currentFile="imageFile"
+                :acceptedFileTypes="['image/jpeg', 'image/png', 'image/gif', 'image/webp']"
+                :maxFileSize="10 * 1024 * 1024"
+                :isAnalyzing="isLoading"
+                @upload-success="handleUploadSuccess"
+                @upload-error="handleUploadError"
+                @file-remove="handleFileRemove"
+                @analyze-start="analyzeCurrentImage"
+                @analyze-cancel="cancelAnalysis"
+              />
             </div>
-            <div class="button-group">
-              <button v-if="isLoading" @click="cancelAnalysis" class="btn btn-danger btn-cancel-analysis">
-                <!-- SVG for cancel -->
-                분석 취소하기
-              </button>
-              <button v-if="!analysisResult && !isLoading" @click="triggerFileInput" class="btn btn-primary">
-                <!-- SVG for upload -->
-                이미지 선택하기
-              </button>
-              <button v-if="imageFile && !analysisResult && !isLoading" @click="analyzeCurrentImage"
-                class="btn btn-analyze">
-                이미지 분석하기
-              </button>
-              <button v-if="(imageFile || analysisResult) && !isLoading" @click="reset" class="btn btn-secondary">
-                초기화
-              </button>
-              <div v-if="analysisResult && !isLoading" class="analysis-timing">
-                <div class="timing-item">
-                  <span class="timing-label">AI 이미지 분석:</span>
-                  <span class="timing-value">{{ imageAnalysisDuration }}초</span>
-                </div>
-                <div class="timing-item">
-                  <span class="timing-label">AI 의미 분석:</span>
-                  <span class="timing-value">{{ meaningAnalysisDuration }}초</span>
-                </div>
-                <div class="timing-item">
-                  <span class="timing-label">벡터 검색:</span>
-                  <span class="timing-value">{{ searchDuration }}초</span>
-                </div>
-                <div class="timing-divider"></div>
-                <div class="timing-total">
-                  <span class="timing-label">처리 시간:</span>
-                  <span class="timing-value">{{ totalProcessingTime }}초</span>
-              </div>
-            </div>
-            </div>
-            <input type="file" ref="fileInput" @change="handleFileChange" accept="image/*" class="hidden-input">
           </div>
         </div>
 
         <!-- 오른쪽: 분석 차트 패널 -->
         <div class="analysis-panel panel-style"> <!-- Added panel-style -->
-          <div class="panel-header">
+          <div v-if="isLoading || analysisResult" class="panel-header">
             <h3 class="panel-title">
               {{ isLoading ? '이미지 분석 중...' : (analysisResult ? '이미지 분석 결과' : '분석 데이터') }}
             </h3>
           </div>
-          <div class="panel-content" :class="{ 'no-padding': isLoading }">
-            <div v-if="isLoading" class="loading-state">
-              <div class="loading-spinner-container">
+          <div class="panel-content" :class="{ 'no-padding': false, 'no-header': !isLoading && !analysisResult }">
+            <div class="guide-state">
+              <!-- 분석 소개 섹션 - 항상 표시하되 분석 중일 때 위로 이동 -->
+              <div 
+                class="analysis-intro-section" 
+                :class="{ 'slide-up': isLoading || analysisResult }"
+              >
+                <div class="analysis-intro-left">
+                  <h3 class="analysis-intro-heading">
+                    Llava와 Llama로 사진으로 여행지를 찾아보세요!
+                  </h3>
+                  <div class="analysis-intro-description">
+                    고급 AI 기술을 활용하여 이미지를 분석하고, 당신이 찾는 완벽한 여행지를 추천해드립니다. <br />
+                    단순히 이미지를 업로드하는 것만으로도 숨겨진 여행지의 매력을 발견할 수 있습니다.
+                  </div>
+                </div>
+                <div class="analysis-intro-right">
+                  <div class="analysis-features">
+                    <div class="analysis-feature-item">
+                      <div class="analysis-feature-image">
+                        <img src="@/assets/img/llava-color.png" alt="Llava" class="analysis-feature-logo" />
+                      </div>
+                      <div class="analysis-feature-text">
+                        <div class="analysis-feature-title">Llava 이미지 분석</div>
+                        <div class="analysis-feature-desc">
+                          최신 멀티모달 AI가 이미지의 구성 요소, 색상, 분위기, 건축 양식 등을 종합적으로 분석하여 
+                          정확한 시각적 특성을 파악합니다.
+                        </div>
+                      </div>
+                    </div>
+                    <div class="analysis-feature-item">
+                      <div class="analysis-feature-image">
+                        <img src="@/assets/img/meta.png" alt="Llama" class="analysis-feature-logo" />
+                      </div>
+                      <div class="analysis-feature-text">
+                        <div class="analysis-feature-title">Llama 의미 분석</div>
+                        <div class="analysis-feature-desc">
+                          이미지에서 추출된 정보를 바탕으로 여행지의 특성과 분위기를 이해하고, 
+                          10차원 벡터 공간에서 정확한 위치를 찾아 검색을 위한 벡터를 생성합니다.
+                        </div>
+                      </div>
+                    </div>
+                    <div class="analysis-feature-item">
+                      <div class="analysis-feature-image">
+                        <img src="@/assets/img/elasticsearch.png" alt="ElasticSearch" class="analysis-feature-logo" />
+                      </div>
+                      <div class="analysis-feature-text">
+                        <div class="analysis-feature-title">ElasticSearch 벡터 검색</div>
+                        <div class="analysis-feature-desc">
+                          생성된 차원 벡터를 이용하여 KNN(K-Nearest Neighbors) 기반 유사도 검색을 수행하고, 
+                          가장 유사한 특성을 가진 여행지들을 정확도 순으로 추천합니다.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- ProcessSpinner (분석 시작 후에만 표시) -->
+              <div 
+                v-if="isLoading || analysisResult" 
+                class="process-spinner-container"
+                :class="{ 'fade-in': isLoading || analysisResult }"
+              >
                 <ProcessSpinner 
                   :currentPhase="loadingPhase"
                   :imageAnalysisDuration="imageAnalysisDuration"
@@ -90,59 +113,62 @@
                 />
               </div>
             </div>
-            <div v-else-if="!analysisResult" class="guide-state">
-              <div class="ai-intro-section">
-                <div class="ai-intro-content">
-                  <div class="ai-intro-tag">AI 이미지 분석 서비스</div>
-                  <h3 class="ai-intro-heading">
-                    Llava와 Llama와 함께<br />
-                    가고 싶은 여행지를<br />
-                    사진으로 찾아보세요!!
-                  </h3>
-                </div>
-                <div class="ai-mascot-section">
-                  <div class="ai-mascot-container">
-                    <div class="ai-logo-item">
-                      <img src="@/assets/img/llava-color.png" alt="Llava 마스코트" class="ai-mascot-image" />
-                      <div class="ai-mascot-name">Llava</div>
-                      <div class="ai-mascot-desc">이미지 분석</div>
-                    </div>
-                    <div class="plus-connector">
-                      <div class="plus-circle">+</div>
-                    </div>
-                    <div class="ai-logo-item">
-                      <img src="@/assets/img/meta.png" alt="Llama 마스코트" class="ai-mascot-image" />
-                      <div class="ai-mascot-name">Llama</div>
-                      <div class="ai-mascot-desc">의미 분석</div>
-                    </div>
-                  </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 분석 결과 섹션 (분석 완료 후 표시) -->
+      <div v-if="analysisResult && !isLoading" class="analysis-results-container">
+        <div class="analysis-results-panel panel-style">
+          <div class="panel-header">
+            <h3 class="panel-title">상세 분석 결과</h3>
+          </div>
+          <div class="panel-content">
+            <div class="analysis-results-content">
+              <!-- 왼쪽: 분석 결과 테이블 -->
+              <div class="results-left">
+                <div class="analysis-table-container">
+                  <table class="analysis-table">
+                    <thead>
+                      <tr>
+                        <th>분석 항목</th>
+                        <th style="text-align: center;">점수</th>
+                        <th>그래프</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <template v-if="Array.isArray(dimensionResults)">
+                        <tr v-for="(score, index) in dimensionResults" :key="'dim-'+index">
+                          <td class="dimension-name">{{ getDimensionLabel(index) }}</td>
+                          <td class="dimension-score">{{ typeof score === 'number' ? score.toFixed(1) : score }}</td>
+                          <td class="dimension-bar">
+                            <div class="bar-container">
+                              <div class="bar" :style="{ width: `${typeof score === 'number' ? score * 100 : 0}%` }"></div>
+                            </div>
+                          </td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
                 </div>
               </div>
-            </div>
-            <div v-else class="analysis-table-container">
-              <table class="analysis-table">
-                <thead>
-                  <tr>
-                    <th>분석 항목</th>
-                    <th>점수</th>
-                    <th>그래프</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <template v-if="Array.isArray(dimensionResults)">
-                    <tr v-for="(score, index) in dimensionResults" :key="'dim-'+index">
-                      <td class="dimension-name">{{ getDimensionLabel(index) }}</td>
-                      <td class="dimension-score">{{ typeof score === 'number' ? score.toFixed(1) : score }}</td>
-                      <td class="dimension-bar">
-                        <div class="bar-container">
-                          <div class="bar" :style="{ width: `${typeof score === 'number' ? score * 100 : 0}%` }"></div>
-                        </div>
-                      </td>
-                    </tr>
-                  </template>
-                  <!-- Legacy object format can be removed if p_vector is always array -->
-                </tbody>
-              </table>
+
+              <!-- 오른쪽: 추가 예정 영역 -->
+              <div class="results-right">
+                <div class="coming-soon-content">
+                  <div class="coming-soon-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12,6 12,12 16,14"></polyline>
+                    </svg>
+                  </div>
+                  <h4 class="coming-soon-title">추가 예정</h4>
+                  <p class="coming-soon-description">
+                    더 많은 분석 기능이<br/>
+                    곧 추가될 예정입니다.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -204,6 +230,7 @@ import { ref, computed, onMounted, watch, nextTick } from "vue";
 import { useStore } from "vuex";
 import Header from "@/components/Header.vue";
 import ProcessSpinner from "@/components/ProcessSpinner.vue";
+import ImageUpload from "@/components/ImageUpload.vue";
 import Chart from 'chart.js/auto'; // Import Chart.js
 import PlaceDetailModal from "@/components/PlaceDetailModal.vue";
 import SearchResultPanel from "@/components/SearchResultPanel.vue";
@@ -221,6 +248,7 @@ export default {
   components: {
     Header,
     ProcessSpinner,
+    ImageUpload,
     PlaceDetailModal,
     SearchResultPanel
   },
@@ -237,6 +265,9 @@ export default {
     const searchResults = ref([]);
     const abortController = ref(null);
     const actionStatus = ref({ message: "", type: "" }); // For user feedback
+    
+    // Drag and drop state - not needed anymore with ImageUpload component
+    // const isDragOver = ref(false);
     
     // Hero section properties
     const showHero = ref(true);
@@ -461,10 +492,22 @@ export default {
       console.log("Apply keyword not implemented in LogoSearch:", keyword);
     };
 
-    const triggerFileInput = () => fileInput.value.click();
-    const handleFileChange = (event) => {
-      const file = event.target.files[0];
-      if (file) store.commit("image/setFile", file);
+    // ImageUpload component event handlers
+    const handleUploadSuccess = (file) => {
+      store.commit("image/setFile", file);
+      console.log("파일 업로드 성공:", file.name);
+    };
+
+    const handleUploadError = (error) => {
+      console.error("파일 업로드 오류:", error);
+      // showActionStatus(`업로드 오류: ${error}`, "error");
+    };
+
+    const handleFileRemove = () => {
+      store.commit("image/reset");
+      analysisResult.value = null;
+      searchResults.value = [];
+      // 시간 정보와 loadingPhase는 유지하여 ProcessSpinner가 보이도록 함
     };
 
     const analyzeCurrentImage = async () => {
@@ -501,10 +544,10 @@ export default {
         await searchSimilarHandler(); // Uses analysisResult.value.p_vector
         searchDuration.value = ((performance.now() - searchStartTime) / 1000).toFixed(1);
           
-        // 검색 결과 처리 상태를 1.5초간 표시
+        // 검색 결과 처리 상태 - 자동으로 즉시 완료
         loadingPhase.value = 'processingResults';
         const processingResultsStartTime = performance.now();
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // 1.5초 지연 제거 - 즉시 완료
         processingResultsDuration.value = ((performance.now() - processingResultsStartTime) / 1000).toFixed(1);
         loadingPhase.value = 'completed';
 
@@ -522,6 +565,11 @@ export default {
       store.commit("image/reset");
       analysisResult.value = null;
       searchResults.value = [];
+      loadingPhase.value = 'idle'; // loadingPhase도 리셋
+      imageAnalysisDuration.value = null;
+      meaningAnalysisDuration.value = null;
+      searchDuration.value = null;
+      processingResultsDuration.value = null;
       // actionStatus.value = { message: "", type: "" };
     };
 
@@ -551,7 +599,7 @@ export default {
 
     const cancelAnalysis = () => {
       if (abortController.value) abortController.value.abort();
-      reset();
+      reset(); // 취소 시에만 완전히 리셋
     };
 
     // --- Statistics Functions (adapted from KeywordSearch.vue) ---
@@ -673,7 +721,9 @@ export default {
       // Core
       imageFile, imagePreview, isLoading, analysisResult, searchResults, sortedSearchResults, formattedSearchResults,
       fileInput, loadingPhase, imageAnalysisDuration, meaningAnalysisDuration, searchDuration, processingResultsDuration, totalProcessingTime,
-      triggerFileInput, handleFileChange, analyzeCurrentImage, reset, searchSimilarHandler, cancelAnalysis,
+      analyzeCurrentImage, reset, searchSimilarHandler, cancelAnalysis,
+      // ImageUpload handlers
+      handleUploadSuccess, handleUploadError, handleFileRemove,
       // Hero
       showHero, heroImageSrc, heroTitle, heroSubtitle, heroHeight,
       // Dimensions
@@ -718,23 +768,26 @@ export default {
   width: 95%;
   margin-top: 10px;
   flex: 1;
+  /* auto height로 변경 */
+  min-height: auto;
 }
 
 /* Panel common styles from KeywordSearch.vue (using .panel-style as a common class) */
 .panel-style { /* This class will be added to upload-panel, analysis-panel, results-panel */
   background-color: white;
-  border-radius: 16px;
+  border-radius: 20px;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
   height: 100%;
   display: flex;
   flex-direction: column;
   transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-  border: 1px solid #eef2f7;
+  border: 1px solid #f0f2f7;
 }
 
 .panel-style:hover { /* Apply hover to .panel-style */
-  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
 }
 
 .panel-header {
@@ -742,6 +795,8 @@ export default {
   background: #fff;
   border-bottom: 2px solid #eef2f7;
   position: relative;
+  height: 60px; /* header 높이 명시 */
+  flex-shrink: 0;
 }
 
 .panel-title {
@@ -763,103 +818,244 @@ export default {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
+  /* auto height로 변경 */
+  height: auto;
+  min-height: 400px; /* 최소 높이만 설정 */
+  overflow-y: auto;
 }
 .panel-content.no-padding { padding: 0; }
-
-
-/* Styles for .top-section, .upload-panel, .analysis-panel from original LogoSearch */
-.top-section {
-  display: grid;
-  grid-template-columns: 400px 1fr; /* Original: 400px 1fr */
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-  opacity: 0;
-  transform: translateY(20px);
-  animation: fadeInUp 0.8s ease-out forwards;
+.panel-content.no-header { 
+  /* header가 없을 때 */
+  height: auto;
+  min-height: 450px; /* 약간 더 높게 */
 }
 
 @keyframes fadeInUp { to { opacity: 1; transform: translateY(0); } }
 
 
-/* Image Upload Panel Specifics (from original LogoSearch, ensure they blend) */
+/* Styles for .top-section, .upload-panel, .analysis-panel from original LogoSearch */
+.top-section {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.8s ease-out forwards;
+  /* auto height로 변경 */
+  height: auto;
+  min-height: 500px; /* 최소 높이만 설정 */
+}
+
+.image-upload-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1.5rem;
+}
+
+/* ImageUpload 컴포넌트 크기 조정 */
+.image-upload-wrapper :deep(.file-upload-container) {
+  max-width: 100%;
+  margin: 0;
+  height: 100%;
+}
+
+.image-upload-wrapper :deep(.file-upload-card) {
+  max-width: 100%;
+  min-height: 100%;
+  height: 100%;
+  box-shadow: none;
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f8fdff 0%, #f0f8ff 100%);
+}
+
+.image-upload-wrapper :deep(.file-upload-content) {
+  min-height: 100%;
+  height: 100%;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.image-upload-wrapper :deep(.gradient-background) {
+  background: linear-gradient(135deg, rgba(72, 176, 228, 0.05) 0%, rgba(255, 255, 255, 0) 50%, rgba(118, 179, 157, 0.05) 100%);
+}
+
+/* 기존 image-container 관련 스타일들은 제거하거나 주석 처리 */
+/*
 .image-container {
-  background-color: #f0f2f5; /* Slightly different from KS for distinction if needed */
-  border-radius: 12px;
-  height: 250px;
+  background: linear-gradient(135deg, #f8fdff 0%, #f0f8ff 100%);
+  border-radius: 16px;
+  height: 320px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   margin-bottom: 1.5rem;
-  border: 2px dashed #d1d8e0; /* Softer dash */
+  border: 2px dashed #d1d8e0;
   transition: all 0.3s ease;
   position: relative;
+  cursor: pointer;
+  user-select: none;
 }
+
 .image-container:hover {
   border-color: var(--logo-blue, #48b0e4);
-  background-color: rgba(var(--logo-blue-rgb, 72, 176, 228), 0.05);
+  background: linear-gradient(135deg, #f0f8ff 0%, #e8f4ff 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(72, 176, 228, 0.15);
 }
-.upload-placeholder { display: flex; flex-direction: column; align-items: center; color: #6c757d; text-align: center; }
-.upload-placeholder svg { margin-bottom: 1rem; color: var(--logo-blue, #48b0e4); }
-.upload-placeholder p { margin: 0; font-size: 0.9rem; }
-.preview-image { max-width: 100%; max-height: 100%; object-fit: contain; }
 
-.button-group { display: flex; flex-direction: column; gap: 0.75rem; }
-.btn { /* General button styling from KS */
-  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
-  padding: 0.75rem 1.25rem; border: none; border-radius: 25px; /* Pill shape */
-  font-family: 'Nunito', 'Noto Sans KR', sans-serif; font-weight: 600; font-size: 0.9rem;
-  cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+.image-container.drag-over {
+  border-color: var(--logo-green, #76b39d);
+  background: linear-gradient(135deg, #f0fff4 0%, #e6ffed 100%);
+  border-style: solid;
+  transform: scale(1.02);
+  box-shadow: 0 12px 35px rgba(118, 179, 157, 0.2);
 }
-.btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
-.btn-primary { background: linear-gradient(135deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d)); color: white; }
-.btn-primary:hover { background: linear-gradient(135deg, #3a9cd1, #67a58d); }
-.btn-analyze { /* Specific for analyze if needed, or use primary */
-  background: linear-gradient(135deg, var(--logo-green, #76b39d), var(--logo-blue, #48b0e4)); color: white;
-}
-.btn-analyze:hover { background: linear-gradient(135deg, #67a58d, #3a9cd1); }
-.btn-secondary { background-color: #e9ecef; color: #495057; border: 1px solid #ced4da; }
-.btn-secondary:hover { background-color: #dde2e6; }
-.btn-danger { background-color: #e74c3c; color: white; }
-.btn-danger:hover { background-color: #c0392b; }
-.hidden-input { display: none; }
 
-.analysis-timing { 
-  margin-top: 1rem;
-  padding: 1rem; 
-  border-radius: 8px; 
-  background-color: #f8f9fa; 
-  border: 1px solid #eef2f7; 
+.image-container.has-image {
+  border-style: solid;
+  border-color: var(--logo-blue, #48b0e4);
+  background: white;
+  cursor: default;
 }
-.timing-item { 
+
+.image-container.has-image:hover {
+  transform: none;
+  box-shadow: 0 4px 15px rgba(72, 176, 228, 0.1);
+}
+
+.upload-placeholder {
   display: flex;
-  justify-content: space-between; 
-  margin-bottom: 0.5rem;
-  font-size: 0.85rem;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
 }
-.timing-item:last-of-type {
-  margin-bottom: 0.75rem; /* 마지막 항목 아래 여백 추가 */
-}
-.timing-divider {
-  height: 1px;
-  background-color: #eef2f7;
-  margin: 0.75rem 0;
-}
-.timing-total {
+
+.upload-content {
   display: flex;
-  justify-content: space-between;
-  font-size: 0.9rem;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  color: #7f8c8d;
+}
+
+.upload-title {
+  font-size: 1.4rem;
   font-weight: 600;
   color: #2c3e50;
+  margin: 0 0 1.5rem 0;
+  font-family: 'Noto Sans KR', sans-serif;
 }
-.timing-label { color: #5f6b7a; }
-.timing-value {
-  font-weight: 600;
-  color: var(--logo-blue, #48b0e4); 
+
+.upload-content svg {
+  color: var(--logo-blue, #48b0e4);
+  margin-bottom: 1.5rem;
+  opacity: 0.8;
+  transition: all 0.3s ease;
 }
-.timing-total .timing-value {
-  color: #10b981; /* 총 처리 시간은 녹색으로 표시 */
+
+.image-container:hover .upload-content svg {
+  opacity: 1;
+  transform: scale(1.1);
 }
+
+.upload-main-text {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #2c3e50;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.4;
+}
+
+.upload-sub-text {
+  font-size: 0.9rem;
+  color: #7f8c8d;
+  margin: 0;
+  opacity: 0.8;
+}
+
+.preview-image { 
+  max-width: 100%; 
+  max-height: 100%; 
+  object-fit: contain;
+  border-radius: 12px;
+}
+*/
+
+.button-group { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 0.75rem; 
+}
+
+.btn { /* General button styling from KS */
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem; 
+  border: none; 
+  border-radius: 25px; /* Pill shape */
+  font-family: 'Nunito', 'Noto Sans KR', sans-serif; 
+  font-weight: 600; 
+  font-size: 0.9rem;
+  cursor: pointer; 
+  transition: all 0.3s ease; 
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.btn:hover { 
+  transform: translateY(-2px); 
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15); 
+}
+
+.btn-primary { 
+  background: linear-gradient(135deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d)); 
+  color: white; 
+}
+
+.btn-primary:hover { 
+  background: linear-gradient(135deg, #3a9cd1, #67a58d); 
+}
+
+.btn-analyze { /* Specific for analyze if needed, or use primary */
+  background: linear-gradient(135deg, var(--logo-green, #76b39d), var(--logo-blue, #48b0e4)); 
+  color: white;
+}
+
+.btn-analyze:hover { 
+  background: linear-gradient(135deg, #67a58d, #3a9cd1); 
+}
+
+.btn-secondary { 
+  background-color: #e9ecef; 
+  color: #495057; 
+  border: 1px solid #ced4da; 
+}
+
+.btn-secondary:hover { 
+  background-color: #dde2e6; 
+}
+
+.btn-danger { 
+  background-color: #e74c3c; 
+  color: white; 
+}
+
+.btn-danger:hover { 
+  background-color: #c0392b; 
+}
+
+.hidden-input { 
+  display: none; 
+}
+
 
 /* Analysis Panel Specifics (from original LogoSearch, adapt to KS panel style) */
 .loading-state { display: flex; align-items: stretch; justify-content: center; height: 100%; width: 100%; min-height: 300px; }
@@ -1181,216 +1377,484 @@ export default {
   padding: 2rem;
   gap: 3rem;
   min-height: 350px;
-  opacity: 0;
+    opacity: 0;
   transform: translateY(30px);
   animation: fadeInUpDelayed 1s ease-out 0.3s forwards;
-}
+  }
 
 @keyframes fadeInUpDelayed {
-  to { 
-    opacity: 1; 
+  to {
+    opacity: 1;
     transform: translateY(0); 
   }
 }
 
-.ai-intro-content {
+/* Analysis Panel Intro Styles */
+/* Styles moved to end of file - see improved analysis-intro-section styles below */
+
+/* 분석 테이블 컨테이너 개선 */
+.analysis-table-container {
+  overflow: auto;
+  border-radius: 8px;
+  height: 100%;
+  border: 1px solid #eef2f7;
   flex: 1;
-  text-align: center;
+  min-height: 300px; /* 최소 높이 보장 */
 }
 
-.ai-intro-tag {
+/* 반응형 디자인 개선 */
+@media (max-width: 1024px) {
+  .analysis-results-content {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    min-height: 350px;
+  }
+  
+  .results-right {
+    min-height: 200px;
+    padding: 1.5rem;
+  }
+  
+  .process-spinner-container {
+    height: 160px;
+    transform: translateY(-10px); /* -40px에서 -10px로 줄임 */
+  }
+  
+  .process-spinner-container.fade-in {
+    transform: translateY(-20px); /* -60px에서 -20px로 줄임 */
+  }
+  
+  .analysis-intro-section.slide-up .analysis-intro-right {
+    transform: translateY(-60px); /* -80px에서 -60px로 줄임 */
+    transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+  
+  .analysis-intro-section {
+    flex-direction: column;
+    gap: 1.5rem;
+    min-height: 300px;
+    padding: 1.5rem;
+  }
+  
+  .analysis-intro-left {
+    text-align: center;
+  }
+  
+  .analysis-intro-heading {
+    font-size: 1.6rem;
+  }
+  
+  .analysis-features {
+    flex-direction: column;
+  }
+  
+  .analysis-feature-item {
+    min-width: auto;
+    flex-direction: row;
+    text-align: left;
+  }
+  
+  .analysis-feature-image {
+    margin-right: 1rem;
+    margin-bottom: 0;
+    align-self: flex-start;
+  }
+  
+  .analysis-feature-text {
+    align-items: flex-start;
+  }
+  
+  .analysis-feature-title {
+    text-align: left;
+  }
+  
+  .analysis-feature-desc {
+    text-align: left;
+  }
+}
+
+@media (max-width: 768px) {
+  .analysis-results-content {
+    gap: 1rem;
+    min-height: 300px;
+  }
+  
+  .results-right {
+    min-height: 150px;
+    padding: 1rem;
+  }
+  
+  .coming-soon-title {
+    font-size: 1.1rem;
+  }
+  
+  .coming-soon-description {
+    font-size: 0.9rem;
+  }
+  
+  .process-spinner-container {
+    height: 140px;
+    transform: translateY(-5px); /* -20px에서 -5px로 줄임 */
+  }
+  
+  .process-spinner-container.fade-in {
+    transform: translateY(-15px); /* -40px에서 -15px로 줄임 */
+  }
+  
+  .analysis-intro-section.slide-up .analysis-intro-right {
+    transform: translateY(-60px); /* -100px에서 -60px로 줄임 */
+  }
+  
+  .analysis-intro-section {
+    padding: 1rem;
+    min-height: 300px;
+    gap: 1rem;
+  }
+  
+  .analysis-intro-tag {
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    padding-left: 1rem;
+  }
+  
+  .analysis-intro-tag::before {
+    width: 4px;
+    height: 14px;
+  }
+  
+  .analysis-intro-heading {
+    font-size: 1.4rem;
+  }
+  
+  .analysis-features {
+    gap: 1rem;
+  }
+  
+  .analysis-feature-item {
+    padding: 1rem;
+  }
+  
+  .analysis-feature-image {
+    width: 48px;
+    height: 48px;
+    margin-right: 1rem;
+  }
+  
+  .analysis-feature-title {
+    font-size: 1rem;
+  }
+  
+  .analysis-feature-desc {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .analysis-results-content {
+    min-height: 250px;
+  }
+  
+  .results-right {
+    min-height: 120px;
+    padding: 0.75rem;
+  }
+  
+  .coming-soon-icon svg {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .coming-soon-title {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .coming-soon-description {
+    font-size: 0.85rem;
+  }
+  
+  .analysis-intro-heading {
+    font-size: 1.2rem;
+  }
+}
+
+/* Analysis Panel Intro Styles */
+/* Styles moved to end of file - see improved analysis-intro-section styles below */
+
+/* analysis-intro-section 슬라이드 애니메이션 개선 */
+.analysis-intro-section {
+  padding: 2rem;
+  display: flex;
+  gap: 2rem;
+  align-items: stretch;
+  min-height: 300px;
+  flex-direction: column; /* 상하 배치로 변경 */
+  transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transform: translateY(0);
+}
+
+.analysis-intro-section.slide-up {
+  min-height: 200px;
+}
+
+.analysis-intro-section.slide-up .analysis-intro-left {
+  opacity: 0;
+  transform: translateY(-50px);
+  transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+  pointer-events: none;
+  display: none; /* 완전히 숨김 */
+}
+
+.analysis-intro-section.slide-up .analysis-intro-right {
+  transform: translateY(-60px); /* -80px에서 -60px로 줄임 */
+  transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.analysis-intro-description {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #666;
+  margin-top: 1.5rem;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.analysis-intro-left {
+  flex: none; /* flex 제거 */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center; /* 중앙 정렬로 변경 */
+  transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.analysis-intro-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.panel-content.no-header {
+  padding: 0;
+}
+
+.analysis-intro-tag {
   display: inline-block;
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 600;
-  color: #4285f4;
+  color: var(--logo-blue, #48b0e4);
   margin-bottom: 1.5rem;
   font-family: 'Noto Sans KR', sans-serif;
   position: relative;
-  padding-left: 1rem;
+  padding-left: 1.2rem;
 }
 
-.ai-intro-tag::before {
+.analysis-intro-tag::before {
   content: "";
   position: absolute;
   left: 0;
   top: 50%;
   transform: translateY(-50%);
   width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: #4285f4;
+  height: 18px;
+  background: linear-gradient(135deg, var(--logo-blue, #48b0e4), var(--logo-green, #76b39d));
+  border-radius: 3px;
 }
 
-.ai-intro-heading {
-  font-size: 1.8rem;
+.analysis-intro-heading {
+  font-size: 2rem;
   font-weight: 700;
   margin-bottom: 0;
   line-height: 1.3;
   font-family: 'Noto Sans KR', sans-serif;
-  /* Wave gradient animation similar to OnboardingPage */
   background: linear-gradient(270deg,
-      #A0BBE8 0%,
-      #4A90E2 15%,
-      #3D7DD8 25%,
-      #A0BBE8 35%,
-      #A0BBE8 65%,
-      #4A90E2 75%,
-      #3D7DD8 85%,
-      #A0BBE8 100%);
+      #48b0e4 0%,
+      #76b39d 15%,
+      #3a9cd1 25%,
+      #48b0e4 35%,
+      #48b0e4 65%,
+      #76b39d 75%,
+      #3a9cd1 85%,
+      #48b0e4 100%);
   background-size: 200% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   -webkit-text-fill-color: transparent;
-  animation: waveAnimation 6s linear infinite;
+  animation: analysisWaveAnimation 6s linear infinite;
 }
 
-@keyframes waveAnimation {
-  0% {
-    background-position: -100% 50%;
-  }
-  100% {
-    background-position: 100% 50%;
-  }
+@keyframes analysisWaveAnimation {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
-.ai-mascot-section {
-  flex: 1;
+.analysis-features {
   display: flex;
+  flex-direction: row; /* 좌우 배치로 변경 */
+  gap: 1.2rem;
+  flex-wrap: wrap; /* 반응형을 위해 wrap 추가 */
+}
+
+.analysis-feature-item {
+  display: flex;
+  align-items: center;
+  text-align: left;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f8fdff 0%, #f0f8ff 100%);
+  border-radius: 12px;
+  border: 1px solid rgba(72, 176, 228, 0.1);
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(72, 176, 228, 0.05);
+  flex: 1; /* 동일한 너비로 배치 */
+  min-width: 280px; /* 최소 너비 설정 */
+  flex-direction: column; /* 내부 요소들을 세로로 배치 */
+  text-align: center; /* 텍스트 중앙 정렬 */
+}
+
+.analysis-feature-item:hover {
+  transform: translateX(6px);
+  box-shadow: 0 6px 20px rgba(72, 176, 228, 0.2);
+  border-color: rgba(72, 176, 228, 0.3);
+}
+
+.analysis-feature-image {
+  margin-right: 0; /* 마진 제거 */
+  margin-bottom: 1rem; /* 하단 마진 추가 */
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
   justify-content: center;
-  align-items: center;
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, rgba(72, 176, 228, 0.15), rgba(118, 179, 157, 0.15));
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(72, 176, 228, 0.1);
+  align-self: center; /* 중앙 정렬 */
 }
 
-.ai-mascot-container {
+.analysis-feature-logo {
+  width: 70%;
+  height: 70%;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.analysis-feature-svg {
+  width: 70%;
+  height: 70%;
+  color: var(--logo-blue, #48b0e4);
+}
+
+.analysis-feature-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* 중앙 정렬 */
+}
+
+.analysis-feature-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 0.5rem;
+  font-family: 'Noto Sans KR', sans-serif;
+  line-height: 1.4;
+  text-align: center; /* 중앙 정렬 */
+}
+
+.analysis-feature-desc {
+  font-size: 0.95rem;
+  color: #666;
+  line-height: 1.6;
+  font-family: 'Noto Sans KR', sans-serif;
+  text-align: center; /* 중앙 정렬 */
+}
+
+.process-spinner-container {
+  margin-top: 1rem; /* 0.5rem에서 1rem으로 늘림 */
+  height: 180px;
   display: flex;
   align-items: center;
-  gap: 2rem;
+  justify-content: center;
+  width: 100%;
+  overflow: visible;
+  opacity: 0;
+  transform: translateY(-10px); /* -30px에서 -10px로 줄임 */
+  transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-.ai-logo-item {
+.process-spinner-container.fade-in {
+  opacity: 1;
+  transform: translateY(-50px); /* 더 위로 이동한 최종 위치 */
+}
+
+/* 분석 결과 섹션 스타일 */
+.analysis-results-container {
+  margin-top: 1.5rem;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.8s ease-out 0.3s forwards;
+}
+
+.analysis-results-panel {
+  /* panel-style에서 상속받은 스타일 사용 */
+}
+
+.analysis-results-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* 좌우 동일한 너비 */
+  gap: 2rem;
+  min-height: 400px;
+}
+
+.results-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.results-right {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f8fdff 0%, #f0f8ff 100%);
+  border-radius: 12px;
+  border: 1px solid rgba(72, 176, 228, 0.1);
+  min-height: 300px;
+  padding: 2rem;
+}
+
+.coming-soon-content {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  opacity: 0;
-  transform: translateY(20px);
-  animation: fadeInUp 0.8s ease-out 0.5s forwards;
+  gap: 1rem;
 }
 
-.ai-logo-item:nth-child(3) {
-  animation-delay: 0.7s;
+.coming-soon-icon {
+  color: var(--logo-blue, #48b0e4);
+  opacity: 0.7;
+  margin-bottom: 0.5rem;
 }
 
-.ai-mascot-image {
-  width: 100px;
-  height: 100px;
-  background-color: white;
-  border-radius: 12px;
-  padding: 10px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-  object-fit: contain;
-  margin-bottom: 0.75rem;
-}
-
-.ai-mascot-image:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.15);
-}
-
-.ai-mascot-name {
-  font-size: 1.1rem;
+.coming-soon-title {
+  font-size: 1.3rem;
   font-weight: 600;
   color: #2c3e50;
-  margin-bottom: 0.3rem;
+  margin: 0;
   font-family: 'Noto Sans KR', sans-serif;
 }
 
-.ai-mascot-desc {
-  font-size: 0.9rem;
-  color: #7f8c8d;
+.coming-soon-description {
+  font-size: 1rem;
+  color: #666;
+  line-height: 1.6;
+  margin: 0;
   font-family: 'Noto Sans KR', sans-serif;
-}
-
-.plus-connector {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transform: scale(0.8);
-  animation: fadeInScale 0.8s ease-out 0.6s forwards;
-}
-
-@keyframes fadeInScale {
-  to { 
-    opacity: 1; 
-    transform: scale(1); 
-  }
-}
-
-.plus-circle {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #4285f4, #34a853);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.2rem;
-  font-weight: bold;
-  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
-}
-
-/* Responsive styles for AI intro section */
-@media (max-width: 768px) {
-  .ai-intro-section {
-    flex-direction: column;
-    gap: 2rem;
-    padding: 2rem 1rem;
-    min-height: 300px;
-  }
-  
-  .ai-intro-content {
-    text-align: center;
-  }
-  
-  .ai-intro-heading {
-    font-size: 1.5rem;
-  }
-  
-  .ai-mascot-container {
-    gap: 1rem;
-  }
-  
-  .ai-mascot-image {
-    width: 80px;
-    height: 80px;
-  }
-}
-
-@media (max-width: 480px) {
-  .ai-intro-heading {
-    font-size: 1.3rem;
-  }
-  
-  .ai-mascot-container {
-    flex-direction: column;
-    gap: 1rem;
-  }
-  
-  .plus-connector {
-    transform: rotate(90deg);
-  }
 }
 </style>
