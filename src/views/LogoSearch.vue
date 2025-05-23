@@ -2407,7 +2407,9 @@ export default {
   width: 100%;
   height: 100%;
   min-height: 350px; /* 높이 증가 */
-  background: linear-gradient(135deg, #f8fdff 0%, #f0f8ff 100%);
+  background: #fcfcfa; /* LookAround.vue와 동일한 배경색 */
+  position: relative;
+  z-index: 2;
 }
 
 /* 기존 스타일 제거 - 더 이상 사용하지 않음 */
@@ -2541,6 +2543,7 @@ export default {
   top: 20px;
   left: 20px;
   z-index: 10;
+  pointer-events: none; /* 컨테이너는 마우스 이벤트 차단 */
 }
 
 .back-btn-overlay {
@@ -2557,6 +2560,7 @@ export default {
   cursor: pointer;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   transition: all 0.2s ease;
+  pointer-events: auto; /* 버튼 자체는 클릭 가능 */
 }
 
 .back-btn-overlay:hover {
@@ -2578,6 +2582,7 @@ export default {
   color: #2d3748;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   z-index: 10;
+  pointer-events: none; /* 마우스 이벤트 차단 방지 */
 }
 
 /* 기존 selected-region-info 스타일 제거 */
@@ -2602,43 +2607,64 @@ export default {
   width: 100%;
   height: 100%;
   min-height: 350px; /* 높이 증가 */
-  background: linear-gradient(135deg, #f8fdff 0%, #f0f8ff 100%);
+  background: #fcfcfa; /* LookAround.vue와 동일한 배경색 */
+  position: relative;
+  z-index: 2;
 }
 
-/* Map SVG styles - 회색 기본 색상 및 호버 효과 개선 */
+/* Map SVG styles - LookAround.vue와 동일한 스타일 적용 */
 .map-container svg {
   width: 100%;
   height: 100%;
+  pointer-events: all; /* SVG가 마우스 이벤트를 받도록 보장 */
+}
+
+/* 지역 호버 및 선택 효과 - LookAround.vue와 동일 */
+.region, .sig {
+  transition: all 0.3s ease;
+  cursor: pointer;
+  pointer-events: all; /* path 요소가 마우스 이벤트를 받도록 보장 */
+}
+
+.region:hover, .sig:hover {
+  filter: brightness(1.05);
+}
+
+.region.selected, .sig.selected {
+  stroke-width: 1.5px;
+  filter: brightness(1.05);
 }
 
 .map-container .region,
-.map-container .sig-region {
+.map-container .sig-region,
+.map-container .sig {
   cursor: pointer;
-  transition: none; /* JavaScript에서 색상을 직접 제어하므로 transition 제거 */
+  pointer-events: all;
 }
 
-/* Tooltip styles - MyTravel 스타일 적용 */
+/* Tooltip styles - LookAround.vue와 동일 */
 .region-tooltip, .sig-tooltip {
   position: fixed;
   background-color: rgba(0, 0, 0, 0.8);
   color: white;
   padding: 8px 16px;
   border-radius: 8px;
-  font-size: 0.9rem;
+  font-size: 1.1rem;
   font-weight: 600;
   pointer-events: none;
   z-index: 1000;
   transform: translate(-50%, -100%);
-  margin-top: -8px;
   white-space: nowrap;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  min-width: 80px;
 }
 
 .region-tooltip::after, .sig-tooltip::after {
   content: '';
   position: absolute;
   left: 50%;
-  bottom: -6px;
+  bottom: -5px;
   transform: translateX(-50%);
   width: 0;
   height: 0;
