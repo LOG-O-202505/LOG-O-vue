@@ -163,29 +163,28 @@
                 지도에서 지역을 클릭하여 해당 지역의 유사한 여행지를 찾아보세요.
               </p>
               
-              <!-- 뒤로가기 버튼 -->
-              <div v-if="showDetailMap || selectedRegion || selectedSig" class="map-back-button">
-                <button @click="goBackMap" class="back-btn">
-                  <span class="back-icon">←</span>
-                  {{ currentMapLevel === 'sig' ? '광역시구 지도로' : '전체 지도로' }}
-                </button>
-              </div>
-              
-              <!-- 현재 선택된 지역 표시 -->
-              <div v-if="selectedRegion || selectedSig" class="selected-region-info">
-                <div class="region-badge">
-                  <span v-if="selectedSig">{{ getSelectedSigName() }}</span>
-                  <span v-else-if="selectedRegion">{{ getSelectedRegionName() }}</span>
-                </div>
-              </div>
-              
               <!-- 지도 컨테이너 -->
               <div class="map-container-wrapper">
+                <!-- 뒤로가기 버튼 - 왼쪽 위로 이동 -->
+                <div v-if="currentMapLevel === 'sig'" class="map-back-button-overlay">
+                  <button @click="goBackMap" class="back-btn-overlay">
+                    <span class="back-icon">←</span>
+                    전체 지도로
+                  </button>
+                </div>
+                
                 <!-- 광역시구 지도 -->
                 <div v-show="currentMapLevel === 'ctprvn'" class="map-container" ref="mainMapContainer"></div>
                 
                 <!-- 시군구 상세 지도 -->
                 <div v-show="currentMapLevel === 'sig'" class="map-container" ref="detailMapContainer"></div>
+                
+                <!-- 현재 선택된 지역 표시 - 오른쪽 아래로 이동 -->
+                <div class="selected-location-display">
+                  <span v-if="selectedSig">{{ getSelectedSigName() }}</span>
+                  <span v-else-if="selectedRegion">{{ getSelectedRegionName() }}</span>
+                  <span v-else>대한민국</span>
+                </div>
                 
                 <!-- 지역 호버 툴팁 -->
                 <div v-if="hoveredRegion && !hoveredSig" class="region-tooltip" :style="tooltipStyle">
@@ -776,31 +775,45 @@ export default {
     });
 
     const getSelectedRegionName = () => {
-      const regionData = regionDataMap.value.find(d => d.ctp_nm === selectedRegion.value);
-      return regionData ? regionData.ctp_nm : '';
+      if (!selectedRegion.value || !regionDataMap.value) {
+        return '';
+      }
+      // ctprvn_cd는 보통 문자열이므로, selectedRegion.value도 문자열로 비교합니다.
+      const regionData = regionDataMap.value.find(d => String(d.ctprvn_cd) === String(selectedRegion.value));
+      const result = regionData ? regionData.ctp_nm : '';
+      return result;
     };
 
     const getSelectedSigName = () => {
-      const sigData = sigDataMap.value.find(d => d.sig_cd === selectedSig.value);
-      return sigData ? sigData.sig_nm : '';
+      if (!selectedSig.value || !sigDataMap.value) {
+        return '';
+      }
+      // SIG_CD는 숫자일 수 있으므로, selectedSig.value도 숫자로 비교합니다. (GeoJSON에 따라 다를 수 있음)
+      // GeoJSON properties의 SIG_CD가 문자열이면 String()으로, 숫자면 Number()로 변환하여 비교합니다.
+      // 현재 sig.json의 SIG_CD는 문자열이므로 String()으로 비교합니다.
+      const sigData = sigDataMap.value.find(d => String(d.SIG_CD) === String(selectedSig.value));
+      return sigData ? sigData.SIG_KOR_NM : '';
     };
 
     const goBackMap = () => {
       if (currentMapLevel.value === 'sig') {
-        currentMapLevel.value = 'ctprvn';
-        selectedSig.value = null;
-        showDetailMap.value = false;
-        searchSimilarHandler();
-      } else if (currentMapLevel.value === 'ctprvn') {
+        // 시군구에서 전체 지도로 돌아가기
         currentMapLevel.value = 'ctprvn';
         selectedRegion.value = null;
+        selectedSig.value = null;
         showDetailMap.value = false;
+        // 전체 검색 수행
         searchSimilarHandler();
+        // 메인 지도 다시 렌더링
+        nextTick(() => {
+          renderMap();
+        });
       }
     };
 
     const handleRegionClick = (region) => {
       selectedRegion.value = region;
+      selectedSig.value = null; // 시군구 선택 초기화
       currentMapLevel.value = 'sig';
       showDetailMap.value = true;
       // Filter search results by region
@@ -812,6 +825,13 @@ export default {
     };
 
     const handleSigClick = (sig) => {
+      // 이미 선택된 시군구를 다시 클릭하면 광역시도 레벨로 돌아감
+      if (selectedSig.value === sig) {
+        selectedSig.value = null;
+        searchSimilarHandlerWithRegion(selectedRegion.value);
+        return;
+      }
+      
       selectedSig.value = sig;
       // Filter search results by sig
       searchSimilarHandlerWithSig(sig);
@@ -821,58 +841,33 @@ export default {
     const regionDataMap = ref(propertiesData);
     const sigDataMap = ref(sigPropertiesData);
 
-    // Color functions for map regions based on popularity
-    const getColorByScore = (regionCode) => {
-      // Default color scheme for regions
-      const colors = {
-        '11': '#FF6B6B', // 서울
-        '26': '#4ECDC4', // 부산
-        '27': '#45B7D1', // 대구
-        '28': '#96CEB4', // 인천
-        '29': '#FFEAA7', // 광주
-        '30': '#DDA0DD', // 대전
-        '31': '#98D8C8', // 울산
-        '36': '#F7DC6F', // 세종
-        '41': '#AED6F1', // 경기
-        '42': '#A9DFBF', // 강원
-        '43': '#F9E79F', // 충북
-        '44': '#D7BDE2', // 충남
-        '45': '#F8C471', // 전북
-        '46': '#85C1E9', // 전남
-        '47': '#F1948A', // 경북
-        '48': '#82E0AA', // 경남
-        '50': '#F8D7DA'  // 제주
-      };
-      return colors[regionCode] || '#75D7B8';
-    };
-
-    const getSigColorByScore = () => {
-      // Default color for sig areas
-      return '#87CEEB';
-    };
-
     // Main map rendering function
     const renderMap = () => {
       const container = mainMapContainer.value;
       if (!container) {
-        console.log("Map container not found");
+        console.warn("Map container element not found");
         return;
       }
 
-      // 컨테이너가 DOM에 제대로 렌더링되었는지 확인
-      if (container.clientWidth === 0 || container.clientHeight === 0) {
-        console.log("Map container has no dimensions, retrying...");
-        setTimeout(() => renderMap(), 100);
-        return;
-      }
+      // ResizeObserver를 사용하여 컨테이너 크기 변경 감지
+      const observer = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { width, height } = entry.contentRect;
+          if (width > 0 && height > 0) {
+            observer.disconnect(); // 관찰 중지
+            renderMapContent(container, width, height);
+          }
+        }
+      });
 
-      console.log(`Rendering map with container size: ${container.clientWidth}x${container.clientHeight}`);
+      // 컨테이너 관찰 시작
+      observer.observe(container);
+    };
 
+    // 실제 지도 렌더링 로직을 별도 함수로 분리
+    const renderMapContent = (container, width, height) => {
       // Clear existing SVG
       d3.select(container).selectAll("svg").remove();
-
-      const width = container.clientWidth;
-      const height = container.clientHeight;
 
       // 최소 크기 확보
       const minWidth = Math.max(width, 300);
@@ -908,15 +903,9 @@ export default {
           .append('path')
           .attr('class', 'region')
           .attr('d', path)
-          .attr('fill', function(d) {
-            if (d && d.properties && d.properties.CTPRVN_CD) {
-              return getColorByScore(d.properties.CTPRVN_CD);
-            }
-            return '#75D7B8';
-          })
-          .attr('stroke', '#2D3748')
-          .attr('stroke-width', 0.7)
-          .style('cursor', 'pointer');
+          .attr('fill', d => parseInt(d.properties.CTPRVN_CD, 10) === selectedRegion.value ? '#4299E1' : '#EDF2F7')
+          .attr('stroke', d => parseInt(d.properties.CTPRVN_CD, 10) === selectedRegion.value ? '#2B6CB0' : '#CBD5E0')
+          .attr('stroke-width', d => parseInt(d.properties.CTPRVN_CD, 10) === selectedRegion.value ? 1.5 : 0.7);
 
         // Add hover events
         regionPaths.on('mouseover', function (event, d) {
@@ -926,26 +915,35 @@ export default {
           hoveredRegion.value = { x: event.pageX, y: event.pageY };
           hoveredRegionName.value = regionData ? regionData.ctp_nm : '';
           
-          d3.select(this)
-            .transition()
-            .duration(200)
-            .attr('stroke-width', 1.5);
+          // 선택된 지역이 아닌 경우에만 호버 효과 적용
+          if (regionCode !== selectedRegion.value) {
+            d3.select(this)
+              .attr('fill', '#E2E8F0')
+              .attr('stroke', '#A0AEC0')
+              .attr('stroke-width', 1.2);
+          }
         });
 
-        regionPaths.on('mouseout', function () {
+        regionPaths.on('mouseout', function (event, d) {
           hoveredRegion.value = null;
           hoveredRegionName.value = '';
           
-          d3.select(this)
-            .transition()
-            .duration(200)
-            .attr('stroke-width', 0.7);
+          // 선택된 지역이 아닌 경우에만 원래 색상으로 복원
+          const regionCode = d.properties.CTPRVN_CD;
+          if (regionCode !== selectedRegion.value) {
+            d3.select(this)
+              .attr('fill', '#EDF2F7')
+              .attr('stroke', '#CBD5E0')
+              .attr('stroke-width', 0.7);
+          }
         });
 
         // Add click events
         regionPaths.on('click', function (event, d) {
           const regionCode = d.properties.CTPRVN_CD;
-          handleRegionClick(regionCode);
+          // CTPRVN_CD를 정수로 변환
+          const regionInt = parseInt(regionCode, 10);
+          handleRegionClick(regionInt);
         });
 
         console.log("Map rendered successfully");
@@ -959,24 +957,29 @@ export default {
     const renderDetailMap = (regionCode) => {
       const container = detailMapContainer.value;
       if (!container) {
-        console.log("Detail map container not found");
+        console.warn("Detail map container element not found");
         return;
       }
 
-      // 컨테이너가 DOM에 제대로 렌더링되었는지 확인
-      if (container.clientWidth === 0 || container.clientHeight === 0) {
-        console.log("Detail map container has no dimensions, retrying...");
-        setTimeout(() => renderDetailMap(regionCode), 100);
-        return;
-      }
+      // ResizeObserver를 사용하여 컨테이너 크기 변경 감지
+      const observer = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { width, height } = entry.contentRect;
+          if (width > 0 && height > 0) {
+            observer.disconnect(); // 관찰 중지
+            renderDetailMapContent(container, width, height, regionCode);
+          }
+        }
+      });
 
-      console.log(`Rendering detail map with container size: ${container.clientWidth}x${container.clientHeight}`);
+      // 컨테이너 관찰 시작
+      observer.observe(container);
+    };
 
+    // 실제 상세 지도 렌더링 로직을 별도 함수로 분리
+    const renderDetailMapContent = (container, width, height, regionCode) => {
       // Clear existing SVG
       d3.select(container).selectAll("svg").remove();
-
-      const width = container.clientWidth;
-      const height = container.clientHeight;
 
       // 최소 크기 확보
       const minWidth = Math.max(width, 300);
@@ -1000,7 +1003,8 @@ export default {
           if (!feature.properties || !feature.properties.SIG_CD) return false;
           const sigCode = feature.properties.SIG_CD;
           const sigCodePrefix = sigCode.toString().substring(0, 2);
-          return sigCodePrefix === regionCode.toString();
+          const regionCodeStr = regionCode.toString().padStart(2, '0'); // 지역 코드를 2자리 문자열로 변환
+          return sigCodePrefix === regionCodeStr;
         });
 
         if (filteredFeatures.length === 0) {
@@ -1028,22 +1032,16 @@ export default {
         // Center the map
         g.attr("transform", `translate(${minWidth * 0.075}, ${minHeight * 0.075})`);
 
-        // Draw sig areas
+        // Draw sig regions
         const sigPaths = g.selectAll('path')
           .data(filteredFeatures)
           .enter()
           .append('path')
-          .attr('class', 'sig-region')
+          .attr('class', 'sig')
           .attr('d', path)
-          .attr('fill', function(d) {
-            if (d && d.properties && d.properties.SIG_CD) {
-              return getSigColorByScore(d.properties.SIG_CD);
-            }
-            return '#87CEEB';
-          })
-          .attr('stroke', '#2D3748')
-          .attr('stroke-width', 0.7)
-          .style('cursor', 'pointer');
+          .attr('fill', d => parseInt(d.properties.SIG_CD, 10) === selectedSig.value ? '#4299E1' : '#EDF2F7')
+          .attr('stroke', d => parseInt(d.properties.SIG_CD, 10) === selectedSig.value ? '#2B6CB0' : '#CBD5E0')
+          .attr('stroke-width', d => parseInt(d.properties.SIG_CD, 10) === selectedSig.value ? 1.5 : 0.7);
 
         // Add hover events
         sigPaths.on('mouseover', function (event, d) {
@@ -1053,29 +1051,36 @@ export default {
           hoveredSig.value = { x: event.pageX, y: event.pageY };
           hoveredSigName.value = sigData ? sigData.SIG_KOR_NM : '';
           
-          d3.select(this)
-            .transition()
-            .duration(200)
-            .attr('stroke-width', 1.5);
+          // 선택된 지역이 아닌 경우에만 호버 효과 적용
+          if (parseInt(sigCode, 10) !== selectedSig.value) {
+            d3.select(this)
+              .attr('fill', '#E2E8F0')
+              .attr('stroke', '#A0AEC0')
+              .attr('stroke-width', 1.2);
+          }
         });
 
-        sigPaths.on('mouseout', function () {
+        sigPaths.on('mouseout', function (event, d) {
           hoveredSig.value = null;
           hoveredSigName.value = '';
           
-          d3.select(this)
-            .transition()
-            .duration(200)
-            .attr('stroke-width', 0.7);
+          // 선택된 지역이 아닌 경우에만 원래 색상으로 복원
+          const sigCode = d.properties.SIG_CD;
+          if (parseInt(sigCode, 10) !== selectedSig.value) {
+            d3.select(this)
+              .attr('fill', '#EDF2F7')
+              .attr('stroke', '#CBD5E0')
+              .attr('stroke-width', 0.7);
+          }
         });
 
         // Add click events
         sigPaths.on('click', function (event, d) {
           const sigCode = d.properties.SIG_CD;
-          handleSigClick(sigCode);
+          // SIG_CD를 정수로 변환
+          const sigInt = parseInt(sigCode, 10);
+          handleSigClick(sigInt);
         });
-
-        console.log("Detail map rendered successfully");
 
       } catch (error) {
         console.error("상세 지도 렌더링 중 오류 발생:", error);
@@ -1084,22 +1089,25 @@ export default {
 
     // Search functions with region filtering
     const searchSimilarHandlerWithRegion = async (regionCode) => {
-      if (!analysisResult.value || !analysisResult.value.p_vector) return;
+      if (!analysisResult.value || !analysisResult.value.p_vector) {
+        return;
+      }
       
       try {
-        const regionData = regionDataMap.value.find(r => r.ctprvn_cd === regionCode);
-        const regionName = regionData ? regionData.ctp_nm : null;
+        // regionCode를 정수로 변환
+        const regionInt = parseInt(regionCode, 10);
         
         const results = await searchSimilarImages(
           analysisResult.value.p_vector, 
           30, 
-          regionName, 
-          null
+          null, 
+          null,
+          regionInt  // p_region 필드 직접 사용
         );
         searchResults.value = results;
-        console.log(`지역 필터 검색 완료 (${regionName}): ${results.length}개 결과`);
+        console.log(`[LogoSearch] 지역 필터 검색 완료 (region: ${regionInt}): ${results.length}개 결과`);
       } catch (error) {
-        console.error("지역별 검색 오류:", error);
+        console.error("[LogoSearch] 지역별 검색 오류:", error);
       }
     };
 
@@ -1107,19 +1115,21 @@ export default {
       if (!analysisResult.value || !analysisResult.value.p_vector) return;
       
       try {
-        const sigData = sigDataMap.value.find(s => s.SIG_CD === sigCode);
-        const sigName = sigData ? sigData.SIG_KOR_NM : null;
+        // sigCode를 정수로 변환
+        const sigInt = parseInt(sigCode, 10);
         
         const results = await searchSimilarImages(
           analysisResult.value.p_vector, 
           30, 
           null, 
-          sigName
+          null,
+          null, // region
+          sigInt  // p_sig 필드 직접 사용
         );
         searchResults.value = results;
-        console.log(`시군구 필터 검색 완료 (${sigName}): ${results.length}개 결과`);
+        console.log(`[LogoSearch] 시군구 필터 검색 완료 (sig: ${sigInt}): ${results.length}개 결과`);
       } catch (error) {
-        console.error("시군구별 검색 오류:", error);
+        console.error("[LogoSearch] 시군구별 검색 오류:", error);
       }
     };
 
@@ -2392,7 +2402,7 @@ export default {
   font-family: 'Noto Sans KR', sans-serif;
 }
 
-/* D3.js Map Styles */
+/* D3.js Map Styles - MyTravel 스타일 적용 */
 .map-search-title {
   font-size: 1.2rem;
   font-weight: 600;
@@ -2438,25 +2448,64 @@ export default {
   font-weight: bold;
 }
 
+/* 새로운 오버레이 뒤로가기 버튼 스타일 */
+.map-back-button-overlay {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 10;
+}
+
+.back-btn-overlay {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: rgba(255, 255, 255, 0.9);
+  color: #2d3748;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.back-btn-overlay:hover {
+  background-color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 선택된 지역 표시 - 오른쪽 아래 */
+.selected-location-display {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #2d3748;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+}
+
+/* 기존 selected-region-info 스타일 제거 */
 .selected-region-info {
-  margin-bottom: 1rem;
+  display: none;
 }
 
 .region-badge {
-  display: inline-block;
-  padding: 0.4rem 0.8rem;
-  background: linear-gradient(135deg, rgba(72, 176, 228, 0.1), rgba(118, 179, 157, 0.1));
-  border: 1px solid rgba(72, 176, 228, 0.3);
-  border-radius: 16px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--logo-blue, #48b0e4);
+  display: none;
 }
 
 .map-container-wrapper {
   flex: 1;
   position: relative;
-  min-height: 300px;
+  min-height: 350px; /* 높이 증가 */
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid #eef2f7;
@@ -2465,57 +2514,50 @@ export default {
 .map-container {
   width: 100%;
   height: 100%;
-  min-height: 300px;
+  min-height: 350px; /* 높이 증가 */
   background: linear-gradient(135deg, #f8fdff 0%, #f0f8ff 100%);
 }
 
-/* Map SVG styles */
+/* Map SVG styles - 회색 기본 색상 및 호버 효과 개선 */
 .map-container svg {
   width: 100%;
   height: 100%;
 }
 
-.map-container .region {
-  transition: all 0.2s ease;
-}
-
-.map-container .region:hover {
-  filter: brightness(1.1);
-}
-
+.map-container .region,
 .map-container .sig-region {
-  transition: all 0.2s ease;
+  cursor: pointer;
+  transition: none; /* JavaScript에서 색상을 직접 제어하므로 transition 제거 */
 }
 
-.map-container .sig-region:hover {
-  filter: brightness(1.1);
-}
-
-/* Tooltip styles */
+/* Tooltip styles - MyTravel 스타일 적용 */
 .region-tooltip, .sig-tooltip {
   position: fixed;
-  background: rgba(0, 0, 0, 0.8);
+  background-color: rgba(0, 0, 0, 0.8);
   color: white;
-  padding: 0.5rem 0.8rem;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
   pointer-events: none;
   z-index: 1000;
   transform: translate(-50%, -100%);
   margin-top: -8px;
   white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
 .region-tooltip::after, .sig-tooltip::after {
   content: '';
   position: absolute;
-  top: 100%;
   left: 50%;
+  bottom: -6px;
   transform: translateX(-50%);
-  border: 4px solid transparent;
-  border-top-color: rgba(0, 0, 0, 0.8);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid rgba(0, 0, 0, 0.8);
 }
 
 /* Map responsive styles */

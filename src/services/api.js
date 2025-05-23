@@ -652,11 +652,12 @@ export const saveToElasticsearch = async (
  * @param {string} sigFilter - 시군구 필터 (p_sig)
  * @returns {Promise<Array<Object>>} - 검색 결과
  */
-export const searchSimilarImages = async (featuresVector, limit = 30, regionFilter = null, sigFilter = null) => {
+export const searchSimilarImages = async (featuresVector, limit = 30, regionFilter = null, sigFilter = null, p_region = null, p_sig = null) => {
   try {
     console.log('유사 이미지 검색 시작');
     console.log('검색 API 주소:', `${config.ES_API}/travel_places/_search`);
     console.log('지역 필터:', regionFilter, '시군구 필터:', sigFilter);
+    console.log('p_region:', p_region, 'p_sig:', p_sig);
     
     // KNN 검색 쿼리 구성 - collapse와 aggregation 추가
     const searchBody = {
@@ -696,26 +697,45 @@ export const searchSimilarImages = async (featuresVector, limit = 30, regionFilt
       ]
     };
 
-    // 지역 필터 또는 시군구 필터가 있는 경우 query 추가
-    if (regionFilter || sigFilter) {
-      const filters = [];
-      
-      if (regionFilter) {
-        filters.push({
-          term: {
-            "p_region.keyword": regionFilter
-          }
-        });
-      }
-      
-      if (sigFilter) {
-        filters.push({
-          term: {
-            "p_sig.keyword": sigFilter
-          }
-        });
-      }
-      
+    // 필터 조건 구성
+    const filters = [];
+    
+    // 기존 문자열 기반 필터 (하위 호환성)
+    if (regionFilter) {
+      filters.push({
+        term: {
+          "p_region.keyword": regionFilter
+        }
+      });
+    }
+    
+    if (sigFilter) {
+      filters.push({
+        term: {
+          "p_sig.keyword": sigFilter
+        }
+      });
+    }
+    
+    // 새로운 정수 기반 필터
+    if (p_region !== null && p_region !== undefined) {
+      filters.push({
+        term: {
+          "p_region": p_region
+        }
+      });
+    }
+    
+    if (p_sig !== null && p_sig !== undefined) {
+      filters.push({
+        term: {
+          "p_sig": p_sig
+        }
+      });
+    }
+
+    // 필터가 있는 경우 query 추가
+    if (filters.length > 0) {
       // KNN과 필터를 결합
       searchBody.query = {
         bool: {
@@ -743,6 +763,8 @@ export const searchSimilarImages = async (featuresVector, limit = 30, regionFilt
         };
       }
     }
+
+    console.log('searchBody:', JSON.stringify(searchBody, null, 2));
     
     // config에서 Elasticsearch API URL 사용
     const response = await fetch(`${config.ES_API}/travel_places/_search`, {
