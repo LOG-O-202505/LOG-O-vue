@@ -179,21 +179,19 @@
                 <!-- 시군구 상세 지도 -->
                 <div v-show="currentMapLevel === 'sig'" class="map-container" ref="detailMapContainer"></div>
                 
-                <!-- 현재 선택된 지역 표시 - 오른쪽 아래로 이동 -->
+                <!-- 현재 선택된 지역 표시 - 왼쪽 하단 -->
                 <div class="selected-location-display">
-                  <span v-if="selectedSig">{{ getSelectedSigName() }}</span>
-                  <span v-else-if="selectedRegion">{{ getSelectedRegionName() }}</span>
-                  <span v-else>대한민국</span>
+                  <span class="location-label">📍 선택됨:</span>
+                  <span class="location-name" v-if="selectedSig">{{ getSelectedSigName() }}</span>
+                  <span class="location-name" v-else-if="selectedRegion">{{ getSelectedRegionName() }}</span>
+                  <span class="location-name" v-else>대한민국</span>
                 </div>
                 
-                <!-- 지역 호버 툴팁 -->
-                <div v-if="hoveredRegion && !hoveredSig" class="region-tooltip" :style="tooltipStyle">
-                  {{ hoveredRegionName }}
-                </div>
-                
-                <!-- 시군구 호버 툴팁 -->
-                <div v-if="hoveredSig" class="sig-tooltip" :style="sigTooltipStyle">
-                  {{ hoveredSigName }}
+                <!-- 호버된 지역 표시 - 오른쪽 위 -->
+                <div v-if="(hoveredRegion && !hoveredSig) || hoveredSig" class="hover-location-display">
+                  <span class="location-label">👀 미리보기:</span>
+                  <span class="location-name" v-if="hoveredSig">{{ hoveredSigName }}</span>
+                  <span class="location-name" v-else-if="hoveredRegion">{{ hoveredRegionName }}</span>
                 </div>
               </div>
             </div>
@@ -760,22 +758,8 @@ export default {
     const selectedRegion = ref(null);
     const selectedSig = ref(null);
     const showDetailMap = ref(false);
-    const mousePosition = ref({ x: 0, y: 0 }); // 마우스 위치 추가
-    const sigMousePosition = ref({ x: 0, y: 0 }); // 시군구 마우스 위치 추가
 
-    const tooltipStyle = computed(() => {
-      return {
-        left: `${mousePosition.value.x}px`,
-        top: `${mousePosition.value.y - 40}px`
-      };
-    });
-
-    const sigTooltipStyle = computed(() => {
-      return {
-        left: `${sigMousePosition.value.x}px`,
-        top: `${sigMousePosition.value.y - 40}px`
-      };
-    });
+    // 툴팁 스타일 계산 함수 제거 - hover-location-display 사용
 
     const getSelectedRegionName = () => {
       if (!selectedRegion.value) {
@@ -929,13 +913,6 @@ export default {
           
           hoveredRegion.value = regionCode;
           hoveredRegionName.value = regionData ? regionData.name : '';
-          
-          // 툴팁 위치 설정 - LookAround.vue와 동일한 방식
-          const bounds = this.getBoundingClientRect();
-          mousePosition.value = {
-            x: bounds.left + bounds.width / 2,
-            y: bounds.top
-          };
           
           // 선택된 지역이 아닌 경우에만 호버 효과 적용
           if (parseInt(regionCode, 10) !== selectedRegion.value) {
@@ -1100,13 +1077,6 @@ export default {
           
           hoveredSig.value = sigCode;
           hoveredSigName.value = sigName;
-          
-          // 툴팁 위치 설정 - LookAround.vue와 동일한 방식
-          const bounds = this.getBoundingClientRect();
-          sigMousePosition.value = {
-            x: bounds.left + bounds.width / 2,
-            y: bounds.top
-          };
           
           // 선택된 지역이 아닌 경우에만 호버 효과 적용
           if (parseInt(sigCode, 10) !== selectedSig.value) {
@@ -1287,9 +1257,8 @@ export default {
       // D3.js Map related
       mainMapContainer, detailMapContainer, currentMapLevel, hoveredRegion, hoveredRegionName,
       hoveredSig, hoveredSigName, selectedRegion, selectedSig, showDetailMap,
-      tooltipStyle, sigTooltipStyle, getSelectedRegionName, getSelectedSigName, goBackMap,
+      getSelectedRegionName, getSelectedSigName, goBackMap,
       renderMap, renderDetailMap, handleRegionClick, handleSigClick,
-      mousePosition, sigMousePosition, // 새로 추가된 변수들
       // Misc
       formatSimilarityScore, actionStatus,
       applyKeyword
@@ -2412,15 +2381,6 @@ export default {
   z-index: 2;
 }
 
-/* 기존 스타일 제거 - 더 이상 사용하지 않음 */
-.analysis-results-content {
-  /* 이 스타일은 제거됨 */
-}
-
-.results-left, .results-right {
-  /* 이 스타일들은 제거됨 */
-}
-
 /* 반응형 디자인 개선 */
 @media (max-width: 1024px) {
   .analysis-results-container {
@@ -2569,20 +2529,55 @@ export default {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* 선택된 지역 표시 - 오른쪽 아래 */
+/* 선택된 지역 표시 - 왼쪽 하단 */
 .selected-location-display {
   position: absolute;
   bottom: 20px;
-  right: 20px;
-  background-color: rgba(255, 255, 255, 0.9);
-  padding: 8px 16px;
-  border-radius: 8px;
+  left: 20px;
+  background-color: rgba(255, 255, 255, 0.95);
+  padding: 10px 16px;
+  border-radius: 10px;
   font-size: 0.9rem;
-  font-weight: 600;
   color: #2d3748;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.15);
   z-index: 10;
-  pointer-events: none; /* 마우스 이벤트 차단 방지 */
+  pointer-events: none;
+  border: 2px solid rgba(76, 175, 80, 0.3); /* 초록색 테두리로 선택됨 강조 */
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 호버된 지역 표시 - 오른쪽 위 */
+.hover-location-display {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background-color: rgba(72, 176, 228, 0.95);
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  color: white;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+  pointer-events: none;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 2px solid rgba(255, 255, 255, 0.3); /* 흰색 테두리로 호버 강조 */
+}
+
+/* 라벨과 지역명 스타일 */
+.location-label {
+  font-weight: 500;
+  opacity: 0.8;
+  font-size: 0.85rem;
+}
+
+.location-name {
+  font-weight: 700;
+  font-size: 0.95rem;
 }
 
 /* 기존 selected-region-info 스타일 제거 */
@@ -2642,36 +2637,7 @@ export default {
   pointer-events: all;
 }
 
-/* Tooltip styles - LookAround.vue와 동일 */
-.region-tooltip, .sig-tooltip {
-  position: fixed;
-  background-color: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  pointer-events: none;
-  z-index: 1000;
-  transform: translate(-50%, -100%);
-  white-space: nowrap;
-  box-shadow: 0 3px 15px rgba(0, 0, 0, 0.3);
-  text-align: center;
-  min-width: 80px;
-}
-
-.region-tooltip::after, .sig-tooltip::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: -5px;
-  transform: translateX(-50%);
-  width: 0;
-  height: 0;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-top: 6px solid rgba(0, 0, 0, 0.8);
-}
+/* 기존 툴팁 스타일 제거 - hover-location-display로 대체 */
 
 /* Map responsive styles */
 @media (max-width: 1024px) {
@@ -2709,6 +2675,24 @@ export default {
   .region-badge {
     font-size: 0.8rem;
     padding: 0.3rem 0.6rem;
+  }
+  
+  /* 모바일에서 display 크기 조정 */
+  .selected-location-display,
+  .hover-location-display {
+    font-size: 0.8rem;
+    padding: 8px 12px;
+    gap: 4px;
+  }
+  
+  .selected-location-display .location-label,
+  .hover-location-display .location-label {
+    font-size: 0.75rem;
+  }
+  
+  .selected-location-display .location-name,
+  .hover-location-display .location-name {
+    font-size: 0.85rem;
   }
 }
 </style>

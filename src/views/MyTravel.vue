@@ -177,27 +177,27 @@
               <div class="legend-title">방문 빈도</div>
               <div class="legend-items">
                 <div class="frequency-item">
-                  <div class="frequency-color" style="background-color: #2B6CB0"></div>
+                  <div class="frequency-color" style="background-color: #ff9e80"></div>
                   <div class="frequency-label">30회 이상</div>
                 </div>
                 <div class="frequency-item">
-                  <div class="frequency-color" style="background-color: #3182CE"></div>
+                  <div class="frequency-color" style="background-color: #ffab91"></div>
                   <div class="frequency-label">20-29회</div>
                 </div>
                 <div class="frequency-item">
-                  <div class="frequency-color" style="background-color: #4299E1"></div>
+                  <div class="frequency-color" style="background-color: #ffcdd2"></div>
                   <div class="frequency-label">10-19회</div>
                 </div>
                 <div class="frequency-item">
-                  <div class="frequency-color" style="background-color: #63B3ED"></div>
+                  <div class="frequency-color" style="background-color: #ffcc80"></div>
                   <div class="frequency-label">5-9회</div>
                 </div>
                 <div class="frequency-item">
-                  <div class="frequency-color" style="background-color: #90CDF4"></div>
+                  <div class="frequency-color" style="background-color: #fff9c4"></div>
                   <div class="frequency-label">1-4회</div>
                 </div>
                 <div class="frequency-item">
-                  <div class="frequency-color" style="background-color: #EDF2F7"></div>
+                  <div class="frequency-color" style="background-color: #e2f0fa"></div>
                   <div class="frequency-label">미방문</div>
                 </div>
               </div>
@@ -1004,18 +1004,18 @@ export default {
 
     // 비율에 따른 색상 반환 (0~100%)
     const getColorForPercentage = (percentage) => {
-      // 10단계 색상 배열 (0% ~ 100%, 파란색 계열 그라데이션)
+      // 10단계 색상 배열 (0% ~ 100%, 파스텔 색상 팔레트)
       const colorScale = [
-        '#EBF8FF', // 0-10%
-        '#BEE3F8', // 10-20%
-        '#90CDF4', // 20-30%
-        '#63B3ED', // 30-40%
-        '#4299E1', // 40-50%
-        '#3182CE', // 50-60%
-        '#2B6CB0', // 60-70%
-        '#2C5282', // 70-80%
-        '#2A4365', // 80-90%
-        '#1A365D'  // 90-100%
+        '#e2f0fa', // 0-10% (연한 하늘색)
+        '#e8f4f8', // 10-20%
+        '#fff9c4', // 20-30% (파스텔 노랑)
+        '#fff2d9', // 30-40%
+        '#ffcc80', // 40-50% (파스텔 주황)
+        '#ffc09d', // 50-60%
+        '#ffcdd2', // 60-70% (파스텔 빨강)
+        '#ffb5b3', // 70-80%
+        '#ffab91', // 80-90% (코랄/주황빛 파스텔)
+        '#ff9e80'  // 90-100%
       ];
 
       // 비율에 따른 색상 인덱스 계산 (0~9)
@@ -1031,25 +1031,25 @@ export default {
       
       // 지역 데이터가 없는 경우
       if (!travelStats.value.regions[regionCode]) {
-        return '#EDF2F7'; // 방문 기록 없음
+        return '#e2f0fa'; // 방문 기록 없음 (연한 하늘색)
       }
       
       // 시군구 방문 데이터 확인
       const region = travelStats.value.regions[regionCode];
       if (!region.sigs || !region.sigs[lookupCode]) {
-        return '#EDF2F7'; // 미방문
+        return '#e2f0fa'; // 미방문 (연한 하늘색)
       }
       
       // 방문 횟수 가져오기
       const visitCount = region.sigs[lookupCode].count || 0;
       
       // 방문 횟수에 따른 색상 반환
-      if (visitCount >= 30) return '#2B6CB0';     // 30회 이상 - 최고 가중치
-      if (visitCount >= 20) return '#3182CE';     // 20-29회
-      if (visitCount >= 10) return '#4299E1';     // 10-19회
-      if (visitCount >= 5) return '#63B3ED';      // 5-9회
-      if (visitCount >= 1) return '#90CDF4';      // 1-4회
-      return '#EDF2F7';                           // 미방문
+      if (visitCount >= 30) return '#ff9e80';     // 30회 이상 - 최고 가중치 (코랄/주황빛 파스텔)
+      if (visitCount >= 20) return '#ffab91';     // 20-29회 (코랄/주황빛 파스텔)
+      if (visitCount >= 10) return '#ffcdd2';     // 10-19회 (파스텔 빨강)
+      if (visitCount >= 5) return '#ffcc80';      // 5-9회 (파스텔 주황)
+      if (visitCount >= 1) return '#fff9c4';      // 1-4회 (파스텔 노랑)
+      return '#e2f0fa';                           // 미방문 (연한 하늘색)
     };
 
     // 시군구 색상 함수 정의
@@ -1445,14 +1445,14 @@ export default {
             }
 
             // 색상 결정
-            let color = '#EDF2F7'; // 기본 미방문 색상
+            let color = '#e2f0fa'; // 기본 미방문 색상 (연한 하늘색)
 
             if (isVisited && visitCount) {
-              if (visitCount >= 30) color = '#2B6CB0';     // 30회 이상 - 최고 가중치
-              else if (visitCount >= 20) color = '#3182CE';     // 20-29회
-              else if (visitCount >= 10) color = '#4299E1';     // 10-19회
-              else if (visitCount >= 5) color = '#63B3ED';      // 5-9회
-              else if (visitCount >= 1) color = '#90CDF4';      // 1-4회
+              if (visitCount >= 30) color = '#ff9e80';     // 30회 이상 - 최고 가중치 (코랄/주황빛 파스텔)
+              else if (visitCount >= 20) color = '#ffab91';     // 20-29회 (코랄/주황빛 파스텔)
+              else if (visitCount >= 10) color = '#ffcdd2';     // 10-19회 (파스텔 빨강)
+              else if (visitCount >= 5) color = '#ffcc80';      // 5-9회 (파스텔 주황)
+              else if (visitCount >= 1) color = '#fff9c4';      // 1-4회 (파스텔 노랑)
             }
 
             console.log(`[renderDetailMap] ${sigName} (${sigCode}): ${isVisited ? `방문 ${visitCount}회` : '미방문'} - 색상: ${color}`);
