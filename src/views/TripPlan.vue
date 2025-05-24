@@ -550,162 +550,107 @@
       <div class="modals-container verification-container">
         <!-- 메인 인증 모달 (왼쪽) -->
         <div class="verification-photo-modal" @click.stop>
-          <div class="modal-header">
-            <h3>방문 인증하기</h3>
-            <button class="close-btn" @click="closeVerificationModal" :disabled="isVerifying">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-
           <div class="verification-content">
-  
-
-            <div class="upload-container" @dragover.prevent="onPhotoUploadDragOver"
-              @dragleave.prevent="onPhotoUploadDragLeave" @drop.prevent="onPhotoUploadDrop"
-              :class="{ 'active-dropzone': isPhotoDragging }">
-              <input type="file" ref="photoFileInput" @change="handlePhotoFileInput" accept="image/*"
-                style="display: none">
-              <div v-if="!verificationPhotoPreview" class="upload-prompt">
-                <div class="upload-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                    <polyline points="21 15 16 10 5 21"></polyline>
-                  </svg>
-                </div>
-                <p>방문 인증을 위한 사진을 업로드해주세요</p>
-                <p class="upload-tip">* 해당 장소에서 촬영한 사진만 인증 가능합니다</p>
-                <button @click="triggerPhotoFileInput" class="btn secondary-btn">사진 선택</button>
-              </div>
-              <div v-else class="preview-container">
-                <div class="enhanced-image-container">
-                  <img :src="verificationPhotoPreview" alt="방문 인증 사진 미리보기" class="photo-preview">
-                </div>
-                <div class="photo-metadata" v-if="photoMetadata">
-                  <div class="metadata-item">
-                    <strong>촬영 시간:</strong> {{ formatPhotoDate(photoMetadata.dateTime) }}
-                  </div>
-                  <div class="metadata-item" v-if="photoMetadata.latitude && photoMetadata.longitude">
-                    <strong>촬영 위치:</strong> [{{ photoMetadata.latitude.toFixed(6) }}, {{
-                      photoMetadata.longitude.toFixed(6)
-                    }}]
-                  </div>
-                  <div class="metadata-item" v-if="distanceFromTarget !== null">
-                    <strong>장소와의 거리:</strong> {{ formatDistance(distanceFromTarget) }}
-                  </div>
-                  <div class="verification-result" v-if="verificationResult !== null">
-                    <div v-if="verificationResult.success" class="success-result">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                      </svg>
-                      방문 인증이 확인되었습니다!
-                    </div>
-                    <div v-else class="error-result">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                      </svg>
-                      {{ verificationResult.message }}
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- 로딩 인디케이터 제거 -->
-                
-                <div class="preview-actions">
-                  <button @click="verifyPhoto" class="btn primary-btn" :disabled="isVerifying || !photoMetadata">
-                    {{ isVerifying ? '인증 중...' : '인증하기' }}
-                  </button>
-                  <button @click="clearVerificationPhoto" class="btn cancel-btn" :disabled="isVerifying">취소</button>
-                  
-                  <!-- 관리자 인증 버튼 추가 -->
-                  <button @click="adminVerify()" class="btn admin-btn" :disabled="isVerifying || !verificationPhotoPreview">
-                    관리자 인증
-                  </button>
-                </div>
-              </div>
-            </div>
+            <!-- 기존 업로드 컨테이너를 VerificationImageUpload 컴포넌트로 교체 -->
+            <VerificationImageUpload
+              :currentFile="verificationPhotoFile"
+              :photoMetadata="photoMetadata"
+              :distanceFromTarget="distanceFromTarget"
+              :verificationResult="verificationResult"
+              :isVerifying="isVerifying"
+              :targetCoords="verifyingItemInfo.coords || { lat: 33.458031, lng: 126.942652 }"
+              @file-selected="handleVerificationFileSelected"
+              @file-remove="clearVerificationPhoto"
+              @verify-photo="verifyPhoto"
+              @admin-verify="adminVerify"
+              @close-modal="closeVerificationModal"
+              @verification-success="handleVerificationSuccess"
+              @verification-failed="handleVerificationFailed"
+            />
           </div>
         </div>
 
         <!-- 리뷰 모달 (오른쪽) - 인증 성공 시에만 표시 -->
-        <div v-if="verificationResult && verificationResult.success" class="verification-review-modal" @click.stop>
-          <div class="modal-header">
-            <h3>방문 후기 작성</h3>
-          </div>
+        <div v-if="verificationResult && verificationResult.success" class="verification-review-container">
+          <div class="verification-review-modal" @click.stop>
+            <div v-if="!isVerifying" class="modal-header">
+              <h3>방문 후기 작성</h3>
+            </div>
 
-          <div class="review-content">
-
-            <div class="rating-container">
-              <label>별점 평가:</label>
-              <div class="star-rating">
-                <span v-for="star in 5" :key="star" class="star" :class="{ 'active': star <= reviewRating }"
-                  @click="reviewRating = star">
-                  ★
-                </span>
+            <div class="review-content">
+              <!-- 로딩 중일 때는 스피너만 표시 -->
+              <div v-if="isVerifying" class="verification-loading-section">
+                <VerificationImageProcessSpinner 
+                  :current-phase="loadingPhase"
+                  :image-analysis-duration="imageAnalysisDuration"
+                  :meaning-analysis-duration="meaningAnalysisDuration"
+                  :keyword-extraction-duration="keywordExtractionDuration"
+                  :search-duration="searchDuration"
+                  :processing-results-duration="processingResultsDuration"
+                  :show-extended-phases="true"
+                />
               </div>
-            </div>
-
-            <div class="review-text-container">
-              <label for="review-text">방문 후기:</label>
-              <textarea id="review-text" v-model="reviewText" placeholder="이 장소에 대한 후기를 작성해주세요..." rows="6"></textarea>
-            </div>
-            
-            <!-- 테스트용 데이터 입력 필드 추가 -->
-            <div class="test-data-container">
-              <h4 class="test-data-title">테스트용 데이터 입력 (개발용)</h4>
-              <div class="test-data-inputs">
-                <div class="test-data-input-row">
-                  <div class="test-data-field">
-                    <label for="p_id">장소 ID (p_id):</label>
-                    <input type="number" id="p_id" v-model="testDataInputs.p_id" min="1" placeholder="장소 ID">
-                  </div>
-                  <div class="test-data-field">
-                    <label for="u_id">사용자 ID (u_id):</label>
-                    <input type="number" id="u_id" v-model="testDataInputs.u_id" min="1" placeholder="사용자 ID">
+              
+              <!-- 로딩 중이 아닐 때만 폼 표시 -->
+              <div v-else class="review-form-section">
+                <div class="rating-container">
+                  <label>별점 평가:</label>
+                  <div class="star-rating">
+                    <span v-for="star in 5" :key="star" class="star" :class="{ 'active': star <= reviewRating }"
+                      @click="reviewRating = star">
+                      ★
+                    </span>
                   </div>
                 </div>
-                <div class="test-data-input-row">
-                  <div class="test-data-field">
-                    <label for="u_age">나이 (u_age):</label>
-                    <input type="number" id="u_age" v-model="testDataInputs.u_age" min="1" placeholder="나이">
+
+                <div class="review-text-container">
+                  <label for="review-text">방문 후기:</label>
+                  <textarea id="review-text" v-model="reviewText" placeholder="이 장소에 대한 후기를 작성해주세요..." rows="6"></textarea>
+                </div>
+                
+                <!-- 테스트용 데이터 입력 필드 추가 -->
+                <div class="test-data-container">
+                  <div class="test-data-header" @click="isTestDataExpanded = !isTestDataExpanded">
+                    <h4 class="test-data-title">테스트용 데이터 입력 (개발용)</h4>
+                    <button type="button" class="test-data-toggle-btn" :class="{ 'expanded': isTestDataExpanded }">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                      </svg>
+                    </button>
                   </div>
-                  <div class="test-data-field">
-                    <label for="u_gender">성별 (u_gender):</label>
-                    <select id="u_gender" v-model="testDataInputs.u_gender">
-                      <option value="M">남성</option>
-                      <option value="F">여성</option>
-                    </select>
+                  <div class="test-data-inputs" :class="{ 'expanded': isTestDataExpanded }">
+                    <div class="test-data-input-row">
+                      <div class="test-data-field">
+                        <label for="p_id">장소 ID (p_id):</label>
+                        <input type="number" id="p_id" v-model="testDataInputs.p_id" min="1" placeholder="장소 ID">
+                      </div>
+                      <div class="test-data-field">
+                        <label for="u_id">사용자 ID (u_id):</label>
+                        <input type="number" id="u_id" v-model="testDataInputs.u_id" min="1" placeholder="사용자 ID">
+                      </div>
+                    </div>
+                    <div class="test-data-input-row">
+                      <div class="test-data-field">
+                        <label for="u_age">나이 (u_age):</label>
+                        <input type="number" id="u_age" v-model="testDataInputs.u_age" min="1" placeholder="나이">
+                      </div>
+                      <div class="test-data-field">
+                        <label for="u_gender">성별 (u_gender):</label>
+                        <select id="u_gender" v-model="testDataInputs.u_gender">
+                          <option value="M">남성</option>
+                          <option value="F">여성</option>
+                        </select>
+                      </div>
+                    </div>
                   </div>
                 </div>
+                
+                <div class="form-actions">
+                  <button @click="completeVerification" class="btn-verify">
+                    인증 완료하기
+                  </button>
+                </div>
               </div>
-            </div>
-            
-            <!-- 로딩 인디케이터 스타일 수정 -->
-            <div v-if="isVerifying" class="verification-loading-section">
-              <LoadingSpinner 
-                :current-phase="loadingPhase"
-                :image-analysis-duration="imageAnalysisDuration"
-                :meaning-analysis-duration="meaningAnalysisDuration"
-                :keyword-extraction-duration="keywordExtractionDuration"
-                :search-duration="searchDuration"
-                :show-extended-phases="true"
-              />
-            </div>
-
-            <div class="form-actions">
-              <button @click="completeVerification" class="btn-verify" :disabled="isVerifying">
-                {{ isVerifying ? '처리 중...' : '인증 완료하기' }}
-              </button>
             </div>
           </div>
         </div>
@@ -716,8 +661,9 @@
 
 <script>
 import Header from '@/components/Header.vue';
-import LoadingSpinner from '@/components/LoadingSpinner.vue';
 import ToastMessage from '@/components/ToastMessage.vue';
+import VerificationImageUpload from '@/components/VerificationImageUpload.vue';
+import VerificationImageProcessSpinner from '@/components/VerificationImageProcessSpinner.vue';
 import { ref, computed, onMounted, watch, nextTick, onBeforeUnmount } from 'vue';
 import config from '@/config';
 import EXIF from 'exif-js';
@@ -731,15 +677,17 @@ import {
   getEnglishLocationName,
   getLocationCodes,
   enDescToKoDescAndTags, // Added import
-  ImgToPayment           // Added import
+  ImgToPayment,          // Added import
+  analyzeTextWithElasticsearch // 새로 추가된 함수
 } from '@/services/api';
 
 export default {
   name: 'TripPlan',
   components: {
     Header,
-    LoadingSpinner,
     ToastMessage,
+    VerificationImageUpload,
+    VerificationImageProcessSpinner,
   },
   setup() {
     // 카카오 맵 관련 변수
@@ -2208,6 +2156,7 @@ export default {
     // 방문 인증 관련 상태
     const showVerificationModal = ref(false);
     const verificationPhotoPreview = ref(null);
+    const verificationPhotoFile = ref(null); // 새로 추가
     const photoMetadata = ref(null);
     const isPhotoDragging = ref(false);
     const isVerifying = ref(false);
@@ -2228,6 +2177,7 @@ export default {
     const meaningAnalysisDuration = ref(null); // 의미 분석 소요 시간
     const keywordExtractionDuration = ref(null); // 키워드 추출 소요 시간
     const searchDuration = ref(null); // 저장 소요 시간
+    const processingResultsDuration = ref(null); // 결과 처리 소요 시간
 
     // 방문 인증 모달 닫기
     const closeVerificationModal = () => {
@@ -2284,6 +2234,55 @@ export default {
     };
 
     // 사진에서 메타데이터(EXIF) 추출
+    // 새로운 컴포넌트용 핸들러 함수들
+    const handleVerificationFileSelected = (file) => {
+      verificationPhotoFile.value = file;
+      // 미리보기 생성
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        verificationPhotoPreview.value = e.target.result;
+      };
+      reader.readAsDataURL(file);
+      // 메타데이터 추출
+      extractImageMetadata(file);
+    };
+
+    const handleVerificationSuccess = (data) => {
+      console.log('인증 성공:', data);
+      verificationPhotoFile.value = data.file;
+      photoMetadata.value = {
+        dateTime: new Date().toISOString(),
+        latitude: data.location.lat,
+        longitude: data.location.lng
+      };
+      distanceFromTarget.value = data.distance;
+      
+      // 성공 토스트 메시지 표시
+      displayToast('방문 인증에 성공했습니다! 후기를 작성해주세요.', 'success', 3000);
+      
+      // 인증 결과 설정
+      verificationResult.value = {
+        success: true,
+        message: '방문 인증이 확인되었습니다!'
+      };
+    };
+
+    const handleVerificationFailed = (data) => {
+      console.log('인증 실패:', data);
+      
+      // 실패 토스트 메시지 표시
+      displayToast(data.message, 'error', 5000);
+      
+      // 인증 결과 설정
+      verificationResult.value = {
+        success: false,
+        message: data.message
+      };
+      
+      // 사진 데이터 초기화
+      clearVerificationPhoto();
+    };
+
     const extractImageMetadata = (file) => {
       const reader = new FileReader();
       reader.onload = function () {
@@ -2651,6 +2650,7 @@ export default {
     // 인증 사진 초기화
     const clearVerificationPhoto = () => {
       verificationPhotoPreview.value = null;
+      verificationPhotoFile.value = null;
       photoMetadata.value = null;
       verificationResult.value = null;
       distanceFromTarget.value = null;
@@ -2686,12 +2686,17 @@ export default {
       u_gender: 'M'
     });
     
+    // 테스트 데이터 컨테이너 토글 상태
+    const isTestDataExpanded = ref(false);
+
     // 거리 표시 형식을 미터로 변경하는 함수
     const formatDistance = (distance) => {
       // km 단위에서 m 단위로 변환하고 쉼표 추가
       const distanceInMeters = Math.round(distance * 1000);
       return `${distanceInMeters.toLocaleString()}m`;
     };
+
+
 
     // 방문 인증 완료 처리 함수 수정
     const completeVerification = async () => {
@@ -2810,10 +2815,20 @@ export default {
         loadingPhase.value = 'vectorSaving';
         const imageId = `trip-verification-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
         
-        const baseTags = [item.activity];
-        const tags = extractedKeywords && extractedKeywords.length > 0 
-          ? [...baseTags, ...extractedKeywords]
-          : baseTags;
+        // ElasticSearch analyzer를 사용하여 장소명(p_name)과 주소(p_address) 토큰화
+        const combinedText = `${item.activity} ${locationText}`.trim();
+        console.log('4-1. ElasticSearch analyzer로 장소명+주소 토큰화 시작:', combinedText);
+        const placeNameTokens = await analyzeTextWithElasticsearch(combinedText);
+        console.log('4-1. 장소명+주소 토큰화 결과:', placeNameTokens);
+        
+        // 최종 태그 배열: ko_3 모델 키워드 먼저, ElasticSearch 토큰화 결과 나중에
+        const tags = [
+          ...(extractedKeywords && extractedKeywords.length > 0 ? extractedKeywords : []),
+          ...(placeNameTokens && placeNameTokens.length > 0 ? placeNameTokens : [])
+        ];
+        
+        // 중복 제거
+        const uniqueTags = [...new Set(tags)];
         
         const description = koreanDescription || reviewText.value || '방문 인증 사진';
         
@@ -2821,7 +2836,9 @@ export default {
         console.log('- 이미지 ID:', imageId);
         console.log('- 위치:', locationText);
         console.log('- 영어 위치:', englishLocationName);
-        console.log('- 태그:', tags);
+        console.log('- ko_3 모델 키워드:', extractedKeywords);
+        console.log('- 장소명 토큰화 결과:', placeNameTokens);
+        console.log('- 최종 태그 (중복 제거):', uniqueTags);
         console.log('- 설명:', description);
         console.log('- 10차원 벡터:', featuresVector);
         
@@ -2834,7 +2851,7 @@ export default {
           imageId,
           item.activity,
           locationText,
-          tags,
+          uniqueTags,
           description,
           verificationPhotoPreview.value,
           analysisResult,
@@ -3062,6 +3079,7 @@ export default {
       verifyVisit, // 방문 인증 함수 추가
       showVerificationModal,
       verificationPhotoPreview,
+      verificationPhotoFile,
       photoMetadata,
       isPhotoDragging,
       isVerifying,
@@ -3069,6 +3087,11 @@ export default {
       distanceFromTarget,
       photoFileInput,
       verifyingItemInfo,
+      verifyingDay, // 추가
+      verifyingItem, // 추가
+      handleVerificationFileSelected,
+      handleVerificationSuccess,
+      handleVerificationFailed,
       closeVerificationModal,
       triggerPhotoFileInput,
       onPhotoUploadDragOver,
@@ -3087,11 +3110,13 @@ export default {
       meaningAnalysisDuration,
       keywordExtractionDuration,
       searchDuration,
+      processingResultsDuration,
       memoTextarea,
       autoResizeTextarea,
       adminVerify,
       testDataInputs,
-      detailMapContainer, // expose to template if not already (it is used by ref="detailMapContainer")
+      isTestDataExpanded,
+      detailMapContainer // expose to template if not already (it is used by ref="detailMapContainer")
     };
   }
 };
@@ -3700,13 +3725,14 @@ textarea {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem 2rem;
+  padding: 1rem 1.5rem;
   border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
 }
 
 .modal-header h3 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 600;
   color: #2d3748;
 }
@@ -4741,37 +4767,64 @@ textarea {
 .verification-container {
   display: flex;
   gap: 20px;
-  align-items: flex-start;
+  align-items: stretch;
   max-width: 1400px;
   width: 100%;
+  min-height: 600px;
+  margin: 0;
+  padding: 0;
 }
 
 .verification-photo-modal {
   background-color: white;
   border-radius: 12px;
-  width: 65%;
-  max-height: 90vh;
+  width: 75%;
+  height: auto;
+  min-height: 600px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  margin: 0;
+}
+
+.verification-review-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  width: 35%;
+  min-height: 600px;
+  padding: 0;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  flex-direction: column;
 }
 
 .verification-review-modal {
-  background-color: white;
-  border-radius: 12px;
-  width: 35%;
-  max-height: 90vh;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  flex: 1;
+}
+
+.verification-loading-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 600px;
+  width: 100%;
+  padding: 2rem 1rem;
+  flex: 1;
 }
 
 .verification-content, .review-content {
-  padding: 1.5rem 2rem;
+  padding: 1rem 1.5rem;
   overflow-y: auto;
-  height: calc(90vh - 110px);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .enhanced-image-container {
@@ -4862,6 +4915,8 @@ textarea {
   background-color: #059669;
   transform: translateY(-2px);
 }
+
+
 
 /* 반응형 스타일 */
 @media (max-width: 768px) {
@@ -4978,11 +5033,11 @@ textarea {
 
 .verification-loading-section {
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
-  margin-top: 1rem;
-  margin-bottom: 1rem;
+  align-items: center;
+  min-height: 300px;
+  width: 100%;
+  padding: 2rem 1rem;
 }
 
 .verification-loading-section .spinner {
@@ -5052,28 +5107,72 @@ textarea {
 /* 테스트 데이터 입력 필드 스타일 */
 .test-data-container {
   margin-top: 24px;
-  padding: 16px;
   background-color: #f8f9fa;
   border: 1px dashed #adb5bd;
   border-radius: 6px;
+  overflow: hidden;
+}
+
+.test-data-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.test-data-header:hover {
+  background-color: #e9ecef;
 }
 
 .test-data-title {
-  margin: 0 0 12px 0;
+  margin: 0;
   font-size: 15px;
   color: #6c757d;
   font-weight: 500;
 }
 
+.test-data-toggle-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  color: #6c757d;
+}
+
+.test-data-toggle-btn:hover {
+  background-color: rgba(108, 117, 125, 0.1);
+}
+
+.test-data-toggle-btn.expanded {
+  transform: rotate(180deg);
+}
+
 .test-data-inputs {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  padding: 0 16px;
+  max-height: 0;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  opacity: 0;
+}
+
+.test-data-inputs.expanded {
+  max-height: 200px;
+  padding: 0 16px 16px 16px;
+  opacity: 1;
 }
 
 .test-data-input-row {
   display: flex;
   gap: 16px;
+  margin-bottom: 12px;
+}
+
+.test-data-input-row:last-child {
+  margin-bottom: 0;
 }
 
 .test-data-field {
@@ -5101,5 +5200,53 @@ textarea {
   border-color: #4dabf7;
   outline: none;
   box-shadow: 0 0 0 2px rgba(77, 171, 247, 0.25);
+}
+
+.review-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  flex: 1;
+  justify-content: flex-start;
+}
+
+.modal-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: center;
+}
+
+/* 추가 반응형 스타일 for verification-review-container */
+@media (max-width: 768px) {
+  .verification-container {
+    flex-direction: column;
+    min-height: auto;
+    gap: 1rem;
+  }
+  
+  .verification-photo-modal {
+    width: 100%;
+    min-height: 400px;
+  }
+  
+  .verification-review-container {
+    width: 100% !important;
+    margin-top: 0;
+    min-height: auto;
+    align-items: stretch;
+  }
+  
+  .verification-loading-section {
+    min-height: 400px;
+    padding: 1.5rem 1rem;
+  }
 }
 </style>
