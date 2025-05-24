@@ -578,20 +578,20 @@
             </div>
 
             <div class="review-content">
-              <!-- 로딩 중일 때는 스피너만 표시 -->
-              <div v-if="isVerifying" class="verification-loading-section">
+              <!-- 인증 처리 중이거나 완료되었지만 아직 저장되지 않은 경우 스피너 표시 -->
+              <div v-if="isVerifying || loadingPhase === 'completed'" class="verification-loading-section">
                 <VerificationImageProcessSpinner 
                   :current-phase="loadingPhase"
                   :image-analysis-duration="imageAnalysisDuration"
                   :meaning-analysis-duration="meaningAnalysisDuration"
                   :keyword-extraction-duration="keywordExtractionDuration"
-                  :search-duration="searchDuration"
+                  :morphological-analysis-duration="morphologicalAnalysisDuration"
                   :processing-results-duration="processingResultsDuration"
-                  :show-extended-phases="true"
+                  @save-result="saveVerificationResult"
                 />
               </div>
               
-              <!-- 로딩 중이 아닐 때만 폼 표시 -->
+              <!-- 인증 처리가 시작되지 않았거나 저장이 완료된 경우에만 폼 표시 -->
               <div v-else class="review-form-section">
                 <div class="rating-container">
                   <label>별점 평가:</label>
@@ -2176,8 +2176,11 @@ export default {
     const imageAnalysisDuration = ref(null); // 이미지 분석 소요 시간
     const meaningAnalysisDuration = ref(null); // 의미 분석 소요 시간
     const keywordExtractionDuration = ref(null); // 키워드 추출 소요 시간
-    const searchDuration = ref(null); // 저장 소요 시간
-    const processingResultsDuration = ref(null); // 결과 처리 소요 시간
+    const morphologicalAnalysisDuration = ref(null); // 형태소 분석 소요 시간
+    const processingResultsDuration = ref(null); // 최종 처리 소요 시간
+    
+    // 임시 인증 데이터 저장용
+    const tempVerificationData = ref(null);
 
     // 방문 인증 모달 닫기
     const closeVerificationModal = () => {
@@ -2709,7 +2712,8 @@ export default {
         imageAnalysisDuration.value = null;
         meaningAnalysisDuration.value = null;
         keywordExtractionDuration.value = null;
-        searchDuration.value = null;
+        morphologicalAnalysisDuration.value = null;
+        processingResultsDuration.value = null;
 
         const item = tripDays.value[verifyingDay.value].items[verifyingItem.value];
         if (!item) {
@@ -2772,7 +2776,7 @@ export default {
         }
         
         loadingPhase.value = 'imageAnalysis'; // Ensure phase is set before API call
-        console.log('1. 이미지 분석 시작 (light_2 모델 - 영문 설명 추출)...', englishLocationName);
+        console.log('1. Llava 이미지 분석 시작 (light_2 모델 - 영문 설명 추출)...', englishLocationName);
         const imageAnalysisStartTime = performance.now();
         const engDescription = await imageToEngDescription(imageFile, abortController.signal, englishLocationName);
         const imageAnalysisEndTime = performance.now();
@@ -2785,7 +2789,7 @@ export default {
         }
         
         loadingPhase.value = 'meaningAnalysis';
-        console.log('2. 10차원 특성 벡터 추출 시작...');
+        console.log('2. Llama 의미 분석 시작 (ko_2 모델 - 10차원 특성 벡터 추출)...');
         const meaningAnalysisStartTime = performance.now();
         const analysisResult = await EngDescriptionToVector(engDescription, abortController.signal);
         const meaningAnalysisEndTime = performance.now();
@@ -2803,7 +2807,7 @@ export default {
         }
         
         loadingPhase.value = 'keywordExtraction';
-        console.log('3. ko_3 모델을 이용한 한글 설명과 키워드 추출 시작 (API 서비스 호출)...');
+        console.log('3. Llama 키워드 추출 시작 (ko_3 모델 - 한글 설명과 키워드 추출)...');
         const keywordExtractionStartTime = performance.now();
         
         const { koreanDescription, extractedKeywords } = await enDescToKoDescAndTags(engDescription, abortController.signal);
@@ -2812,14 +2816,20 @@ export default {
         keywordExtractionDuration.value = Number(((keywordExtractionEndTime - keywordExtractionStartTime) / 1000).toFixed(1));
         console.log('3. 키워드 추출 완료 (API 서비스 결과):', extractedKeywords, '한글 설명:', koreanDescription);
         
-        loadingPhase.value = 'vectorSaving';
+        loadingPhase.value = 'morphologicalAnalysis';
+        console.log('4. Nori 형태소 분석기 시작 (p_name, p_address 토큰화)...');
+        const morphologicalAnalysisStartTime = performance.now();
+        
         const imageId = `trip-verification-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
         
         // ElasticSearch analyzer를 사용하여 장소명(p_name)과 주소(p_address) 토큰화
         const combinedText = `${item.activity} ${locationText}`.trim();
-        console.log('4-1. ElasticSearch analyzer로 장소명+주소 토큰화 시작:', combinedText);
+        console.log('4. ElasticSearch analyzer로 장소명+주소 토큰화 시작:', combinedText);
         const placeNameTokens = await analyzeTextWithElasticsearch(combinedText);
-        console.log('4-1. 장소명+주소 토큰화 결과:', placeNameTokens);
+        console.log('4. 장소명+주소 토큰화 결과:', placeNameTokens);
+        
+        const morphologicalAnalysisEndTime = performance.now();
+        morphologicalAnalysisDuration.value = Number(((morphologicalAnalysisEndTime - morphologicalAnalysisStartTime) / 1000).toFixed(1));
         
         // 최종 태그 배열: ko_3 모델 키워드 먼저, ElasticSearch 토큰화 결과 나중에
         const tags = [
@@ -2832,7 +2842,7 @@ export default {
         
         const description = koreanDescription || reviewText.value || '방문 인증 사진';
         
-        console.log('4. Elasticsearch에 저장할 데이터:');
+        console.log('4. 형태소 분석 완료 - 최종 데이터:');
         console.log('- 이미지 ID:', imageId);
         console.log('- 위치:', locationText);
         console.log('- 영어 위치:', englishLocationName);
@@ -2846,49 +2856,45 @@ export default {
           locationInfo.englishLocationName = englishLocationName;
         }
         
-        const saveStartTime = performance.now();
-        const esResponse = await saveToElasticsearch(
-          imageId,
-          item.activity,
-          locationText,
-          uniqueTags,
-          description,
-          verificationPhotoPreview.value,
-          analysisResult,
-          featuresVector,
-          locationInfo,
-          testDataInputs.value.p_id,
-          testDataInputs.value.u_id,
-          testDataInputs.value.u_age,
-          testDataInputs.value.u_gender,
-          verifyingItemInfo.value.location || verifyingItemInfo.value.place_name || verifyingItemInfo.value.address_name || ''
-        );
+        // 5단계: 최종 처리 시간 계산
+        loadingPhase.value = 'processingResults';
+        console.log('5. 최종 처리 시간 계산 중...');
+        const processingStartTime = performance.now();
         
-        if (!esResponse || !esResponse._id) {
-          // Assuming saveToElasticsearch throws an error on failure.
-          // If not, this condition needs to be handled.
-          throw new Error('Elasticsearch 저장에 실패했습니다.');
-        }
+        // 결과 처리 시뮬레이션 (1-2초)
+        await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
         
-        const saveEndTime = performance.now();
-        searchDuration.value = Number(((saveEndTime - saveStartTime) / 1000).toFixed(1));
-        console.log('4. Elasticsearch에 저장 완료:', imageId);
+        const processingEndTime = performance.now();
+        processingResultsDuration.value = Number(((processingEndTime - processingStartTime) / 1000).toFixed(1));
+        console.log('5. 최종 처리 완료');
         
         loadingPhase.value = 'completed';
+        console.log('모든 처리가 완료되었습니다. 저장 버튼을 클릭하여 최종 저장하세요.');
         
-        const verifiedAt = new Date().toISOString();
-        item.verified = true;
-        item.verifiedAt = verifiedAt;
-        item.verificationPhoto = verificationPhotoPreview.value;
-        item.photoMetadata = photoMetadata.value;
-        item.rating = reviewRating.value;
-        item.review = reviewText.value;
+        // 임시 저장 데이터 (실제 ElasticSearch 저장은 saveVerificationResult에서 수행)
+        tempVerificationData.value = {
+          item,
+          imageId,
+          verifiedAt: new Date().toISOString(),
+          engDescription,
+          analysisResult,
+          featuresVector,
+          koreanDescription,
+          extractedKeywords,
+          placeNameTokens,
+          uniqueTags,
+          description,
+          locationInfo,
+          locationText,
+          // ElasticSearch 저장에 필요한 추가 데이터
+          p_id: testDataInputs.value.p_id,
+          u_id: testDataInputs.value.u_id,
+          u_age: testDataInputs.value.u_age,
+          u_gender: testDataInputs.value.u_gender,
+          addressName: verifyingItemInfo.value.location || verifyingItemInfo.value.place_name || verifyingItemInfo.value.address_name || ''
+        };
         
-        displayToast('방문이 인증되었고 사진이 저장되었습니다!', 'success');
-        
-        setTimeout(() => {
-          showVerificationModal.value = false;
-        }, 1000);
+        displayToast('인증 처리가 완료되었습니다. 저장 버튼을 클릭하여 최종 저장하세요.', 'success');
         
       } catch (error) {
         // AbortError is often thrown by fetch when a signal is aborted.
@@ -2901,16 +2907,19 @@ export default {
           let stageErrorMessage = '';
           switch (loadingPhase.value) {
             case 'imageAnalysis':
-              stageErrorMessage = '이미지 분석(영어 설명 추출) 중 오류';
+              stageErrorMessage = 'Llava 이미지 분석 중 오류';
               break;
             case 'meaningAnalysis':
-              stageErrorMessage = '이미지 의미 분석(벡터 변환) 중 오류';
+              stageErrorMessage = 'Llama 의미 분석 중 오류';
               break;
             case 'keywordExtraction':
-              stageErrorMessage = '이미지 키워드/한글 설명 추출 중 오류';
+              stageErrorMessage = 'Llama 키워드 추출 중 오류';
               break;
-            case 'vectorSaving':
-              stageErrorMessage = '인증 정보 저장 중 오류';
+            case 'morphologicalAnalysis':
+              stageErrorMessage = 'Nori 형태소 분석 중 오류';
+              break;
+            case 'processingResults':
+              stageErrorMessage = '최종 처리 중 오류';
               break;
             default:
               stageErrorMessage = `인증 처리 중 오류 (단계: ${loadingPhase.value || '알 수 없음'})`;
@@ -2919,7 +2928,11 @@ export default {
         }
         loadingPhase.value = 'error';
       } finally {
-        isVerifying.value = false;
+        // 에러가 발생했을 때만 isVerifying을 false로 설정
+        // 성공적으로 완료된 경우는 저장 버튼을 통해 수동으로 완료
+        if (loadingPhase.value === 'error') {
+          isVerifying.value = false;
+        }
       }
     };
 
@@ -2967,6 +2980,67 @@ export default {
       
       // 로딩 상태 해제
       isVerifying.value = false;
+    };
+
+    // 인증 결과 저장 함수
+    const saveVerificationResult = async () => {
+      if (!tempVerificationData.value) {
+        displayToast('저장할 인증 데이터가 없습니다.', 'error');
+        return;
+      }
+
+      try {
+        const data = tempVerificationData.value;
+        
+        console.log('ElasticSearch에 최종 저장 시작...');
+        
+        // ElasticSearch에 저장
+        const esResponse = await saveToElasticsearch(
+          data.imageId,
+          data.item.activity,
+          data.locationText,
+          data.uniqueTags,
+          data.description,
+          verificationPhotoPreview.value,
+          data.analysisResult,
+          data.featuresVector,
+          data.locationInfo,
+          data.p_id,
+          data.u_id,
+          data.u_age,
+          data.u_gender,
+          data.addressName
+        );
+        
+        if (!esResponse || !esResponse._id) {
+          throw new Error('Elasticsearch 저장에 실패했습니다.');
+        }
+        
+        console.log('ElasticSearch 저장 완료:', data.imageId);
+        
+        // 실제 아이템에 인증 정보 저장
+        data.item.verified = true;
+        data.item.verifiedAt = data.verifiedAt;
+        data.item.verificationPhoto = verificationPhotoPreview.value;
+        data.item.photoMetadata = photoMetadata.value;
+        data.item.rating = reviewRating.value;
+        data.item.review = reviewText.value;
+        
+        displayToast('방문 인증이 저장되었습니다!', 'success');
+        
+        // 상태 초기화 및 모달 닫기
+        loadingPhase.value = 'imageAnalysis'; // 초기 상태로 재설정
+        isVerifying.value = false; // 인증 상태 해제
+        
+        setTimeout(() => {
+          showVerificationModal.value = false;
+          tempVerificationData.value = null; // 임시 데이터 초기화
+        }, 1000);
+        
+      } catch (error) {
+        console.error('인증 결과 저장 중 오류:', error);
+        displayToast(`저장 중 오류가 발생했습니다: ${error.message}`, 'error');
+      }
     };
 
     // 컴포넌트 소멸 시 정리
@@ -3109,13 +3183,14 @@ export default {
       imageAnalysisDuration,
       meaningAnalysisDuration,
       keywordExtractionDuration,
-      searchDuration,
+      morphologicalAnalysisDuration,
       processingResultsDuration,
       memoTextarea,
       autoResizeTextarea,
       adminVerify,
       testDataInputs,
       isTestDataExpanded,
+      saveVerificationResult,
       detailMapContainer // expose to template if not already (it is used by ref="detailMapContainer")
     };
   }

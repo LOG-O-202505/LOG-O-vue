@@ -3,7 +3,7 @@
     
     <!-- 프로세스 리스트 -->
     <div class="verification-process-list">
-      <!-- 단계 1: AI 이미지 분석 -->
+      <!-- 단계 1: Llava 이미지 분석 -->
       <div
         class="verification-process-item"
         :class="{ 
@@ -42,7 +42,7 @@
               }
             ]"
           >
-            AI 이미지 분석
+            Llava 이미지 분석
           </div>
           <!-- 단일 정보 표시: 상태 또는 시간 -->
           <div class="verification-process-status-or-time">
@@ -78,7 +78,7 @@
         </div>
       </div>
 
-      <!-- 단계 2: AI 의미 분석 -->
+      <!-- 단계 2: Llama 의미 분석 -->
       <div
         class="verification-process-item"
         :class="{ 
@@ -117,7 +117,7 @@
               }
             ]"
           >
-            AI 의미 분석
+            Llama 의미 분석
           </div>
           <!-- 단일 정보 표시: 상태 또는 시간 -->
           <div class="verification-process-status-or-time">
@@ -153,9 +153,8 @@
         </div>
       </div>
 
-      <!-- 단계 3: AI 키워드 추출 (TripPlan에서만 사용) -->
+      <!-- 단계 3: Llama 키워드 추출 -->
       <div
-        v-if="showExtendedPhases"
         class="verification-process-item"
         :class="{ 
           'process-active': currentPhase === 'keywordExtraction', 
@@ -193,7 +192,7 @@
               }
             ]"
           >
-            AI 키워드 추출
+            Llama 키워드 추출
           </div>
           <!-- 단일 정보 표시: 상태 또는 시간 -->
           <div class="verification-process-status-or-time">
@@ -229,23 +228,23 @@
         </div>
       </div>
 
-      <!-- 마지막 단계: 벡터 검색/저장 -->
+      <!-- 단계 4: Nori 형태소 분석기 -->
       <div
         class="verification-process-item"
         :class="{ 
-          'process-active': currentPhase === 'search' || currentPhase === 'vectorSaving', 
-          'process-completed': isPhaseCompleted('search'),
-          'process-waiting': currentPhase === 'idle' || !isPhaseCompleted('search') && currentPhase !== 'search' && currentPhase !== 'vectorSaving'
+          'process-active': currentPhase === 'morphologicalAnalysis', 
+          'process-completed': isPhaseCompleted('morphologicalAnalysis'),
+          'process-waiting': currentPhase === 'idle' || (!isPhaseCompleted('morphologicalAnalysis') && currentPhase !== 'morphologicalAnalysis')
         }"
       >
         <div class="verification-process-icon-container">
           <!-- 진행 중인 프로세스 -->
-          <div v-if="currentPhase === 'search' || currentPhase === 'vectorSaving'" class="verification-loading-spinner">
+          <div v-if="currentPhase === 'morphologicalAnalysis'" class="verification-loading-spinner">
             <img src="../assets/flight.gif" alt="Loading" class="verification-flight-spinner" />
           </div>
           
           <!-- 완료된 프로세스 -->
-          <div v-else-if="isPhaseCompleted('search')" class="verification-check-icon-container">
+          <div v-else-if="isPhaseCompleted('morphologicalAnalysis')" class="verification-check-icon-container">
             <svg viewBox="0 0 24 24" class="verification-check-icon">
               <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"></path>
             </svg>
@@ -262,21 +261,21 @@
             :class="[
               'verification-process-name',
               {
-                'completed': isPhaseCompleted('search'),
-                'active': currentPhase === 'search' || currentPhase === 'vectorSaving',
-                'pending': !isPhaseCompleted('search') && currentPhase !== 'search' && currentPhase !== 'vectorSaving'
+                'completed': isPhaseCompleted('morphologicalAnalysis'),
+                'active': currentPhase === 'morphologicalAnalysis',
+                'pending': !isPhaseCompleted('morphologicalAnalysis') && currentPhase !== 'morphologicalAnalysis'
               }
             ]"
           >
-            {{ showExtendedPhases ? '벡터 저장' : '벡터 검색' }}
+            Nori 형태소 분석기
           </div>
           <!-- 단일 정보 표시: 상태 또는 시간 -->
           <div class="verification-process-status-or-time">
-            <div v-if="currentPhase === 'search' || currentPhase === 'vectorSaving'" class="verification-current-time">
-              {{ getCurrentDuration('search') }}
+            <div v-if="currentPhase === 'morphologicalAnalysis'" class="verification-current-time">
+              {{ getCurrentDuration('morphologicalAnalysis') }}
             </div>
-            <div v-else-if="isPhaseCompleted('search')" class="verification-completed-time">
-              {{ formattedDuration(searchDuration) }}
+            <div v-else-if="isPhaseCompleted('morphologicalAnalysis')" class="verification-completed-time">
+              {{ formattedDuration(morphologicalAnalysisDuration) }}
             </div>
             <div v-else class="verification-waiting-status">
               대기중
@@ -290,21 +289,21 @@
             :class="[
               'verification-status-text',
               {
-                'completed': isPhaseCompleted('search'),
-                'processing': currentPhase === 'search' || currentPhase === 'vectorSaving',
-                'pending': !isPhaseCompleted('search') && currentPhase !== 'search' && currentPhase !== 'vectorSaving'
+                'completed': isPhaseCompleted('morphologicalAnalysis'),
+                'processing': currentPhase === 'morphologicalAnalysis',
+                'pending': !isPhaseCompleted('morphologicalAnalysis') && currentPhase !== 'morphologicalAnalysis'
               }
             ]"
           >
             {{ 
-              isPhaseCompleted('search') ? '완료' : 
-              currentPhase === 'search' || currentPhase === 'vectorSaving' ? '처리중' : '대기중' 
+              isPhaseCompleted('morphologicalAnalysis') ? '완료' : 
+              currentPhase === 'morphologicalAnalysis' ? '처리중' : '대기중' 
             }}
           </div>
         </div>
       </div>
-          
-      <!-- 결과 처리 단계 -->
+
+      <!-- 마지막 단계: 최종 처리 시간 -->
       <div
         class="verification-process-item"
         :class="{ 
@@ -345,7 +344,7 @@
               }
             ]"
           >
-            {{ currentPhase === 'completed' ? '총 처리 시간' : '인증 결과 처리' }}
+            최종 처리 시간
           </div>
           <!-- 단일 정보 표시: 상태 또는 시간 -->
           <div class="verification-process-status-or-time">
@@ -385,18 +384,29 @@
     
     <!-- 진행 상태 표시 -->
     <div class="verification-progress-container">
-      <div class="verification-progress-bar">
-        <div 
-          class="verification-progress-fill" 
-          :style="{ width: `${progressPercentage}%` }"
-        ></div>
+      <!-- 완료 시 저장 버튼 표시 -->
+      <div v-if="currentPhase === 'completed'" class="save-button-container">
+        <button @click="$emit('save-result')" class="save-result-button">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17,21 17,13 7,13 7,21"></polyline>
+            <polyline points="7,3 7,8 15,8"></polyline>
+          </svg>
+          인증 완료하기
+        </button>
       </div>
-      <div class="verification-progress-text">
-        {{ 
-          currentPhase === 'completed' 
-            ? '모든 작업이 완료되었습니다' 
-            : `${currentStepNumber}/${totalSteps} 진행 중` 
-        }}
+      
+      <!-- 진행 중일 때만 진행 바 표시 -->
+      <div v-else>
+        <div class="verification-progress-bar">
+          <div 
+            class="verification-progress-fill" 
+            :style="{ width: `${progressPercentage}%` }"
+          ></div>
+        </div>
+        <div class="verification-progress-text">
+          {{ `${currentStepNumber}/${totalSteps} 진행 중` }}
+        </div>
       </div>
     </div>
   </div>
@@ -405,11 +415,12 @@
 <script>
 export default {
   name: 'VerificationImageProcessSpinner',
+  emits: ['save-result'],
   props: {
   currentPhase: {
     type: String,
     default: 'idle',
-    validator: (value) => ['idle', 'imageAnalysis', 'meaningAnalysis', 'keywordExtraction', 'search', 'vectorSaving', 'processingResults', 'completed'].includes(value)
+    validator: (value) => ['idle', 'imageAnalysis', 'meaningAnalysis', 'keywordExtraction', 'morphologicalAnalysis', 'processingResults', 'completed'].includes(value)
   },
   imageAnalysisDuration: {
     type: [Number, String],
@@ -423,7 +434,7 @@ export default {
     type: [Number, String],
     default: null
   },
-  searchDuration: {
+  morphologicalAnalysisDuration: {
     type: [Number, String],
     default: null
   },
@@ -442,14 +453,14 @@ export default {
         imageAnalysis: null,
         meaningAnalysis: null,
         keywordExtraction: null,
-        search: null,
+        morphologicalAnalysis: null,
         processingResults: null
       },
       currentDurations: {
         imageAnalysis: 0,
         meaningAnalysis: 0,
         keywordExtraction: 0,
-        search: 0,
+        morphologicalAnalysis: 0,
         processingResults: 0
       },
       timerInterval: null
@@ -511,7 +522,7 @@ export default {
     },
     isPhaseCompleted() {
       return (phase) => {
-  const phases = ['imageAnalysis', 'meaningAnalysis', 'keywordExtraction', 'search', 'vectorSaving', 'processingResults', 'completed'];
+  const phases = ['imageAnalysis', 'meaningAnalysis', 'keywordExtraction', 'morphologicalAnalysis', 'processingResults', 'completed'];
         const currentIndex = phases.indexOf(this.currentPhase);
   const phaseIndex = phases.indexOf(phase);
         return phaseIndex < currentIndex || this.currentPhase === 'completed';
@@ -527,9 +538,7 @@ export default {
     },
     // 진행률 계산
     progressPercentage() {
-      const phases = this.showExtendedPhases 
-        ? ['imageAnalysis', 'meaningAnalysis', 'keywordExtraction', 'search', 'vectorSaving', 'processingResults', 'completed'] 
-        : ['imageAnalysis', 'meaningAnalysis', 'search', 'processingResults', 'completed'];
+      const phases = ['imageAnalysis', 'meaningAnalysis', 'keywordExtraction', 'morphologicalAnalysis', 'processingResults', 'completed'];
   
       const currentIndex = phases.indexOf(this.currentPhase);
       const totalPhases = phases.length - 1; // 'completed' 상태 제외
@@ -541,24 +550,22 @@ export default {
     },
 // 현재 단계 번호
     currentStepNumber() {
-      const phases = this.showExtendedPhases 
-        ? ['imageAnalysis', 'meaningAnalysis', 'keywordExtraction', 'search', 'vectorSaving', 'processingResults'] 
-        : ['imageAnalysis', 'meaningAnalysis', 'search', 'processingResults'];
+      const phases = ['imageAnalysis', 'meaningAnalysis', 'keywordExtraction', 'morphologicalAnalysis', 'processingResults'];
   
       return phases.indexOf(this.currentPhase) + 1;
     },
     // 전체 단계 수
     totalSteps() {
-      return this.showExtendedPhases ? 5 : 4;
+      return 5;
     },
     formattedTotalTime() {
       const imageTime = parseFloat(this.imageAnalysisDuration) || 0;
       const meaningTime = parseFloat(this.meaningAnalysisDuration) || 0;
       const keywordTime = parseFloat(this.keywordExtractionDuration) || 0;
-      const searchTime = parseFloat(this.searchDuration) || 0;
-      const processTime = parseFloat(this.processingResultsDuration) || 0;
+      const morphologicalTime = parseFloat(this.morphologicalAnalysisDuration) || 0;
+      // processingResults는 제외하고 1-4단계만 합산
       
-      const totalTime = imageTime + meaningTime + (this.showExtendedPhases ? keywordTime : 0) + searchTime + processTime;
+      const totalTime = imageTime + meaningTime + keywordTime + morphologicalTime;
       return `${totalTime.toFixed(1)}초`;
     }
   },
@@ -617,7 +624,7 @@ export default {
 
 .verification-process-item.process-active {
   background-color: rgba(255, 255, 255, 0.7);
-  border-color: #3b82f6;
+  border-color: #3b82f6; /* Blue border for active */
   border-width: 2px;
   box-shadow: 0 2px 10px rgba(59, 130, 246, 0.1);
   transition: all 0.5s ease;
@@ -625,14 +632,14 @@ export default {
 
 .verification-process-item.process-completed {
   background-color: rgba(16, 185, 129, 0.05);
-  border-color: #10b981;
+  border-color: #10b981; /* Green border for completed */
   border-width: 2px;
   transition: all 0.5s ease;
 }
 
 .verification-process-item.process-waiting {
   background-color: rgba(255, 255, 255, 0.7);
-  border-color: #9ca3af;
+  border-color: #9ca3af; /* Gray border for waiting */
   border-width: 2px;
   transition: all 0.5s ease;
 }
@@ -831,12 +838,9 @@ export default {
 
 /* 총 시간 표시를 위한 특별한 스타일 */
 .verification-process-item.total-time-display {
-  background-color: rgba(59, 130, 246, 0.05);
+  background-color: rgba(59, 130, 246, 0.1);
   border-color: #3b82f6;
   border-width: 3px;
-  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
-  transform: scale(1.01);
-  transition: all 0.5s ease;
 }
 
 .verification-process-item.total-time-display .verification-check-icon-container {
@@ -846,7 +850,7 @@ export default {
 .verification-total-time-value {
   color: #3b82f6;
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 1.1rem;
 }
 
 .verification-process-name.total-time-title {
@@ -857,6 +861,40 @@ export default {
 .verification-status-text.total-status {
   color: #3b82f6;
   font-weight: 600;
+}
+
+/* 저장 버튼 스타일 */
+.save-button-container {
+  margin: 1rem 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.save-result-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+}
+
+.save-result-button:hover {
+  background-color: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+}
+
+.save-result-button:active {
+  transform: translateY(0);
 }
 
 /* 반응형 디자인 */
