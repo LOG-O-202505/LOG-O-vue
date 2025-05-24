@@ -645,6 +645,54 @@ export const saveToElasticsearch = async (
 };
 
 /**
+ * ElasticSearch analyzer를 사용하여 텍스트를 토큰화
+ * @param {string} text - 토큰화할 텍스트 (예: 방문지 이름)
+ * @returns {Promise<Array<string>>} - 토큰화된 문자열 배열
+ */
+export const analyzeTextWithElasticsearch = async (text) => {
+  try {
+    console.log('ElasticSearch 텍스트 분석 시작:', text);
+    
+    if (!text || text.trim() === '') {
+      console.log('분석할 텍스트가 없습니다.');
+      return [];
+    }
+    
+    // ElasticSearch analyzer API 호출
+    const response = await fetch(`${config.ES_API}/store_index/_analyze`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        analyzer: 'my_nori_analyzer',
+        text: text
+      })
+    });
+    
+    if (!response.ok) {
+      console.error(`ElasticSearch analyzer API 오류: ${response.status} ${response.statusText}`);
+      // 분석 실패 시 원본 텍스트를 공백으로 분리해서 반환
+      return text.split(/\s+/).filter(token => token.length > 0);
+    }
+    
+    const data = await response.json();
+    console.log('ElasticSearch 분석 결과:', data);
+    
+    // 토큰 배열 추출
+    const tokens = data.tokens ? data.tokens.map(tokenObj => tokenObj.token).filter(token => token.trim().length > 0) : [];
+    
+    console.log('추출된 토큰들:', tokens);
+    return tokens;
+    
+  } catch (error) {
+    console.error('ElasticSearch 텍스트 분석 오류:', error);
+    // 오류 발생 시 원본 텍스트를 공백으로 분리해서 반환
+    return text ? text.split(/\s+/).filter(token => token.length > 0) : [];
+  }
+};
+
+/**
  * 유사 이미지 검색 (ES에서 KNN 검색 수행)
  * @param {Array<number>} featuresVector - 검색할 벡터
  * @param {number} limit - 검색 결과 제한
@@ -2257,7 +2305,10 @@ export async function enDescToKoDescAndTags(englishDescription, signal) {
     },
     body: JSON.stringify({
       model: 'ko_3',
-      prompt : `다음 영문 여행지 설명을 2-3개의 간결한 한국어 문장으로 요약하고, 이 장소의 특징을 나타내는 5-20개의 고유한 한국어 키워드를 추출해주세요. 모든 영어 단어는 100% 한국어로 변환하고, 의미가 중복되는 키워드는 철저히 제거하세요. 각 키워드는 1-2단어의 명사 형태로 구성하고, 추상적이거나 일반적인 키워드는 피하세요. 반드시 정확한 JSON 형식으로 응답해주세요: ${englishDescription}`,
+            prompt: `Please summarize the following English travel destination description into 2-3 concise Korean sentences and extract 5-20 unique Korean keywords that represent the characteristics of this place. Convert all English words to 100% Korean and thoroughly remove any duplicate keywords. Each keyword should be composed of 1-2 word nouns and avoid abstract or general keywords.
+                    **CRITICAL: You MUST respond ONLY in the exact JSON format below. Do NOT include any markdown formatting, explanations, additional text, newline characters (\\n), or special symbols. Return ONLY a single line compact JSON object without any line breaks or formatting:**
+                    {"description": "Korean description here", "keywords": ["keyword1", "keyword2", "keyword3"]}
+                    English description to process: ${englishDescription}`,
       stream: false,
     }),
     signal: signal,
@@ -2275,7 +2326,16 @@ export async function enDescToKoDescAndTags(englishDescription, signal) {
 
   if (data && data.response) {
     try {
-      const jsonString = data.response.trim();
+      // 응답에서 불필요한 문자들 제거
+      let jsonString = data.response.trim();
+      
+      // 앞뒤 불필요한 문자들 제거 (예: "]", "```", 등)
+      jsonString = jsonString.replace(/^[^{]*/, '').replace(/[^}]*$/, '');
+      
+      // 개행문자와 불필요한 공백 제거
+      jsonString = jsonString.replace(/\n/g, '').replace(/\s+/g, ' ');
+      
+      // JSON 파싱 시도
       const parsedData = JSON.parse(jsonString);
       if (parsedData.description) {
         koreanDescription = parsedData.description;

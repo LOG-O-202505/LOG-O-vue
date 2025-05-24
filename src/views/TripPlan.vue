@@ -731,7 +731,8 @@ import {
   getEnglishLocationName,
   getLocationCodes,
   enDescToKoDescAndTags, // Added import
-  ImgToPayment           // Added import
+  ImgToPayment,          // Added import
+  analyzeTextWithElasticsearch // 새로 추가된 함수
 } from '@/services/api';
 
 export default {
@@ -2810,10 +2811,20 @@ export default {
         loadingPhase.value = 'vectorSaving';
         const imageId = `trip-verification-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
         
-        const baseTags = [item.activity];
-        const tags = extractedKeywords && extractedKeywords.length > 0 
-          ? [...baseTags, ...extractedKeywords]
-          : baseTags;
+        // ElasticSearch analyzer를 사용하여 장소명(p_name)과 주소(p_address) 토큰화
+        const combinedText = `${item.activity} ${locationText}`.trim();
+        console.log('4-1. ElasticSearch analyzer로 장소명+주소 토큰화 시작:', combinedText);
+        const placeNameTokens = await analyzeTextWithElasticsearch(combinedText);
+        console.log('4-1. 장소명+주소 토큰화 결과:', placeNameTokens);
+        
+        // 최종 태그 배열: ko_3 모델 키워드 먼저, ElasticSearch 토큰화 결과 나중에
+        const tags = [
+          ...(extractedKeywords && extractedKeywords.length > 0 ? extractedKeywords : []),
+          ...(placeNameTokens && placeNameTokens.length > 0 ? placeNameTokens : [])
+        ];
+        
+        // 중복 제거
+        const uniqueTags = [...new Set(tags)];
         
         const description = koreanDescription || reviewText.value || '방문 인증 사진';
         
@@ -2821,7 +2832,9 @@ export default {
         console.log('- 이미지 ID:', imageId);
         console.log('- 위치:', locationText);
         console.log('- 영어 위치:', englishLocationName);
-        console.log('- 태그:', tags);
+        console.log('- ko_3 모델 키워드:', extractedKeywords);
+        console.log('- 장소명 토큰화 결과:', placeNameTokens);
+        console.log('- 최종 태그 (중복 제거):', uniqueTags);
         console.log('- 설명:', description);
         console.log('- 10차원 벡터:', featuresVector);
         
@@ -2834,7 +2847,7 @@ export default {
           imageId,
           item.activity,
           locationText,
-          tags,
+          uniqueTags,
           description,
           verificationPhotoPreview.value,
           analysisResult,
