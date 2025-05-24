@@ -1,33 +1,12 @@
 <template>
   <div class="verification-upload-container">
     <div class="verification-upload-card">
-      <!-- Close Button -->
+      <!-- Close Button - TripPlan.vue의 delete-btn 스타일 적용, 오른쪽 위 위치 -->
       <button 
         @click="$emit('close-modal')" 
         :disabled="isVerifying"
-        style="
-          position: absolute !important;
-          top: 16px !important;
-          right: 16px !important;
-          width: 32px !important;
-          height: 32px !important;
-          background: transparent !important;
-          border: none !important;
-          border-radius: 0 !important;
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          cursor: pointer !important;
-          z-index: 10 !important;
-          color: #666 !important;
-          outline: none !important;
-        "
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
+        class="close-button">
+        X
       </button>
       <div class="verification-upload-content">
         <!-- Guide State Container - 항상 표시 -->
@@ -699,6 +678,43 @@ export default {
   border-width: 0;
 }
 
+/* Close Button - TripPlan.vue의 delete-btn 스타일 적용, 오른쪽 위 위치 */
+.close-button {
+  position: absolute !important;
+  top: 16px !important;
+  right: 16px !important; /* left에서 right로 변경 */
+  background: none !important; /* delete-btn과 동일 */
+  border: none !important;
+  cursor: pointer !important;
+  color: #a0aec0 !important; /* delete-btn과 동일한 회색 */
+  padding: 0.25rem !important;
+  border-radius: 4px !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 10 !important;
+  outline: none !important;
+  width: 50px !important; /* 고정 크기 제거 */
+  height: 40px !important; /* 고정 크기 제거 */
+  font-size: 1.2rem !important; /* X 크기 */
+  font-weight: normal !important;
+}
+
+.close-button:hover {
+  color: #e53e3e !important; /* delete-btn:hover와 동일한 빨간색 */
+  background-color: rgba(229, 62, 62, 0.1) !important; /* delete-btn:hover와 동일 */
+  transform: none !important; /* scale 효과 제거 */
+}
+
+.close-button:disabled {
+  color: #9ca3af !important;
+  background-color: transparent !important;
+  cursor: not-allowed !important;
+  opacity: 0.5 !important;
+  pointer-events: none !important;
+}
+
 /* File Preview */
 .file-preview {
   display: flex;
@@ -725,30 +741,6 @@ export default {
   max-height: 100%;
   object-fit: contain;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-/* Close Button */
-.close-btn {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 32px;
-  height: 32px;
-  background: none;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 10;
-  color: #6b7280;
-}
-
-.close-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  pointer-events: none;
 }
 
 /* Guide State */
@@ -779,7 +771,6 @@ export default {
   align-items: center;
   justify-content: center;
   z-index: 10;
-  box-shadow: none;
 }
 
 .admin-carrot-btn:hover {
@@ -871,7 +862,6 @@ export default {
   border-radius: 12px;
   border: 1px solid rgba(72, 176, 228, 0.1);
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(72, 176, 228, 0.05);
   flex: 1;
   min-width: 300px;
   max-width: 380px;
@@ -882,7 +872,6 @@ export default {
 
 .analysis-feature-item:hover {
   transform: translateX(6px);
-  box-shadow: 0 6px 20px rgba(72, 176, 228, 0.2);
   border-color: rgba(72, 176, 228, 0.3);
 }
 
@@ -893,7 +882,6 @@ export default {
 
 .upload-feature-item:hover {
   transform: translateX(6px);
-  box-shadow: 0 6px 20px rgba(72, 176, 228, 0.2);
   border-color: rgba(72, 176, 228, 0.3);
 }
 
@@ -909,7 +897,6 @@ export default {
   background: linear-gradient(135deg, rgba(72, 176, 228, 0.15), rgba(118, 179, 157, 0.15));
   border-radius: 50%;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(72, 176, 228, 0.1);
   align-self: center;
 }
 
@@ -1394,7 +1381,6 @@ export default {
   max-height: 150px;
   object-fit: cover;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .uploaded-file-info {
@@ -1549,4 +1535,4 @@ export default {
     font-size: 0.75rem;
   }
 }
-</style> 
+</style>
