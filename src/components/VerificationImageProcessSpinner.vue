@@ -406,33 +406,33 @@
 export default {
   name: 'VerificationImageProcessSpinner',
   props: {
-    currentPhase: {
-      type: String,
-      default: 'idle',
-      validator: (value) => ['idle', 'imageAnalysis', 'meaningAnalysis', 'keywordExtraction', 'search', 'vectorSaving', 'processingResults', 'completed'].includes(value)
-    },
-    imageAnalysisDuration: {
-      type: [Number, String],
-      default: null
-    },
-    meaningAnalysisDuration: {
-      type: [Number, String],
-      default: null
-    },
-    keywordExtractionDuration: {
-      type: [Number, String],
-      default: null
-    },
-    searchDuration: {
-      type: [Number, String],
-      default: null
-    },
+  currentPhase: {
+    type: String,
+    default: 'idle',
+    validator: (value) => ['idle', 'imageAnalysis', 'meaningAnalysis', 'keywordExtraction', 'search', 'vectorSaving', 'processingResults', 'completed'].includes(value)
+  },
+  imageAnalysisDuration: {
+    type: [Number, String],
+    default: null
+  },
+  meaningAnalysisDuration: {
+    type: [Number, String],
+    default: null
+  },
+  keywordExtractionDuration: {
+    type: [Number, String],
+    default: null
+  },
+  searchDuration: {
+    type: [Number, String],
+    default: null
+  },
     processingResultsDuration: {
       type: [Number, String],
       default: null
     },
-    showExtendedPhases: {
-      type: Boolean,
+  showExtendedPhases: {
+    type: Boolean,
       default: false
     }
   },
@@ -511,40 +511,40 @@ export default {
     },
     isPhaseCompleted() {
       return (phase) => {
-        const phases = ['imageAnalysis', 'meaningAnalysis', 'keywordExtraction', 'search', 'vectorSaving', 'processingResults', 'completed'];
+  const phases = ['imageAnalysis', 'meaningAnalysis', 'keywordExtraction', 'search', 'vectorSaving', 'processingResults', 'completed'];
         const currentIndex = phases.indexOf(this.currentPhase);
-        const phaseIndex = phases.indexOf(phase);
+  const phaseIndex = phases.indexOf(phase);
         return phaseIndex < currentIndex || this.currentPhase === 'completed';
-      };
+};
     },
     // 시간 형식화 함수
     formattedDuration() {
       return (duration) => {
         if (!duration) return '0.0초';
-        const parsedDuration = parseFloat(duration);
-        return `${parsedDuration}초`;
-      };
+  const parsedDuration = parseFloat(duration);
+  return `${parsedDuration}초`;
+};
     },
     // 진행률 계산
     progressPercentage() {
       const phases = this.showExtendedPhases 
         ? ['imageAnalysis', 'meaningAnalysis', 'keywordExtraction', 'search', 'vectorSaving', 'processingResults', 'completed'] 
         : ['imageAnalysis', 'meaningAnalysis', 'search', 'processingResults', 'completed'];
-      
+  
       const currentIndex = phases.indexOf(this.currentPhase);
       const totalPhases = phases.length - 1; // 'completed' 상태 제외
       
       if (this.currentPhase === 'completed') return 100;
       if (currentIndex < 0) return 0;
-      
+  
       return Math.min(Math.round((currentIndex / totalPhases) * 100), 100);
     },
-    // 현재 단계 번호
+// 현재 단계 번호
     currentStepNumber() {
       const phases = this.showExtendedPhases 
         ? ['imageAnalysis', 'meaningAnalysis', 'keywordExtraction', 'search', 'vectorSaving', 'processingResults'] 
         : ['imageAnalysis', 'meaningAnalysis', 'search', 'processingResults'];
-      
+  
       return phases.indexOf(this.currentPhase) + 1;
     },
     // 전체 단계 수
@@ -565,7 +565,7 @@ export default {
   methods: {
     getCurrentDuration(phase) {
       return `${this.currentDurations[phase]}초`;
-    }
+  }
   }
 }
 </script>

@@ -571,76 +571,85 @@
         </div>
 
         <!-- 리뷰 모달 (오른쪽) - 인증 성공 시에만 표시 -->
-        <div v-if="verificationResult && verificationResult.success" class="verification-review-modal" @click.stop>
-          <div class="modal-header">
-            <h3>방문 후기 작성</h3>
-          </div>
-
-          <div class="review-content">
-            <!-- 로딩 중일 때는 스피너만 표시 -->
-            <div v-if="isVerifying" class="verification-loading-section">
-              <VerificationImageProcessSpinner 
-                :current-phase="loadingPhase"
-                :image-analysis-duration="imageAnalysisDuration"
-                :meaning-analysis-duration="meaningAnalysisDuration"
-                :keyword-extraction-duration="keywordExtractionDuration"
-                :search-duration="searchDuration"
-                :processing-results-duration="processingResultsDuration"
-                :show-extended-phases="true"
-              />
+        <div v-if="verificationResult && verificationResult.success" class="verification-review-container">
+          <div class="verification-review-modal" @click.stop>
+            <div v-if="!isVerifying" class="modal-header">
+              <h3>방문 후기 작성</h3>
             </div>
-            
-            <!-- 로딩 중이 아닐 때만 폼 표시 -->
-            <div v-else class="review-form-section">
-              <div class="rating-container">
-                <label>별점 평가:</label>
-                <div class="star-rating">
-                  <span v-for="star in 5" :key="star" class="star" :class="{ 'active': star <= reviewRating }"
-                    @click="reviewRating = star">
-                    ★
-                  </span>
-                </div>
-              </div>
 
-              <div class="review-text-container">
-                <label for="review-text">방문 후기:</label>
-                <textarea id="review-text" v-model="reviewText" placeholder="이 장소에 대한 후기를 작성해주세요..." rows="6"></textarea>
+            <div class="review-content">
+              <!-- 로딩 중일 때는 스피너만 표시 -->
+              <div v-if="isVerifying" class="verification-loading-section">
+                <VerificationImageProcessSpinner 
+                  :current-phase="loadingPhase"
+                  :image-analysis-duration="imageAnalysisDuration"
+                  :meaning-analysis-duration="meaningAnalysisDuration"
+                  :keyword-extraction-duration="keywordExtractionDuration"
+                  :search-duration="searchDuration"
+                  :processing-results-duration="processingResultsDuration"
+                  :show-extended-phases="true"
+                />
               </div>
               
-              <!-- 테스트용 데이터 입력 필드 추가 -->
-              <div class="test-data-container">
-                <h4 class="test-data-title">테스트용 데이터 입력 (개발용)</h4>
-                <div class="test-data-inputs">
-                  <div class="test-data-input-row">
-                    <div class="test-data-field">
-                      <label for="p_id">장소 ID (p_id):</label>
-                      <input type="number" id="p_id" v-model="testDataInputs.p_id" min="1" placeholder="장소 ID">
-                    </div>
-                    <div class="test-data-field">
-                      <label for="u_id">사용자 ID (u_id):</label>
-                      <input type="number" id="u_id" v-model="testDataInputs.u_id" min="1" placeholder="사용자 ID">
-                    </div>
+              <!-- 로딩 중이 아닐 때만 폼 표시 -->
+              <div v-else class="review-form-section">
+                <div class="rating-container">
+                  <label>별점 평가:</label>
+                  <div class="star-rating">
+                    <span v-for="star in 5" :key="star" class="star" :class="{ 'active': star <= reviewRating }"
+                      @click="reviewRating = star">
+                      ★
+                    </span>
                   </div>
-                  <div class="test-data-input-row">
-                    <div class="test-data-field">
-                      <label for="u_age">나이 (u_age):</label>
-                      <input type="number" id="u_age" v-model="testDataInputs.u_age" min="1" placeholder="나이">
+                </div>
+
+                <div class="review-text-container">
+                  <label for="review-text">방문 후기:</label>
+                  <textarea id="review-text" v-model="reviewText" placeholder="이 장소에 대한 후기를 작성해주세요..." rows="6"></textarea>
+                </div>
+                
+                <!-- 테스트용 데이터 입력 필드 추가 -->
+                <div class="test-data-container">
+                  <div class="test-data-header" @click="isTestDataExpanded = !isTestDataExpanded">
+                    <h4 class="test-data-title">테스트용 데이터 입력 (개발용)</h4>
+                    <button type="button" class="test-data-toggle-btn" :class="{ 'expanded': isTestDataExpanded }">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="test-data-inputs" :class="{ 'expanded': isTestDataExpanded }">
+                    <div class="test-data-input-row">
+                      <div class="test-data-field">
+                        <label for="p_id">장소 ID (p_id):</label>
+                        <input type="number" id="p_id" v-model="testDataInputs.p_id" min="1" placeholder="장소 ID">
+                      </div>
+                      <div class="test-data-field">
+                        <label for="u_id">사용자 ID (u_id):</label>
+                        <input type="number" id="u_id" v-model="testDataInputs.u_id" min="1" placeholder="사용자 ID">
+                      </div>
                     </div>
-                    <div class="test-data-field">
-                      <label for="u_gender">성별 (u_gender):</label>
-                      <select id="u_gender" v-model="testDataInputs.u_gender">
-                        <option value="M">남성</option>
-                        <option value="F">여성</option>
-                      </select>
+                    <div class="test-data-input-row">
+                      <div class="test-data-field">
+                        <label for="u_age">나이 (u_age):</label>
+                        <input type="number" id="u_age" v-model="testDataInputs.u_age" min="1" placeholder="나이">
+                      </div>
+                      <div class="test-data-field">
+                        <label for="u_gender">성별 (u_gender):</label>
+                        <select id="u_gender" v-model="testDataInputs.u_gender">
+                          <option value="M">남성</option>
+                          <option value="F">여성</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              
-              <div class="form-actions">
-                <button @click="completeVerification" class="btn-verify">
-                  인증 완료하기
-                </button>
+                
+                <div class="form-actions">
+                  <button @click="completeVerification" class="btn-verify">
+                    인증 완료하기
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2677,6 +2686,9 @@ export default {
       u_gender: 'M'
     });
     
+    // 테스트 데이터 컨테이너 토글 상태
+    const isTestDataExpanded = ref(false);
+
     // 거리 표시 형식을 미터로 변경하는 함수
     const formatDistance = (distance) => {
       // km 단위에서 m 단위로 변환하고 쉼표 추가
@@ -3103,6 +3115,7 @@ export default {
       autoResizeTextarea,
       adminVerify,
       testDataInputs,
+      isTestDataExpanded,
       detailMapContainer // expose to template if not already (it is used by ref="detailMapContainer")
     };
   }
@@ -3712,13 +3725,14 @@ textarea {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem 2rem;
+  padding: 1rem 1.5rem;
   border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
 }
 
 .modal-header h3 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 600;
   color: #2d3748;
 }
@@ -4753,37 +4767,64 @@ textarea {
 .verification-container {
   display: flex;
   gap: 20px;
-  align-items: flex-start;
+  align-items: stretch;
   max-width: 1400px;
   width: 100%;
+  min-height: 600px;
+  margin: 0;
+  padding: 0;
 }
 
 .verification-photo-modal {
   background-color: white;
   border-radius: 12px;
   width: 75%;
-  max-height: 95vh;
+  height: auto;
+  min-height: 600px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  margin: 0;
+}
+
+.verification-review-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  width: 35%;
+  min-height: 600px;
+  padding: 0;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  flex-direction: column;
 }
 
 .verification-review-modal {
-  background-color: white;
-  border-radius: 12px;
-  width: 35%;
-  max-height: 90vh;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  flex: 1;
+}
+
+.verification-loading-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 600px;
+  width: 100%;
+  padding: 2rem 1rem;
+  flex: 1;
 }
 
 .verification-content, .review-content {
   padding: 1rem 1.5rem;
   overflow-y: auto;
-  height: calc(95vh - 60px);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .enhanced-image-container {
@@ -4992,13 +5033,11 @@ textarea {
 
 .verification-loading-section {
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
+  align-items: center;
+  min-height: 300px;
   width: 100%;
-  height: 100%;
-  min-height: 400px;
-  flex: 1;
+  padding: 2rem 1rem;
 }
 
 .verification-loading-section .spinner {
@@ -5068,28 +5107,72 @@ textarea {
 /* 테스트 데이터 입력 필드 스타일 */
 .test-data-container {
   margin-top: 24px;
-  padding: 16px;
   background-color: #f8f9fa;
   border: 1px dashed #adb5bd;
   border-radius: 6px;
+  overflow: hidden;
+}
+
+.test-data-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.test-data-header:hover {
+  background-color: #e9ecef;
 }
 
 .test-data-title {
-  margin: 0 0 12px 0;
+  margin: 0;
   font-size: 15px;
   color: #6c757d;
   font-weight: 500;
 }
 
+.test-data-toggle-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  color: #6c757d;
+}
+
+.test-data-toggle-btn:hover {
+  background-color: rgba(108, 117, 125, 0.1);
+}
+
+.test-data-toggle-btn.expanded {
+  transform: rotate(180deg);
+}
+
 .test-data-inputs {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  padding: 0 16px;
+  max-height: 0;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  opacity: 0;
+}
+
+.test-data-inputs.expanded {
+  max-height: 200px;
+  padding: 0 16px 16px 16px;
+  opacity: 1;
 }
 
 .test-data-input-row {
   display: flex;
   gap: 16px;
+  margin-bottom: 12px;
+}
+
+.test-data-input-row:last-child {
+  margin-bottom: 0;
 }
 
 .test-data-field {
@@ -5117,5 +5200,53 @@ textarea {
   border-color: #4dabf7;
   outline: none;
   box-shadow: 0 0 0 2px rgba(77, 171, 247, 0.25);
+}
+
+.review-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  flex: 1;
+  justify-content: flex-start;
+}
+
+.modal-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: center;
+}
+
+/* 추가 반응형 스타일 for verification-review-container */
+@media (max-width: 768px) {
+  .verification-container {
+    flex-direction: column;
+    min-height: auto;
+    gap: 1rem;
+  }
+  
+  .verification-photo-modal {
+    width: 100%;
+    min-height: 400px;
+  }
+  
+  .verification-review-container {
+    width: 100% !important;
+    margin-top: 0;
+    min-height: auto;
+    align-items: stretch;
+  }
+  
+  .verification-loading-section {
+    min-height: 400px;
+    padding: 1.5rem 1rem;
+  }
 }
 </style>

@@ -122,9 +122,11 @@
                             <span class="uploaded-detail-value status-verified">인증 완료</span>
                           </div>
                         </div>
-                        <button @click="handleRemoveFile" type="button" class="upload-reset-button">
-                          초기화
-                        </button>
+                        <div class="upload-button-actions">
+                          <button @click="handleRemoveFile" type="button" class="upload-reset-button">
+                            초기화
+                          </button>
+                        </div>
                       </div>
                     </div>
 
@@ -945,6 +947,7 @@ export default {
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 3;
+  line-clamp: 3;
   -webkit-box-orient: vertical;
 }
 
@@ -1420,6 +1423,7 @@ export default {
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
@@ -1464,8 +1468,14 @@ export default {
   font-weight: 600 !important;
 }
 
-.upload-reset-button {
+/* Upload button actions container */
+.upload-button-actions {
   margin-top: 0.75rem;
+  width: 100%;
+}
+
+.upload-reset-button {
+  width: 100%;
   padding: 0.4rem 0.8rem;
   font-size: 0.8rem;
   font-weight: 500;
@@ -1475,7 +1485,8 @@ export default {
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.3s ease;
-  align-self: flex-start;
+  text-align: center;
+  min-height: 32px;
 }
 
 .upload-reset-button:hover {
