@@ -2671,16 +2671,97 @@ export async function deleteTravelPayment(tpuid) {
  */
 export async function updateTravelPayment(tpuid, updateData) {
   try {
-    console.log('여행 지출 수정 API 호출:', { tpuid, updateData });
-    
-    // auth.js에서 제공하는 apiPut 함수 사용 (인증 헤더 자동 포함)
-    const { apiPut } = await import('./auth.js');
-    const result = await apiPut(`/travel-payments/${tpuid}`, updateData);
-    
-    console.log('여행 지출 수정 성공:', result);
-    return result;
+    const response = await fetch(`${config.API_BASE_URL}/travels/payments/${tpuid}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify(updateData)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
   } catch (error) {
-    console.error('여행 지출 수정 오류:', error);
+    console.error('지출 수정 실패:', error);
     throw error;
   }
 }
+
+/**
+ * ElasticSearch에서 사용자의 여행별 최근 이미지를 가져오는 함수
+ * @param {number} userId - 사용자 ID
+ * @returns {Promise<Object>} - 여행별 최근 이미지 데이터
+ */
+export const getTravelRecentImages = async (userId) => {
+  try {
+    console.log('여행별 최근 이미지 조회 시작:', userId);
+
+    const query = {
+      query: {
+        term: {
+          "u_id": userId
+        }
+      },
+      collapse: {
+        field: "p_tuid.keyword"
+      },
+      sort: [
+        {
+          "upload_date": {
+            "order": "desc"
+          }
+        }
+      ],
+      _source: {
+        includes: [
+          "p_tuid",
+          "p_image",
+          "p_name",
+          "upload_date"
+        ]
+      },
+      size: 50
+    };
+
+    const response = await fetch(`${config.ES_API}/travel_places/_search`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(query)
+    });
+
+    if (!response.ok) {
+      throw new Error(`ElasticSearch 요청 실패: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('ElasticSearch 응답:', data);
+
+    // 결과를 여행 ID별로 매핑
+    const travelImages = {};
+    if (data.hits && data.hits.hits) {
+      data.hits.hits.forEach(hit => {
+        const source = hit._source;
+        if (source.p_tuid && source.p_image) {
+          travelImages[source.p_tuid] = {
+            image: source.p_image,
+            name: source.p_name,
+            uploadDate: source.upload_date
+          };
+        }
+      });
+    }
+
+    console.log('여행별 최근 이미지 매핑 완료:', travelImages);
+    return travelImages;
+
+  } catch (error) {
+    console.error('여행별 최근 이미지 조회 실패:', error);
+    return {};
+  }
+};

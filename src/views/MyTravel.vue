@@ -352,8 +352,13 @@
                 <div v-for="(travel, index) in yearGroup.trips" :key="index" class="trip-item" @click="navigateToPlan(travel.tuid)">
                   <div class="trip-date">{{ formatTravelDate(travel.startDate, travel.endDate) }}</div>
                   <div class="trip-image-preview">
+                    <!-- ElasticSearch에서 가져온 여행 이미지가 있으면 표시 -->
+                    <img v-if="travelImages[travel.tuid]?.image" 
+                         :src="getImageDataUrl(travelImages[travel.tuid].image)" 
+                         :alt="travelImages[travel.tuid].name || travel.title"
+                         class="travel-image" />
                     <!-- 여행 이미지가 없으면 기본 이미지 사용 -->
-                    <div class="default-image">
+                    <div v-else class="default-image">
                       <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="m3 16 4-4 4 4 5-5 5 5"/>
                         <path d="M21 12.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7"/>
@@ -405,7 +410,7 @@ import propertiesData from '@/assets/extracted_ctprvn.json';
 import sigGeoJson from '@/assets/sig.json';
 import sigPropertiesData from '@/assets/extracted_properties.json';
 import { useRouter } from 'vue-router';
-import { getUserAverageTravelPreferences, getUserTravelStatistics } from '@/services/api';
+import { getUserAverageTravelPreferences, getUserTravelStatistics, getTravelRecentImages } from '@/services/api';
 import { apiGet, apiPost } from '@/services/auth';
 
 export default {
@@ -453,6 +458,29 @@ export default {
     
     // 여행 데이터
     const travelTimeline = ref([]);
+    
+    // 여행별 최근 이미지 데이터
+    const travelImages = ref({});
+    
+    // Base64 이미지를 Data URL로 변환하는 computed 함수
+    const getImageDataUrl = (base64Data) => {
+      if (!base64Data) return null;
+      
+      // 이미 data URL 형식인지 확인
+      if (base64Data.startsWith('data:')) {
+        return base64Data;
+      }
+      
+      // base64 데이터만 있는 경우 data URL 접두사 추가
+      return `data:image/jpeg;base64,${base64Data}`;
+    };
+    
+    // 디버깅용: 여행 이미지 매핑 상태 확인
+    const debugTravelImages = computed(() => {
+      console.log('현재 travelImages 상태:', travelImages.value);
+      console.log('현재 travelTimeline:', travelTimeline.value.map(t => ({ tuid: t.tuid, title: t.title })));
+      return travelImages.value;
+    });
     
     // 여행 개수 계산
     const totalTripsCount = computed(() => {
@@ -515,6 +543,9 @@ export default {
           await loadUserData();
           await loadUserTravelData();
           
+          // 여행별 최근 이미지 로드
+          await loadTravelImages(response.data.uuid);
+          
           // 모든 데이터 로드 후 차트 렌더링
           await nextTick();
           if (hasValidChartData.value) {
@@ -524,6 +555,19 @@ export default {
         
       } catch (error) {
         console.error('사용자 프로필 로드 오류:', error);
+      }
+    };
+    
+    // 여행별 최근 이미지 로드 함수
+    const loadTravelImages = async (userId) => {
+      try {
+        console.log('여행별 최근 이미지 로드 시작:', userId);
+        const images = await getTravelRecentImages(userId);
+        travelImages.value = images;
+        console.log('여행별 최근 이미지 로드 완료:', images);
+      } catch (error) {
+        console.error('여행별 최근 이미지 로드 실패:', error);
+        travelImages.value = {};
       }
     };
     
@@ -1974,6 +2018,12 @@ export default {
       loadUserProfile,
       travelTimeline,
       
+      // 여행 이미지 관련
+      travelImages,
+      loadTravelImages,
+      debugTravelImages,
+      getImageDataUrl,
+      
       // 기존 반환값과 함께 새로운 함수와 상태 포함
       totalTripsCount,
       travelStats,
@@ -2747,7 +2797,15 @@ export default {
   transition: transform 0.5s ease;
 }
 
-.trip-item:hover .trip-image-preview img {
+.travel-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.trip-item:hover .trip-image-preview img,
+.trip-item:hover .trip-image-preview .travel-image {
   transform: scale(1.08);
 }
 
