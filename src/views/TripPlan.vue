@@ -580,7 +580,8 @@ import {
   enDescToKoDescAndTags, // Added import
   ImgToPayment,          // Added import
   analyzeTextWithElasticsearch, // 새로 추가된 함수
-  getUserTravelVerifications
+  getUserTravelVerifications,
+  deleteTravelPayment
 } from '@/services/api';
 import { apiGet, apiPost, apiDelete } from '@/services/auth'; // API 호출 함수를 auth.js에서 가져옴
 import PaymentModal from '@/components/PaymentModal.vue'; // Added import
@@ -1394,8 +1395,38 @@ export default {
     };
 
     // 지출 항목 삭제
-    const removeExpense = (index) => {
-      tripData.value.expenses.splice(index, 1);
+    const removeExpense = async (expense) => {
+      try {
+        // expense에 id가 있는지 확인 (서버에서 온 데이터인지)
+        if (!expense.id) {
+          displayToast('지출 ID가 없어 삭제할 수 없습니다.', 'error');
+          return;
+        }
+
+        // 확인 메시지
+        if (!confirm(`"${expense.description}" 지출 내역을 삭제하시겠습니까?`)) {
+          return;
+        }
+
+        // 처리중 토스트 표시
+        displayToast('지출 내역을 삭제하는 중...', 'processing');
+
+        // 서버 API 호출
+        await deleteTravelPayment(expense.id);
+
+        // 로컬 데이터에서 제거
+        const index = tripData.value.expenses.findIndex(e => e.id === expense.id);
+        if (index !== -1) {
+          tripData.value.expenses.splice(index, 1);
+        }
+
+        // 성공 메시지
+        displayToast('지출 내역이 성공적으로 삭제되었습니다.', 'success');
+
+      } catch (error) {
+        console.error('지출 삭제 오류:', error);
+        displayToast(`지출 삭제 중 오류가 발생했습니다: ${error.message}`, 'error');
+      }
     };
 
     // 지출 날짜 포맷팅

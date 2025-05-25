@@ -2638,3 +2638,35 @@ export const getUserTravelVerifications = async (userId, tuid) => {
     return {};
   }
 };
+
+/**
+ * Travel payment 삭제 함수
+ * @param {number} tpuid - Travel Payment 고유 ID
+ * @returns {Promise<Object>} API 응답 결과
+ */
+export async function deleteTravelPayment(tpuid) {
+  try {
+    console.log('여행 지출 삭제 API 호출:', { tpuid });
+    
+    const response = await fetch(`${config.API_BASE_URL}/api/travel-payments/${tpuid}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('여행 지출 삭제 API 오류:', errorText);
+      throw new Error(`서버 오류 (${response.status}): ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('여행 지출 삭제 성공:', result);
+    return result;
+    
+  } catch (error) {
+    console.error('여행 지출 삭제 오류:', error);
+    throw error;
+  }
+}
