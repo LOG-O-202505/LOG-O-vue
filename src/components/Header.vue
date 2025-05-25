@@ -25,9 +25,14 @@
         </div>
         
         <div class="nav-group">
-          <!-- 로그인 모달 컴포넌트로 교체 -->
-          <LoginModal />
-          <router-link to="/mytravel" class="nav-item">MY JOURNEY</router-link>
+          <!-- 로그인 상태에 따른 조건부 렌더링 -->
+          <template v-if="isLoggedIn">
+            <button @click="handleLogout" class="nav-item logout-btn">LOGOUT</button>
+            <router-link to="/mytravel" class="nav-item">MY JOURNEY</router-link>
+          </template>
+          <template v-else>
+            <LoginModal />
+          </template>
         </div>
       </div>
     </nav>
@@ -35,8 +40,9 @@
 </template>
 
 <script>
-// LoginModal 컴포넌트 임포트
+// LoginModal 컴포넌트와 auth 함수들 임포트
 import LoginModal from './LoginModal.vue';
+import { isAuthenticated, logout } from '@/services/auth';
 
 export default {
   name: 'AppHeader',
@@ -64,6 +70,33 @@ export default {
     heroHeight: {
       type: String,
       default: '320px' // Default height for the hero section
+    }
+  },
+  data() {
+    return {
+      isLoggedIn: false
+    };
+  },
+  mounted() {
+    // 컴포넌트 마운트 시 로그인 상태 확인
+    this.checkLoginStatus();
+  },
+  methods: {
+    checkLoginStatus() {
+      this.isLoggedIn = isAuthenticated();
+    },
+    async handleLogout() {
+      try {
+        await logout();
+        this.isLoggedIn = false;
+        
+        // 홈페이지로 리다이렉트
+        this.$router.push('/');
+      } catch (error) {
+        console.error('로그아웃 중 오류 발생:', error);
+        // 오류가 발생해도 UI 상태는 업데이트
+        this.isLoggedIn = false;
+      }
     }
   }
 }
@@ -210,6 +243,22 @@ export default {
 
 .nav-item:hover::after {
   width: 100%;
+}
+
+/* LOGOUT 버튼 스타일 */
+.logout-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.logout-btn:hover {
+  color: #ff6b6b;
+}
+
+.logout-btn::after {
+  background-color: #ff6b6b;
 }
 
 .router-link-active {

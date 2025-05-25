@@ -26,9 +26,14 @@
         </div>
 
         <div class="nav-group">
-          <LoginModal />
-          <a href="/plan" class="nav-item">PLANNER</a>
-          <a href="/mytravel" class="nav-item">MY JOURNEY</a>
+          <!-- 로그인 상태에 따른 조건부 렌더링 -->
+          <template v-if="isLoggedIn">
+            <button @click="handleLogout" class="nav-item logout-btn">LOGOUT</button>
+            <a href="/mytravel" class="nav-item">MY JOURNEY</a>
+          </template>
+          <template v-else>
+            <LoginModal />
+          </template>
         </div>
       </div>
     </nav>
@@ -386,8 +391,36 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, reactive, computed, watch, nextTick } from 'vue'
-// LoginModal 컴포넌트 임포트
+// LoginModal 컴포넌트와 auth 함수들 임포트
 import LoginModal from '../components/LoginModal.vue';
+import { isAuthenticated, logout } from '@/services/auth';
+import { useRouter } from 'vue-router';
+
+// Router setup
+const router = useRouter();
+
+// 로그인 상태 관리
+const isLoggedIn = ref(false);
+
+// 로그인 상태 확인 함수
+const checkLoginStatus = () => {
+  isLoggedIn.value = isAuthenticated();
+};
+
+// 로그아웃 함수
+const handleLogout = async () => {
+  try {
+    await logout();
+    isLoggedIn.value = false;
+    
+    // 홈페이지로 리다이렉트
+    router.push('/');
+  } catch (error) {
+    console.error('로그아웃 중 오류 발생:', error);
+    // 오류가 발생해도 UI 상태는 업데이트
+    isLoggedIn.value = false;
+  }
+};
 
 // Video related state and refs
 const isVideoAvailable = ref(true)
@@ -586,6 +619,9 @@ watch(currentVideoIndex, () => {
 
 // Lifecycle hooks
 onMounted(() => {
+  // 로그인 상태 확인
+  checkLoginStatus();
+  
   checkVideoPaths()
 
   if (backgroundVideoRef.value) {
@@ -787,7 +823,7 @@ body {
 }
 
 .nav-item::after {
-  content: "";
+  content: '';
   position: absolute;
   bottom: -5px;
   left: 0;
@@ -799,6 +835,22 @@ body {
 
 .nav-item:hover::after {
   width: 100%;
+}
+
+/* LOGOUT 버튼 스타일 */
+.logout-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.logout-btn:hover {
+  color: #ff6b6b;
+}
+
+.logout-btn::after {
+  background-color: #ff6b6b;
 }
 
 .nav-item.highlight {
@@ -875,7 +927,7 @@ body {
   gap: 1.5rem;
   opacity: 0;
   transform: translateY(20px);
-  transition: all 0.8s ease-out 0.4s;
+  transition: all 0.8s ease-out;
 }
 
 .cta-container.visible {

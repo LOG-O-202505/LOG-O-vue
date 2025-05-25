@@ -207,4 +207,46 @@ export async function apiDelete(endpoint) {
     console.error(`Failed to DELETE ${endpoint}:`, error);
     throw error;
   }
+}
+
+/**
+ * 로그아웃 함수
+ * @returns {Promise<object>} - 로그아웃 응답 데이터
+ */
+export async function logout() {
+  try {
+    const response = await authenticatedFetch('/auth/logout', {
+      method: 'POST'
+    });
+    
+    // 로그아웃 성공 시 토큰 삭제
+    if (response.ok) {
+      removeAccessToken();
+      removeRefreshToken();
+      return await response.json();
+    } else {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+  } catch (error) {
+    console.error('Failed to logout:', error);
+    // 오류가 발생해도 로컬 토큰은 삭제
+    removeAccessToken();
+    removeRefreshToken();
+    throw error;
+  }
+}
+
+/**
+ * refresh_token 쿠키를 삭제하는 함수
+ */
+export function removeRefreshToken() {
+  document.cookie = 'refresh_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/';
+}
+
+/**
+ * refresh_token이 존재하는지 확인하는 함수
+ * @returns {boolean} - refresh_token 존재 여부
+ */
+export function hasRefreshToken() {
+  return !!getCookie('refresh_token');
 } 
