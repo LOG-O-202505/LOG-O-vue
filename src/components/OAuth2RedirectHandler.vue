@@ -96,20 +96,29 @@
                   </div>
                 </div>
                 
-                <!-- 노션 페이지 ID 입력 (세 번째 카드) -->
+                <!-- 성별 선택 (세 번째 카드) -->
                 <div v-if="index === 2" class="input-form">
                   <div class="form-header">
-                    <h3 class="form-title">Notion 페이지 ID</h3>
+                    <h3 class="form-title">성별</h3>
                   </div>
                   <div class="form-body">
-                    <input 
-                      v-model="formData.notionPageId"
-                      type="text"
-                      class="form-input"
-                      placeholder="선택사항"
-                    />
+                    <div class="gender-buttons">
+                      <button 
+                        @click="selectGender('M')"
+                        :class="['gender-button', { 'selected': formData.gender === 'M' }]"
+                      >
+                        남성
+                      </button>
+                      <button 
+                        @click="selectGender('F')"
+                        :class="['gender-button', { 'selected': formData.gender === 'F' }]"
+                      >
+                        여성
+                      </button>
+                    </div>
                     <button 
                       @click="completeForm"
+                      :disabled="!formData.gender"
                       class="form-next-button"
                     >
                       완료
@@ -210,7 +219,7 @@ export default {
       formData: {
         birthday: '',
         nickname: '',
-        notionPageId: '',
+        gender: '',
       },
       maxDate: '',
       formCompleted: false,
@@ -413,13 +422,9 @@ export default {
       try {
         const userInfo = {
           nickname: this.formData.nickname.trim(),
-          birthday: this.formData.birthday
+          birthday: this.formData.birthday,
+          gender: this.formData.gender,
         };
-        
-        // notionPageId가 있을 때만 추가
-        if (this.formData.notionPageId && this.formData.notionPageId.trim()) {
-          userInfo.notionPageId = this.formData.notionPageId.trim();
-        }
         
         console.log('사용자 정보 전송 중:', userInfo);
         
@@ -436,8 +441,8 @@ export default {
         }
         
         // API 호출
-        const response = await fetch('http://localhost:8080/api/users/profile', {
-          method: 'PUT',
+        const response = await fetch('http://localhost:8080/api/oauth2/complete', {
+          method: 'POST',
           headers: headers,
           credentials: 'include',
           body: JSON.stringify(userInfo)
@@ -496,6 +501,10 @@ export default {
     initMaxDate() {
       const today = new Date();
       this.maxDate = today.toISOString().split('T')[0];
+    },
+
+    selectGender(gender) {
+      this.formData.gender = gender;
     },
   },
   beforeUnmount() {
@@ -817,6 +826,47 @@ export default {
   width: 100%;
 }
 
+/* Gender buttons styles */
+.gender-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.gender-button {
+  padding: 12px 25px;
+  border: 2px solid rgba(165, 149, 132, 0.3);
+  border-radius: 25px;
+  background: rgba(255, 255, 255, 0.8);
+  color: #8B7355;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 80px;
+}
+
+.gender-button:hover {
+  border-color: #a59584;
+  background: rgba(255, 255, 255, 0.95);
+  transform: translateY(-2px);
+}
+
+.gender-button.selected {
+  background: linear-gradient(135deg, #a59584, #94836f);
+  color: white;
+  border-color: #a59584;
+  box-shadow: 0 4px 15px rgba(165, 149, 132, 0.3);
+}
+
+.gender-button.selected:hover {
+  background: linear-gradient(135deg, #94836f, #85756a);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(165, 149, 132, 0.4);
+}
+
 /* New user message styles */
 .new-user-message {
   margin-bottom: 20px;
@@ -1020,6 +1070,14 @@ export default {
   .form-next-button, .form-skip-button {
     font-size: 0.8rem;
     padding: 8px 16px;
+  }
+  .gender-button {
+    font-size: 0.9rem;
+    padding: 10px 20px;
+    min-width: 70px;
+  }
+  .gender-buttons {
+    gap: 12px;
   }
   .form-header {
     padding-bottom: 12px;

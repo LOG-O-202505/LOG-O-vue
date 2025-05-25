@@ -12,23 +12,67 @@
 
     <!-- 메인 콘텐츠 -->
     <div class="content-wrapper">
-      <!-- 1. 사용자 여행 통계 요약 -->
-      <div class="statistics-summary">
-        <div class="statistic-card">
-          <div class="statistic-value">{{ totalTripsCount }}</div>
-          <div class="statistic-label">전체 여행</div>
+      <!-- 사용자 프로필 섹션 -->
+      <div class="user-profile-section section-container">
+        <div class="section-header">
+          <h2 class="section-title">내 프로필</h2>
         </div>
-        <div class="statistic-card">
-          <div class="statistic-value">{{ userStats.visitedRegions }}</div>
-          <div class="statistic-label">방문 지역</div>
-        </div>
-        <div class="statistic-card">
-          <div class="statistic-value">{{ userStats.totalImages }}</div>
-          <div class="statistic-label">저장된 이미지</div>
-        </div>
-        <div class="statistic-card">
-          <div class="statistic-value">{{ userStats.topCategory }}</div>
-          <div class="statistic-label">선호 카테고리</div>
+        <div class="profile-and-stats-container">
+          <!-- 프로필 그리드 레이아웃 -->
+          <div v-if="userProfile" class="profile-grid">
+            <!-- 프로필 정보 영역 -->
+            <div class="profile-info-area">
+              <div class="profile-image-container">
+              <img :src="userProfile.profileImage" :alt="userProfile.name" />
+                <div class="online-indicator"></div>
+            </div>
+            
+              <h3 class="profile-name">{{ userProfile.nickname }}</h3>
+              <p class="profile-email">{{ userProfile.email }}</p>
+
+              <div class="profile-details">
+                <div class="profile-detail-item">
+                  <span class="profile-detail-label">나이</span>
+                  <span class="profile-detail-value">{{ calculateAge(userProfile.birthday) }}세</span>
+            </div>
+                <div class="profile-detail-item">
+                  <span class="profile-detail-label">성별</span>
+                  <span class="profile-detail-value">{{ userProfile.gender || '미설정' }}</span>
+            </div>
+                <div class="profile-detail-item">
+                  <span class="profile-detail-label">노션 ID</span>
+                  <span class="profile-detail-value">{{ userProfile.notionId || '미설정' }}</span>
+            </div>
+            </div>
+            </div>
+            
+            <!-- 통계 그리드 -->
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-icon">📍</div>
+                <div class="stat-value">{{ totalTripsCount }}</div>
+                <div class="stat-label">전체 여행수</div>
+            </div>
+              <div class="stat-card">
+                <div class="stat-icon">🗺️</div>
+                <div class="stat-value">{{ userStats.visitedRegions }}</div>
+                <div class="stat-label">총 방문 지역</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon">📷</div>
+                <div class="stat-value">{{ userStats.totalImages }}</div>
+                <div class="stat-label">방문 인증 횟수</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-icon">❤️</div>
+                <div class="stat-value">{{ userStats.topCategory }}</div>
+                <div class="stat-label">선호 카테고리</div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="loading-profile">
+            프로필을 불러오는 중...
+          </div>
         </div>
       </div>
 
@@ -50,6 +94,10 @@
                 <div class="trip-info-field">
                   <label for="destination">주요 목적지</label>
                   <input type="text" id="destination" v-model="newTrip.destination" placeholder="예: 서울, 제주도, 부산">
+                </div>
+                <div class="trip-info-field">
+                  <label for="peoples">여행 인원</label>
+                  <input type="number" id="peoples" v-model="newTrip.peoples" min="1" placeholder="1">
                 </div>
                 <div class="trip-info-field">
                   <label for="budget">총 예산</label>
@@ -104,8 +152,18 @@
         </div>
         <div class="profile-content">
           <div class="radar-chart-section">
-            <div class="radar-chart-container" ref="radarChartContainer">
+            <div v-if="hasValidChartData" class="radar-chart-container" ref="radarChartContainer">
               <!-- 레이더 차트가 렌더링 될 컨테이너 -->
+            </div>
+            <div v-else class="chart-loading">
+              <div class="loading-spinner">
+                <svg width="40" height="40" viewBox="0 0 40 40">
+                  <circle cx="20" cy="20" r="18" fill="none" stroke="#4299e1" stroke-width="4" stroke-linecap="round" stroke-dasharray="28 28" stroke-dashoffset="0">
+                    <animateTransform attributeName="transform" type="rotate" values="0 20 20;360 20 20" dur="1s" repeatCount="indefinite"/>
+                  </circle>
+                </svg>
+              </div>
+              <p>여행 취향 데이터를 불러오는 중...</p>
             </div>
           </div>
           <div class="profile-insight">
@@ -131,6 +189,11 @@
         
         <!-- 지도 시각화 영역 -->
         <div class="map-visualization">
+          <!-- 툴팁 -->
+          <div v-if="hoveredRegion" class="region-tooltip" :style="tooltipStyle">
+            {{ tooltipContent }}
+          </div>
+          
           <!-- 랭킹 정보 패널 -->
           <div class="ranking-panel">
             <div class="ranking-header">
@@ -164,12 +227,49 @@
           </div>
           
           <!-- 광역시도 지도 -->
-          <div class="map-container" ref="mapContainer" v-show="currentMapLevel === 'ctprvn'"></div>
+          <div class="map-container" ref="mapContainer" v-show="currentMapLevel === 'ctprvn'">
+            <!-- 색상 범례 -->
+            <div class="color-legend">
+              <div class="legend-title">방문율</div>
+              <div class="legend-scale">
+                <div class="legend-item">
+                  <div class="legend-color" style="background-color: #e2f0fa"></div>
+                  <div class="legend-label">0%</div>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-color" style="background-color: #fff9c4"></div>
+                  <div class="legend-label">20%</div>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-color" style="background-color: #ffcc80"></div>
+                  <div class="legend-label">40%</div>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-color" style="background-color: #ffcdd2"></div>
+                  <div class="legend-label">60%</div>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-color" style="background-color: #ffab91"></div>
+                  <div class="legend-label">80%</div>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-color" style="background-color: #ff9e80"></div>
+                  <div class="legend-label">100%</div>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <!-- 시군구 상세 지도 -->
           <div class="detail-map-container" ref="detailMapContainer" v-show="currentMapLevel === 'sig'">
-            <div class="detail-map-header">
-              <!-- 뒤로가기 버튼 제거 -->
+            <!-- 왼쪽 아래 뒤로가기 버튼 -->
+            <div class="bottom-left-back-button">
+              <button class="back-button-large" @click="resetToCtprvnMap">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                전체 지도로 돌아가기
+              </button>
             </div>
 
             <!-- 방문 빈도 범례 -->
@@ -202,27 +302,6 @@
                 </div>
               </div>
             </div>
-            
-            <!-- 뒤로가기 버튼을 왼쪽 하단에 배치 -->
-            <button class="back-button bottom-left-back-button" @click="resetToCtprvnMap">
-              <span class="back-icon">←</span> 이전 지도로 돌아가기
-            </button>
-          </div>
-
-          <!-- 지역 호버 툴팁 -->
-          <div v-if="hoveredRegion" class="region-tooltip" :style="tooltipStyle">
-            {{ tooltipContent }}
-          </div>
-
-          <!-- 색상 범례 - 메인 지도(광역시도)에서만 표시 -->
-          <div class="color-legend" v-if="currentMapLevel === 'ctprvn'">
-            <div class="legend-title">방문 비율</div>
-            <div class="legend-scale">
-              <div class="legend-item" v-for="(_, index) in 10" :key="index">
-                <div class="legend-color" :style="{ backgroundColor: getColorForPercentage(index * 10) }"></div>
-                <div class="legend-label">{{ index * 10 }}%</div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -233,35 +312,59 @@
           <h2 class="section-title">{{ timelineTitle }}</h2>
         </div>
         <div class="timeline-container">
-          <div v-if="filteredTimeline.length === 0" class="no-trips">
-            <p>선택한 지역의 여행 기록이 없습니다.</p>
-          </div>
-          <div v-else v-for="(yearData, yearIndex) in filteredTimeline" :key="yearIndex" class="timeline-year">
-            <div class="year-label">{{ yearData.year }}년</div>
-            <div class="trips-wrapper">
-              <div v-for="(trip, tripIndex) in yearData.trips" :key="tripIndex" class="trip-item"
-                :class="getSeasonClass(trip.season)" @click="navigateToPlan()">
-                <div class="trip-date">{{ formatShortDate(trip.date) }}</div>
-                <div class="trip-image-preview">
-                  <img :src="`data:image/jpeg;base64,${trip.image_data}`" :alt="trip.location">
+          <div v-if="travelTimeline.length === 0" class="no-trips">
+            <p>여행 기록이 없습니다.</p>
+            <!-- 새 여행 계획 버튼 -->
+            <div class="trip-item new-trip-item" @click="showNewTripForm = true">
+              <div class="new-trip-content">
+                <div class="plus-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="16"></line>
+                    <line x1="8" y1="12" x2="16" y2="12"></line>
+                  </svg>
                 </div>
-                <div class="trip-details">
-                  <div class="trip-location">{{ trip.location }}</div>
-                  <div class="trip-season">{{ getSeasonName(trip.season) }}</div>
-                </div>
+                <div class="new-trip-text">새 여행 계획하기</div>
               </div>
-              
-              <!-- Add the New Trip button at the end of the first (most recent) year's trips -->
-              <div v-if="yearIndex === 0" class="trip-item new-trip-item" @click="showNewTripForm = true">
-                <div class="new-trip-content">
-                  <div class="plus-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <line x1="12" y1="8" x2="12" y2="16"></line>
-                      <line x1="8" y1="12" x2="16" y2="12"></line>
-                    </svg>
+            </div>
+          </div>
+          <div v-else>
+            <!-- 연도별 여행 그룹 -->
+            <div v-for="yearGroup in groupedTravelTimeline" :key="yearGroup.year" class="timeline-year">
+              <div class="year-label">{{ yearGroup.year }}년</div>
+              <div class="trips-wrapper">
+                <div v-for="(travel, index) in yearGroup.trips" :key="index" class="trip-item" @click="navigateToPlan(travel.tuid)">
+                  <div class="trip-date">{{ formatTravelDate(travel.startDate, travel.endDate) }}</div>
+                  <div class="trip-image-preview">
+                    <!-- 여행 이미지가 없으면 기본 이미지 사용 -->
+                    <div class="default-image">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m3 16 4-4 4 4 5-5 5 5"/>
+                        <path d="M21 12.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7"/>
+                      </svg>
+                    </div>
                   </div>
-                  <div class="new-trip-text">새 여행 계획하기</div>
+                  <div class="trip-details">
+                    <div class="trip-location">{{ travel.location }}</div>
+                    <div class="trip-title">{{ travel.title }}</div>
+                    <div class="trip-budget">예산: {{ formatBudget(travel.totalBudget) }}</div>
+                    <div class="trip-people">{{ travel.peoples }}명</div>
+                    <div v-if="travel.memo" class="trip-memo">{{ travel.memo }}</div>
+                  </div>
+                </div>
+                
+                <!-- 현재 연도의 마지막에 새 여행 계획 버튼 추가 -->
+                <div v-if="yearGroup.year === currentYear" class="trip-item new-trip-item" @click="showNewTripForm = true">
+                  <div class="new-trip-content">
+                    <div class="plus-icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="16"></line>
+                        <line x1="8" y1="12" x2="16" y2="12"></line>
+                      </svg>
+                    </div>
+                    <div class="new-trip-text">새 여행 계획하기</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -280,7 +383,6 @@
 <script>
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import * as d3 from 'd3';
-import Chart from 'chart.js/auto';
 import Header from '@/components/Header.vue';
 import ctprvnGeoJson from '@/assets/ctprvn.json';
 import propertiesData from '@/assets/extracted_ctprvn.json';
@@ -288,6 +390,7 @@ import sigGeoJson from '@/assets/sig.json';
 import sigPropertiesData from '@/assets/extracted_properties.json';
 import { useRouter } from 'vue-router';
 import { getUserAverageTravelPreferences, getUserTravelStatistics } from '@/services/api';
+import { apiGet, apiPost } from '@/services/auth';
 
 export default {
   name: 'MyTravel',
@@ -299,6 +402,9 @@ export default {
   setup() {
     const router = useRouter();
     
+    // 사용자 프로필 데이터
+    const userProfile = ref(null);
+    
     // 새 여행 계획 배너 상태
     const showNewTripForm = ref(false);
     const newTrip = reactive({
@@ -307,6 +413,7 @@ export default {
       startDate: '',
       endDate: '',
       budget: '',
+      peoples: 1,
       notes: ''
     });
     
@@ -328,6 +435,82 @@ export default {
       return `${nights}박 ${days}일`;
     });
     
+    // 여행 데이터
+    const travelTimeline = ref([]);
+    
+    // 여행 개수 계산
+    const totalTripsCount = computed(() => {
+      return travelTimeline.value.length;
+    });
+    
+    // 생일 포맷팅 함수
+    const formatBirthday = (birthday) => {
+      if (!birthday || birthday.length < 3) return '미설정';
+      return `${birthday[0]}년 ${birthday[1]}월 ${birthday[2]}일`;
+    };
+    
+    // 나이 계산 함수
+    const calculateAge = (birthday) => {
+      if (!birthday || birthday.length < 3) return '미설정';
+      
+      const today = new Date();
+      const birthDate = new Date(birthday[0], birthday[1] - 1, birthday[2]); // 월은 0부터 시작
+      
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      
+      return age;
+    };
+    
+    // 여행 날짜 포맷팅 함수
+    const formatTravelDate = (startDate, endDate) => {
+      if (!startDate || startDate.length < 3) return '';
+      const start = `${startDate[1]}/${startDate[2]}`;
+      if (!endDate || endDate.length < 3) return start;
+      const end = `${endDate[1]}/${endDate[2]}`;
+      return `${start} - ${end}`;
+    };
+    
+    // 예산 포맷팅 함수
+    const formatBudget = (budget) => {
+      if (!budget) return '미설정';
+      return budget.toLocaleString() + '원';
+    };
+    
+    // 사용자 프로필 로드 함수
+    const loadUserProfile = async () => {
+      try {
+        const response = await apiGet('/users/profile');
+        userProfile.value = response.data;
+        
+        // 여행 데이터도 함께 로드
+        if (response.data.travels) {
+          travelTimeline.value = response.data.travels;
+        }
+        
+        console.log('사용자 프로필 로드 완료:', response.data);
+
+        // 프로필 로드 완료 후 취향 데이터와 여행 통계 로드
+        if (response.data.uuid) {
+          await loadUserData();
+          await loadUserTravelData();
+          
+          // 모든 데이터 로드 후 차트 렌더링
+          await nextTick();
+          if (hasValidChartData.value) {
+            renderRadarChart();
+          }
+        }
+        
+      } catch (error) {
+        console.error('사용자 프로필 로드 오류:', error);
+      }
+    };
+    
     // 컴포넌트 마운트 시 초기 날짜 설정
     onMounted(() => {
       const today = new Date();
@@ -344,10 +527,19 @@ export default {
       
       newTrip.startDate = formatDate(today);
       newTrip.endDate = formatDate(tomorrow);
+      newTrip.peoples = 1; // 기본 인원 설정
+      
+      // 사용자 데이터 로드
+      loadUserProfile();
+      
+      // 지도 초기 렌더링 (데이터가 없어도 기본 지도는 표시)
+      nextTick(() => {
+        renderMap();
+      });
     });
     
     // 새 여행 생성
-    const createNewTrip = () => {
+    const createNewTrip = async () => {
       // 입력 데이터 검증
       if (!newTrip.title || !newTrip.destination || !newTrip.startDate || !newTrip.endDate || !newTrip.budget) {
         alert("필수 정보를 모두 입력해주세요.");
@@ -368,23 +560,50 @@ export default {
         alert("예산은 0보다 커야 합니다.");
         return;
       }
-      
-      // 입력된 정보를 콘솔에 출력
-      console.log('새 여행 계획 정보:', {
-        title: newTrip.title,
-        destination: newTrip.destination,
-        startDate: newTrip.startDate,
-        endDate: newTrip.endDate,
-        budget: parseInt(newTrip.budget),
-        notes: newTrip.notes,
-        duration: tripDuration.value
-      });
-      
-      // 계획 페이지로 이동
-      router.push('/plan');
-      
-      // 폼 숨기기
-      showNewTripForm.value = false;
+
+      try {
+        // API 요청 데이터 구성
+        const tripData = {
+          title: newTrip.title,
+          location: newTrip.destination,
+          peoples: parseInt(newTrip.peoples) || 1,
+          totalBudget: parseInt(newTrip.budget),
+          startDate: newTrip.startDate, // YYYY-MM-DD 형식
+          endDate: newTrip.endDate,     // YYYY-MM-DD 형식
+          memo: newTrip.notes || ''
+        };
+
+        console.log('새 여행 계획 생성 요청:', tripData);
+        
+        // API 호출
+        const response = await apiPost('/travels', tripData);
+        
+        console.log('여행 계획 생성 성공:', response);
+        
+        // 성공 메시지
+        alert('새 여행 계획이 성공적으로 생성되었습니다!');
+        
+        // 폼 초기화
+        Object.assign(newTrip, {
+          title: '',
+          destination: '',
+          startDate: '',
+          endDate: '',
+          budget: '',
+          peoples: 1,
+          notes: ''
+        });
+        
+        // 모달 닫기
+        showNewTripForm.value = false;
+        
+        // 사용자 프로필 다시 로드하여 여행 데이터 업데이트
+        await loadUserProfile();
+        
+      } catch (error) {
+        console.error('여행 계획 생성 오류:', error);
+        alert('여행 계획 생성 중 오류가 발생했습니다. 다시 시도해주세요.');
+      }
     };
 
     // 상태 변수 선언
@@ -403,7 +622,7 @@ export default {
     let detailMapSvg = null;
     let mapG = null;
     let detailMapG = null;
-    let radarChart = ref(null); // Chart.js 인스턴스
+    let radarSvg = null; // D3.js SVG 인스턴스
 
     // 사용자 통계 (실제 구현시 API로 가져와야 함)
     const userStats = reactive({
@@ -447,8 +666,13 @@ export default {
     // 사용자 데이터 로드 함수
     const loadUserData = async () => {
       try {
-        // 사용자 ID 1의 데이터 가져오기 (고정)
-        const userData = await getUserAverageTravelPreferences(1);
+        // 사용자 프로필에서 UUID 가져오기
+        if (!userProfile.value || !userProfile.value.uuid) {
+          console.warn('사용자 UUID가 없습니다. 프로필을 먼저 로드해야 합니다.');
+          return;
+        }
+
+        const userData = await getUserAverageTravelPreferences(userProfile.value.uuid);
         
         // 차원 이름 배열
         const dimensionNames = [
@@ -481,10 +705,7 @@ export default {
         
         console.log('사용자 데이터 로드 완료:', dimensionScores);
         
-        // 레이더 차트 다시 그리기
-        nextTick(() => {
-          renderRadarChart();
-        });
+        // renderRadarChart 호출 제거 - loadUserProfile에서 이미 호출함
         
       } catch (error) {
         console.error('사용자 데이터 로드 오류:', error);
@@ -516,8 +737,13 @@ export default {
     // 사용자 여행 데이터 로드 함수
     const loadUserTravelData = async () => {
       try {
-        // 사용자 ID 1의 여행 통계 데이터 가져오기 (고정)
-        const stats = await getUserTravelStatistics(1);
+        // 사용자 프로필에서 UUID 가져오기
+        if (!userProfile.value || !userProfile.value.uuid) {
+          console.warn('사용자 UUID가 없습니다. 프로필을 먼저 로드해야 합니다.');
+          return;
+        }
+
+        const stats = await getUserTravelStatistics(userProfile.value.uuid);
         
         // 데이터 상태 업데이트
         travelStats.value = stats;
@@ -543,206 +769,6 @@ export default {
         console.error('사용자 여행 데이터 로드 오류:', error);
       }
     };
-
-    // 타임라인 데이터 (실제 구현시 API로 가져와야 함)
-    const travelTimeline = reactive([
-      {
-        year: 2025,
-        trips: [
-          {
-            id: 1,
-            date: '2025-03-15',
-            location: '제주도 서귀포',
-            season: 'spring',
-            image_data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-            image_name: '제주도 서귀포 바다',
-            image_location: '제주도 서귀포시',
-            image_tags: ['바다', '제주도', '휴양'],
-            created_at: '2025-03-15',
-            region_info: {
-              region_code: '50',
-              sig_code: '50130'
-            },
-            dimensions: {
-              "Natural Elements": 0.9,
-              "Water Features": 0.85,
-              "Relaxation Potential": 0.88
-            }
-          },
-          {
-            id: 2,
-            date: '2025-01-20',
-            location: '강원도 평창',
-            season: 'winter',
-            image_data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-            image_name: '강원도 겨울풍경',
-            image_location: '강원도 평창군',
-            image_tags: ['겨울', '스키', '설경'],
-            created_at: '2025-01-20',
-            region_info: {
-              region_code: '42',
-              sig_code: '42230'
-            },
-            dimensions: {
-              "Seasonal Appeal": 0.92,
-              "Relaxation Potential": 0.88,
-              "Natural Elements": 0.76
-            }
-          }
-        ]
-      },
-      {
-        year: 2024,
-        trips: [
-          {
-            id: 3,
-            date: '2024-10-05',
-            location: '전라남도 담양',
-            season: 'fall',
-            image_data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-            image_name: '담양 대나무숲',
-            image_location: '전라남도 담양군',
-            image_tags: ['가을', '단풍', '숲'],
-            created_at: '2024-10-05',
-            region_info: {
-              region_code: '46',
-              sig_code: '46170'
-            },
-            dimensions: {
-              "Natural Elements": 0.88,
-              "Seasonal Appeal": 0.94,
-              "Relaxation Potential": 0.82
-            }
-          },
-          {
-            id: 4,
-            date: '2024-08-15',
-            location: '부산 해운대',
-            season: 'summer',
-            image_data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-            image_name: '부산 해운대 바다',
-            image_location: '부산 해운대구',
-            image_tags: ['바다', '해변', '여름'],
-            created_at: '2024-08-15',
-            region_info: {
-              region_code: '26',
-              sig_code: '26110'
-            },
-            dimensions: {
-              "Water Features": 0.95,
-              "Activity Opportunities": 0.85,
-              "Urban Character": 0.65
-            }
-          },
-          {
-            id: 5,
-            date: '2024-06-22',
-            location: '서울 북촌',
-            season: 'spring',
-            image_data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-            image_name: '서울 북촌 한옥마을',
-            image_location: '서울 종로구',
-            image_tags: ['한옥', '역사', '문화'],
-            created_at: '2024-05-22',
-            region_info: {
-              region_code: '11',
-              sig_code: '11110'
-            },
-            dimensions: {
-              "Urban Character": 0.82,
-              "Historical/Cultural Value": 0.78,
-              "Shopping Potential": 0.65
-            }
-          },
-          {
-            id: 6,
-            date: '2024-04-11',
-            location: '경기도 이천시',
-            season: 'spring',
-            image_data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-            image_name: '서울 북촌 한옥마을',
-            image_location: '서울 종로구',
-            image_tags: ['한옥', '역사', '문화'],
-            created_at: '2024-05-22',
-            region_info: {
-              region_code: '11',
-              sig_code: '11110'
-            },
-            dimensions: {
-              "Urban Character": 0.82,
-              "Historical/Cultural Value": 0.78,
-              "Shopping Potential": 0.65
-            }
-          },
-          {
-            id: 7,
-            date: '2024-02-01',
-            location: '서울 북촌',
-            season: 'winter',
-            image_data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-            image_name: '서울 북촌 한옥마을',
-            image_location: '서울 종로구',
-            image_tags: ['한옥', '역사', '문화'],
-            created_at: '2024-05-22',
-            region_info: {
-              region_code: '11',
-              sig_code: '11110'
-            },
-            dimensions: {
-              "Urban Character": 0.82,
-              "Historical/Cultural Value": 0.78,
-              "Shopping Potential": 0.65
-            }
-          }
-        ]
-      },
-      {
-        year: 2023,
-        trips: [
-          {
-            id: 8,
-            date: '2023-12-24',
-            location: '강원도 속초',
-            season: 'winter',
-            image_data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-            image_name: '속초 설경',
-            image_location: '강원도 속초시',
-            image_tags: ['겨울', '설경', '동해'],
-            created_at: '2023-12-24',
-            region_info: {
-              region_code: '42',
-              sig_code: '42210'
-            },
-            dimensions: {
-              "Natural Elements": 0.85,
-              "Relaxation Potential": 0.9,
-              "Seasonal Appeal": 0.79
-            }
-          },
-          {
-            id: 9,
-            date: '2023-07-10',
-            location: '경상북도 경주',
-            season: 'summer',
-            image_data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-            image_name: '경주 불국사',
-            image_location: '경상북도 경주시',
-            image_tags: ['역사', '문화', '불교'],
-            created_at: '2023-07-10',
-            region_info: {
-              region_code: '47',
-              sig_code: '47130'
-            },
-            dimensions: {
-              "Historical/Cultural Value": 0.94,
-              "Urban Character": 0.45,
-              "Natural Elements": 0.56
-            }
-          }
-        ]
-      }
-    ]);
-
     // 마우스 위치 추적
     const updateMousePosition = (event) => {
       mousePosition.value = {
@@ -861,12 +887,18 @@ export default {
         .slice(0, 5);
     });
 
+    // 차트 데이터 유효성 검사
+    const hasValidChartData = computed(() => {
+      return Object.keys(dimensionScores).length > 0 && 
+             Object.values(dimensionScores).some(value => value > 0);
+    });
+
     // 필터링된 타임라인 계산
     const filteredTimeline = computed(() => {
       // 모든 여행 목록을 날짜순으로 정렬하기 위해 먼저 평탄화
       let allTrips = [];
 
-      travelTimeline.forEach(yearData => {
+      travelTimeline.value.forEach(yearData => {
         yearData.trips.forEach(trip => {
           // 여행에 연도 정보 추가
           allTrips.push({
@@ -918,28 +950,52 @@ export default {
 
     // 타임라인 제목 계산
     const timelineTitle = computed(() => {
-      if (activeRegion.value) {
-        // 광역시도 이름 찾기
-        const region = propertiesData.find(r => r.CTPRVN_CD === activeRegion.value);
-        const regionName = region ? region.CTP_KOR_NM : '전체';
+      return '나의 여행 기록';
+    });
 
-        if (activeSig.value && currentMapLevel.value === 'sig') {
-          // 시군구 이름 찾기
-          const sig = sigPropertiesData.find(s => s.SIG_CD === activeSig.value);
-          const sigName = sig ? sig.SIG_KOR_NM : '';
+    // 현재 연도 계산
+    const currentYear = computed(() => {
+      return new Date().getFullYear();
+    });
 
-          return `${regionName} ${sigName} 여행 타임라인`;
-        }
-
-        return `${regionName} 여행 타임라인`;
+    // 연도별 여행 그룹화
+    const groupedTravelTimeline = computed(() => {
+      if (!travelTimeline.value || travelTimeline.value.length === 0) {
+        return [];
       }
 
-      return '전체 여행 타임라인';
+      // 연도별로 그룹화
+      const grouped = {};
+      
+      travelTimeline.value.forEach(travel => {
+        if (travel.startDate && travel.startDate.length >= 1) {
+          const year = travel.startDate[0]; // 시작 날짜의 연도
+          
+          if (!grouped[year]) {
+            grouped[year] = [];
+          }
+          grouped[year].push(travel);
+        }
+      });
+
+      // 연도별로 정렬하고 각 연도 내에서 날짜순 정렬
+      return Object.entries(grouped)
+        .map(([year, trips]) => ({
+          year: parseInt(year),
+          trips: trips.sort((a, b) => {
+            // 시작 날짜 기준으로 정렬 (월, 일 순서)
+            if (a.startDate[1] !== b.startDate[1]) {
+              return a.startDate[1] - b.startDate[1]; // 월 비교
+            }
+            return a.startDate[2] - b.startDate[2]; // 일 비교
+          })
+        }))
+        .sort((a, b) => b.year - a.year); // 연도는 내림차순 (최신 연도가 위에)
     });
 
     // 년도 목록 계산
     const availableYears = computed(() => {
-      return travelTimeline.map(year => year.year);
+      return travelTimeline.value.map(year => year.year);
     });
 
     // 카테고리 이름 변환
@@ -1266,8 +1322,8 @@ export default {
     };
 
     // 여행 계획 페이지로 이동하는 함수
-    const navigateToPlan = () => {
-      router.push('/plan');
+    const navigateToPlan = (tuid) => {
+      router.push({ name: 'TripPlan', params: { tuid } });
     };
 
     // 시군구 지도 렌더링 함수
@@ -1551,143 +1607,205 @@ export default {
         });
     };
 
-    // 레이더 차트 렌더링 함수
+    // 레이더 차트 렌더링 함수 - 완전히 새로 작성
     const renderRadarChart = () => {
+      console.log('레이더 차트 렌더링 시작');
+      
+      // 컨테이너 체크
       if (!radarChartContainer.value) {
-        console.warn("Radar chart container not found. Skipping render.");
+        console.warn("Radar chart container not found");
         return;
       }
 
-      // Ensure the container is visible and has dimensions
-      if (radarChartContainer.value.clientWidth === 0 || radarChartContainer.value.clientHeight === 0) {
-        console.warn("Radar chart container has no dimensions (clientWidth or clientHeight is 0). Deferring render.");
-        nextTick(() => { // Retry after next DOM update cycle
-            if (radarChartContainer.value && radarChartContainer.value.clientWidth > 0 && radarChartContainer.value.clientHeight > 0) {
-                renderRadarChartInternal();
-            } else {
-                console.error("Radar chart container still has no dimensions after nextTick. Chart cannot be rendered.");
-            }
-        });
+      // 데이터 유효성 검사
+      const hasData = Object.keys(dimensionScores).length > 0 && 
+                           Object.values(dimensionScores).some(value => value > 0);
+      
+      if (!hasData) {
+        console.log('차원 데이터가 유효하지 않습니다.');
         return;
       }
+
+      // 컨테이너 크기 확인
+      if (radarChartContainer.value.offsetWidth === 0 || radarChartContainer.value.offsetHeight === 0) {
+        console.warn("Container has no dimensions, retrying...");
+        setTimeout(() => renderRadarChart(), 100);
+        return;
+      }
+
       renderRadarChartInternal();
     };
 
     const renderRadarChartInternal = () => {
-      if (!radarChartContainer.value) return; // Should be caught by the caller, but as a safeguard
+      console.log('D3.js 레이더 차트 렌더링 시작');
 
-      // 기존 차트 파괴
-      if (radarChart.value) {
-        radarChart.value.destroy();
-        radarChart.value = null; // Ensure old instance is cleared
+      // 기존 차트 정리
+      if (radarSvg) {
+        console.log('기존 차트 삭제');
+        radarSvg.selectAll("*").remove();
+        radarSvg = null;
       }
 
-      const canvas = document.createElement('canvas');
-      // 명시적으로 크기 설정 (컨테이너 크기에 맞춤)
-      canvas.width = radarChartContainer.value.clientWidth;
-      canvas.height = radarChartContainer.value.clientHeight;
+      // 컨테이너 정리
+      radarChartContainer.value.innerHTML = '';
       
-      radarChartContainer.value.innerHTML = ''; // 이전 canvas 제거
-      radarChartContainer.value.appendChild(canvas);
-      
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        console.error('Failed to get 2D context from canvas for radar chart.');
-        return;
-      }
+      // 차트 설정
+      const width = 400;
+      const height = 400;
+      const margin = 60;
+      const radius = Math.min(width, height) / 2 - margin;
 
+      // SVG 생성
+      radarSvg = d3.select(radarChartContainer.value)
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .style('width', '100%')
+        .style('height', '100%');
+
+      // 중앙 그룹 생성
+      const g = radarSvg.append('g')
+        .attr('transform', `translate(${width/2}, ${height/2})`);
+
+      // 데이터 준비
       const labels = Object.keys(dimensionScores).map(dim => dimensionTranslations[dim] || dim);
-      const data = Object.values(dimensionScores);
+      const values = Object.values(dimensionScores).map(value => Number(value) || 0);
+      const dataPoints = labels.map((label, i) => ({
+        label: label,
+        value: values[i],
+        angle: (i * 2 * Math.PI) / labels.length
+      }));
 
-      radarChart.value = new Chart(ctx, {
-        type: 'radar',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: '취향 프로필',
-            data: data,
-            backgroundColor: 'rgba(66, 153, 225, 0.5)',
-            borderColor: '#4299e1',
-            borderWidth: 2,
-            pointBackgroundColor: '#4299e1',
-            pointBorderColor: '#fff',
-            pointHoverBackgroundColor: '#fff',
-            pointHoverBorderColor: '#4299e1',
-            pointRadius: 4,
-            pointHoverRadius: 6
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            r: {
-              angleLines: {
-                color: 'rgba(0, 0, 0, 0.1)'
-              },
-              grid: {
-                color: 'rgba(0, 0, 0, 0.1)'
-              },
-              suggestedMin: 0,
-              suggestedMax: 1,
-              ticks: {
-                display: false
-              },
-              pointLabels: {
-                font: {
-                  size: 12,
-                  family: "'Noto Sans KR', sans-serif"
-                },
-                color: '#4a5568'
-              }
-            }
-          },
-          plugins: {
-            legend: {
-              display: false
-            },
-            tooltip: {
-              callbacks: {
-                label: function(context) {
-                  return `${context.label}: ${Math.round(context.raw * 100)}%`;
-                }
-              },
-              backgroundColor: 'rgba(0, 0, 0, 0.7)',
-              padding: 10,
-              titleFont: {
-                size: 14,
-                family: "'Noto Sans KR', sans-serif"
-              },
-              bodyFont: {
-                size: 13,
-                family: "'Noto Sans KR', sans-serif"
-              }
-            }
-          },
-          animation: {
-            duration: 1000,
-            easing: 'easeOutQuart'
-          }
-        }
-      });
+      console.log('D3 차트 데이터:', dataPoints);
 
-      // 창 크기 변경 시 차트 크기 조정
-      const resizeRadarChart = () => {
-        if (radarChart.value) {
-          // Chart.js는 자동으로 반응형이지만, 컨테이너 크기가 변경되면 차트를 업데이트
-          radarChart.value.update();
-        }
-      };
+      try {
+        // 레벨 수 (동심원)
+        const levels = 5;
 
-      window.addEventListener('resize', resizeRadarChart);
+        // 배경 동심원 그리기
+        for (let level = 1; level <= levels; level++) {
+          g.append('circle')
+            .attr('r', (radius * level) / levels)
+            .attr('fill', 'none')
+            .attr('stroke', 'rgba(0, 0, 0, 0.1)')
+            .attr('stroke-width', 1);
+      }
 
-      return () => {
-        window.removeEventListener('resize', resizeRadarChart);
-        if (radarChart.value) {
-          radarChart.value.destroy();
-          radarChart.value = null;
-        }
-      };
+        // 축선 그리기
+        g.selectAll('.axis-line')
+          .data(dataPoints)
+          .enter()
+          .append('line')
+          .attr('class', 'axis-line')
+          .attr('x1', 0)
+          .attr('y1', 0)
+          .attr('x2', d => radius * Math.cos(d.angle - Math.PI / 2))
+          .attr('y2', d => radius * Math.sin(d.angle - Math.PI / 2))
+          .attr('stroke', 'rgba(0, 0, 0, 0.1)')
+          .attr('stroke-width', 1);
+
+        // 라벨 그리기
+        const labelRadius = radius + 20;
+        g.selectAll('.label')
+          .data(dataPoints)
+          .enter()
+          .append('text')
+          .attr('class', 'label')
+          .attr('x', d => labelRadius * Math.cos(d.angle - Math.PI / 2))
+          .attr('y', d => labelRadius * Math.sin(d.angle - Math.PI / 2))
+          .attr('text-anchor', 'middle')
+          .attr('dominant-baseline', 'middle')
+          .style('font-size', '12px')
+          .style('font-family', "'Noto Sans KR', sans-serif")
+          .style('fill', '#2d3748')
+          .style('font-weight', '500')
+          .text(d => d.label);
+
+        // 데이터 영역 (폴리곤) 그리기
+        const pathData = dataPoints.map(d => {
+          const x = (radius * d.value) * Math.cos(d.angle - Math.PI / 2);
+          const y = (radius * d.value) * Math.sin(d.angle - Math.PI / 2);
+          return [x, y];
+        });
+
+        const line = d3.line()
+          .x(d => d[0])
+          .y(d => d[1])
+          .curve(d3.curveLinearClosed);
+
+        // 배경 영역
+        g.append('path')
+          .datum(pathData)
+          .attr('d', line)
+          .attr('fill', 'rgba(66, 153, 225, 0.15)')
+          .attr('stroke', 'rgba(66, 153, 225, 0.8)')
+          .attr('stroke-width', 2);
+
+        // 데이터 포인트 그리기
+        g.selectAll('.data-point')
+          .data(dataPoints)
+          .enter()
+          .append('circle')
+          .attr('class', 'data-point')
+          .attr('cx', d => (radius * d.value) * Math.cos(d.angle - Math.PI / 2))
+          .attr('cy', d => (radius * d.value) * Math.sin(d.angle - Math.PI / 2))
+          .attr('r', 5)
+          .attr('fill', 'rgba(66, 153, 225, 1)')
+          .attr('stroke', '#ffffff')
+          .attr('stroke-width', 2);
+
+        // 툴팁 추가
+        const tooltip = d3.select('body').append('div')
+          .attr('class', 'radar-tooltip')
+          .style('position', 'absolute')
+          .style('padding', '8px 12px')
+          .style('background', 'rgba(0, 0, 0, 0.8)')
+          .style('color', 'white')
+          .style('border-radius', '4px')
+          .style('font-size', '12px')
+          .style('pointer-events', 'none')
+          .style('opacity', 0);
+
+        // 포인트에 호버 이벤트 추가
+        g.selectAll('.data-point')
+          .on('mouseover', function(event, d) {
+            d3.select(this)
+              .transition()
+              .duration(200)
+              .attr('r', 7);
+            
+            tooltip.transition()
+              .duration(200)
+              .style('opacity', 1);
+            
+            tooltip.html(`${d.label}: ${Math.round(d.value * 100)}%`)
+              .style('left', (event.pageX + 10) + 'px')
+              .style('top', (event.pageY - 10) + 'px');
+          })
+          .on('mouseout', function() {
+            d3.select(this)
+              .transition()
+              .duration(200)
+              .attr('r', 5);
+            
+            tooltip.transition()
+              .duration(200)
+              .style('opacity', 0);
+        });
+        
+        console.log('D3.js 레이더 차트 생성 완료');
+        
+      } catch (error) {
+        console.error('D3.js 차트 렌더링 오류:', error);
+        console.error('오류 상세:', error.stack);
+        
+        // 오류 발생 시 간단한 텍스트로 대체
+        radarChartContainer.value.innerHTML = `
+          <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666;">
+            차트를 불러올 수 없습니다. 데이터를 확인해주세요.
+          </div>
+        `;
+      }
     };
 
     // 필터 변경 시 지도 업데이트 - selectedYear 제거
@@ -1716,22 +1834,26 @@ export default {
     onMounted(() => {
       window.addEventListener('mousemove', updateMousePosition);
 
-      // 사용자 데이터 로드
-      loadUserData();
+      // 사용자 프로필 로드 (내부에서 취향 데이터와 여행 통계도 함께 로드됨)
+      loadUserProfile();
       
-      // 사용자 여행 통계 데이터 로드
-      loadUserTravelData();
-
-      // 레이더 차트 렌더링 - 사용자 데이터 로드 후 renderRadarChart 함수가 호출되므로 여기서는 호출하지 않음
+      // 지도 초기 렌더링 (데이터가 없어도 기본 지도는 표시)
+      nextTick(() => {
+        renderMap();
+      });
     });
 
     onBeforeUnmount(() => {
       window.removeEventListener('mousemove', updateMousePosition);
-    });
-
-    // 타임라인에서 총 여행 개수 계산
-    const totalTripsCount = computed(() => {
-      return filteredTimeline.value.reduce((sum, year) => sum + year.trips.length, 0);
+      
+      // D3.js 툴팁 정리
+      d3.selectAll('.radar-tooltip').remove();
+      
+      // 레이더 차트 정리
+      if (radarSvg) {
+        radarSvg.selectAll("*").remove();
+        radarSvg = null;
+      }
     });
 
     // 광역시도 방문 랭킹 (전체 지도에서 표시)
@@ -1799,8 +1921,16 @@ export default {
     });
 
     return {
+      // 사용자 프로필 관련
+      userProfile,
+      formatBirthday,
+      calculateAge,
+      formatTravelDate,
+      formatBudget,
+      loadUserProfile,
+      travelTimeline,
+      
       // 기존 반환값과 함께 새로운 함수와 상태 포함
-      // ...
       totalTripsCount,
       travelStats,
       loadUserTravelData,
@@ -1826,9 +1956,12 @@ export default {
       userStats,
       userInsight,
       topCategories,
+      hasValidChartData,
       filteredTimeline,
       availableYears,
       timelineTitle,
+      currentYear,
+      groupedTravelTimeline,
       
       // 랭킹 데이터
       regionRankings,
@@ -1844,7 +1977,16 @@ export default {
       formatShortDate,
       getCategoryName,
       updateMousePosition,
-      getColorForPercentage
+      getColorForPercentage,
+      
+      // 지도 관련 함수들
+      renderMap,
+      renderDetailMap,
+      selectSig,
+      getRegionColor,
+      getSigColor,
+      logRegionVisitData,
+      updateDetailMapSelection
     };
   }
 };
@@ -1853,10 +1995,10 @@ export default {
 <style scoped>
 /* 기본 스타일 */
 .my-travel {
-  font-family: 'Noto Sans KR', sans-serif;
-  background-color: #f8f9fa;
-  color: #333;
+  font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 50%, #faf5ff 100%);
   min-height: 100vh;
+  color: #1f2937;
   display: flex;
   flex-direction: column;
 }
@@ -1866,30 +2008,32 @@ export default {
   position: absolute;
   top: 20px;
   left: 20px;
-  background-color: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
   width: 250px;
   z-index: 100;
   overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .ranking-header {
-  padding: 12px 16px;
-  border-bottom: 1px solid #e2e8f0;
-  background-color: #f8fafc;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
 .ranking-header h3 {
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
-  color: #2d3748;
+  color: #1f2937;
   text-align: center;
 }
 
 .ranking-list {
-  padding: 8px 16px;
+  padding: 1rem 1.5rem;
   max-height: 300px;
   overflow-y: auto;
 }
@@ -1897,8 +2041,16 @@ export default {
 .ranking-item {
   display: flex;
   align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px dashed #e2e8f0;
+  padding: 0.75rem 0;
+  border-bottom: 1px dashed rgba(226, 232, 240, 0.6);
+  transition: all 0.2s ease;
+}
+
+.ranking-item:hover {
+  background: rgba(248, 250, 252, 0.5);
+  border-radius: 6px;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
 }
 
 .ranking-item:last-child {
@@ -1909,17 +2061,18 @@ export default {
   width: 40px;
   font-weight: 700;
   font-size: 0.9rem;
-  color: #4299e1;
+  color: #3b82f6;
 }
 
 .ranking-name {
   flex-grow: 1;
   font-size: 0.9rem;
-  color: #4a5568;
+  color: #374151;
   margin-right: 8px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-weight: 500;
 }
 
 .ranking-score {
@@ -1927,7 +2080,7 @@ export default {
   text-align: right;
   font-weight: 600;
   font-size: 0.9rem;
-  color: #2d3748;
+  color: #1f2937;
 }
 
 .no-ranking-data {
@@ -1941,26 +2094,33 @@ export default {
 /* 콘텐츠 래퍼 */
 .content-wrapper {
   padding: 2rem;
-  max-width: 1600px; /* 기존 1400px에서 확장 */
+  max-width: 1400px; /* 1792px에서 1400px로 줄임 */
   margin: 0 auto; /* 중앙 정렬 유지 */
   width: 100%;
   flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
 }
 
 /* 섹션 컨테이너 공통 스타일 */
 .section-container {
-  background-color: white;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
   border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
   margin-bottom: 2rem;
-  padding: 1.5rem;
+  padding: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 /* 섹션 헤더 공통 스타일 */
 .section-header {
-  margin-bottom: 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid #e5e7eb;
   padding-bottom: 1rem;
 }
 
@@ -1969,7 +2129,7 @@ export default {
   font-size: 1.5rem;
   font-weight: 600;
   margin: 0;
-  color: #2d3748;
+  color: #1f2937;
 }
 
 /* 통계 카드 스타일 */
@@ -2030,17 +2190,18 @@ export default {
 
 /* 지도 컨테이너 */
 .travel-map-container {
-  background-color: white;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
   border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
   margin-bottom: 2rem;
-  padding: 0;  /* 내부 padding은 map-controls에서 처리 */
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .travel-map-container .section-header {
-  padding: 1.5rem 1.5rem 1rem;
-  margin-bottom: 0; /* Override the default margin to remove extra gap */
+  padding: 2rem 2rem 1rem;
+  margin-bottom: 0;
 }
 
 .map-controls {
@@ -2109,8 +2270,12 @@ export default {
 .map-container,
 .detail-map-container {
   flex: 1;
-  height: 100%;
-  background-color: #f8fafc;
+  height: 500px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid rgba(226, 232, 240, 0.5);
 }
 
 .detail-map-header {
@@ -2260,44 +2425,20 @@ export default {
 
 /* 취향 프로필 섹션 */
 .preference-profile {
-  background-color: white;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
   border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
   margin-bottom: 2rem;
-  padding: 1.5rem;
-}
-
-.profile-header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 2rem;
-  border-bottom: 1px solid #e2e8f0;
-  padding-bottom: 1rem;
-}
-
-.preference-title, .style-title {
-  margin: 0;
-  width: 50%;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #2d3748;
-  padding: 0 1rem;
-}
-
-.preference-title {
-  text-align: left;
-}
-
-.style-title {
-  text-align: right;
+  padding: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .profile-content {
   display: grid;
-  grid-template-columns: 1fr 2fr;
+  grid-template-columns: 1fr 1.5fr;
   gap: 2rem;
-  min-height: 320px;
+  min-height: 450px;
 }
 
 .radar-chart-section {
@@ -2306,16 +2447,42 @@ export default {
   justify-content: center;
   align-items: center;
   height: 100%;
+  border-radius: 12px;
+  padding: 2rem;
+  min-height: 450px;
 }
 
 .radar-chart-container {
-  height: 280px;
+  height: 400px;
   width: 100%;
+  max-width: 450px;
   margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chart-loading {
+  height: 400px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: #6b7280;
+}
+
+.loading-spinner {
+  margin-bottom: 1rem;
+}
+
+.chart-loading p {
+  font-size: 0.9rem;
+  margin: 0;
+  font-style: italic;
 }
 
 .profile-insight {
-  padding: 0 1.5rem;
+  padding: 1.5rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -2323,10 +2490,14 @@ export default {
 }
 
 .profile-insight p {
-  line-height: 1.6;
-  color: #4a5568;
-  margin-bottom: 1.5rem;
+  line-height: 1.7;
+  color: #374151;
+  margin-bottom: 2rem;
   font-size: 1.05rem;
+  background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+  padding: 1.5rem;
+  border-radius: 12px;
+  border-left: 4px solid #3b82f6;
 }
 
 .top-categories {
@@ -2339,34 +2510,44 @@ export default {
   display: flex;
   align-items: center;
   gap: 1rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.category-item:hover {
+  background: rgba(255, 255, 255, 0.8);
+  transform: translateX(4px);
 }
 
 .category-name {
   min-width: 120px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: #4a5568;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
 }
 
 .category-bar-container {
   flex-grow: 1;
   height: 8px;
-  background-color: #edf2f7;
+  background-color: rgba(226, 232, 240, 0.5);
   border-radius: 4px;
   overflow: hidden;
 }
 
 .category-bar {
   height: 100%;
-  background: linear-gradient(90deg, #4299e1, #76b39d);
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
   border-radius: 4px;
+  transition: width 0.5s ease;
 }
 
 .category-score {
-  min-width: 40px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #4299e1;
+  min-width: 45px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #3b82f6;
   text-align: right;
 }
 
@@ -2454,21 +2635,24 @@ export default {
 }
 
 .trip-item {
-  background-color: white;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-  width: calc(25% - 1.125rem); /* 한 줄에 4개 블록이 들어갈 수 있도록 수정 */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  width: calc(25% - 1.125rem);
   min-width: 220px;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  border-top: 4px solid #4299e1;
+  transition: all 0.3s ease;
+  border-top: 4px solid #3b82f6;
   cursor: pointer;
   margin-bottom: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .trip-item:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  transform: translateY(-8px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.95);
 }
 
 /* No-trip message styling */
@@ -2481,36 +2665,34 @@ export default {
 
 /* 계절별 색상 */
 .trip-item.season-spring {
-  border-top-color: #48bb78;
-  /* 봄 - 녹색 */
+  border-top-color: #10b981;
 }
 
 .trip-item.season-summer {
-  border-top-color: #4299e1;
-  /* 여름 - 파란색 */
+  border-top-color: #3b82f6;
 }
 
 .trip-item.season-fall {
-  border-top-color: #ed8936;
-  /* 가을 - 주황색 */
+  border-top-color: #f59e0b;
 }
 
 .trip-item.season-winter {
-  border-top-color: #a0aec0;
-  /* 겨울 - 회색빛 */
+  border-top-color: #6b7280;
 }
 
 .trip-date {
-  padding: 0.75rem;
+  padding: 0.875rem 1rem;
   font-size: 0.8rem;
-  color: #718096;
-  background-color: #f7fafc;
-  border-bottom: 1px solid #e2e8f0;
+  color: #6b7280;
+  background: rgba(248, 250, 252, 0.8);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+  font-weight: 500;
 }
 
 .trip-image-preview {
   height: 150px;
   overflow: hidden;
+  position: relative;
 }
 
 .trip-image-preview img {
@@ -2521,18 +2703,52 @@ export default {
 }
 
 .trip-item:hover .trip-image-preview img {
-  transform: scale(1.05);
+  transform: scale(1.08);
 }
 
 .trip-details {
-  padding: 1rem;
+  padding: 1.25rem;
 }
 
 .trip-location {
-  font-size: 1.05rem;
-  font-weight: 600;
+  font-size: 1.1rem;
+  font-weight: 700;
   margin-bottom: 0.5rem;
-  color: #2d3748;
+  color: #1f2937;
+}
+
+.trip-title {
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-bottom: 0.75rem;
+  color: #374151;
+  line-height: 1.4;
+}
+
+.trip-budget {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 0.25rem;
+  font-weight: 500;
+}
+
+.trip-people {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.trip-memo {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  font-style: italic;
+  margin-top: 0.75rem;
+  line-height: 1.4;
+  padding: 0.5rem;
+  background: rgba(249, 250, 251, 0.6);
+  border-radius: 6px;
+  border-left: 3px solid #e5e7eb;
 }
 
 .trip-season {
@@ -2540,14 +2756,81 @@ export default {
   color: #718096;
 }
 
+/* 기본 이미지 스타일 */
+.default-image {
+  width: 100%;
+  height: 150px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  position: relative;
+}
+
+.default-image::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.default-image svg {
+  opacity: 0.8;
+  position: relative;
+  z-index: 1;
+}
+
+/* 새 여행 계획 카드 스타일 */
+.new-trip-item {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  border-top-color: #1e40af;
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.new-trip-item:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  transform: translateY(-8px);
+  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+}
+
+.new-trip-content {
+  padding: 2rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 200px;
+}
+
+.plus-icon {
+  margin-bottom: 1rem;
+  opacity: 0.9;
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.new-trip-text {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
 /* 푸터 */
 .footer {
-  background-color: #2d3748;
+  background: #1f2937;
   color: white;
   text-align: center;
   padding: 1.5rem;
   margin-top: auto;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
 }
 
 /* 지도 관련 스타일 */
@@ -2631,263 +2914,363 @@ export default {
   }
 }
 
+/* 프로필 그리드 레이아웃 */
+.profile-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 2rem;
+  width: 100%;
+  min-height: 280px;
+}
+
+/* 프로필 정보 영역 */
+.profile-info-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1.5rem;
+}
+
+/* 프로필 사진 컨테이너 */
+.profile-image-container {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  margin: 0 auto 1.5rem;
+}
+
+.profile-image-container img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid white;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.online-indicator {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  background: #10b981;
+  border-radius: 50%;
+  border: 4px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 프로필 기본 정보 */
+.profile-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+}
+
+.profile-email {
+  color: #6b7280;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+}
+
+/* 프로필 상세 정보 */
+.profile-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 280px;
+}
+
+.profile-detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: rgba(249, 250, 251, 0.8);
+  backdrop-filter: blur(4px);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  transition: all 0.2s ease;
+}
+
+.profile-detail-item:hover {
+  background: rgba(243, 244, 246, 0.9);
+  transform: translateY(-1px);
+}
+
+.profile-detail-label {
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.profile-detail-value {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.875rem;
+}
+
+/* 통계 그리드 */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-align: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  font-size: 1.5rem;
+  color: #3b82f6;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
 @media (max-width: 768px) {
-  .hero-title {
-    font-size: 2rem;
-  }
-
-  .hero-subtitle {
-    font-size: 1rem;
-  }
-
-  .map-controls {
+  .profile-and-stats-container {
     flex-direction: column;
-    gap: 1rem;
-    align-items: flex-start;
+    gap: 1.5rem;
   }
 
-  .map-filter {
-    width: 100%;
-    justify-content: space-between;
+  .profile-grid {
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 0.75rem;
+    min-height: 240px;
   }
 
-  .map-visualization {
-    height: auto;
-    min-height: 600px;
-    flex-direction: column;
-  }
-  
-  .map-container,
-  .detail-map-container {
-    height: 450px;
-  }
-  
-  .ranking-panel {
-    position: relative;
-    top: 0;
-    left: 0;
-    width: 100%;
-    margin-bottom: 1rem;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-    border: 1px solid #e2e8f0;
+  .profile-image-grid {
+    grid-column: 1 / 3;
+    grid-row: 1 / 3;
   }
 
-  .trip-item {
-    width: calc(50% - 0.75rem); /* 작은 화면에서는 한 줄에 2개 */
-    min-width: unset;
+  .profile-image-grid img {
+    max-width: 100px;
+    max-height: 100px;
   }
-  
-  .trips-wrapper {
-    flex-direction: row; /* 행 방향 유지 */
-    gap: 1rem;
+
+  .card-label {
+    font-size: 0.7rem;
+  }
+
+  .card-value {
+    font-size: 0.95rem;
   }
 }
 
 @media (max-width: 576px) {
-  .preference-profile {
-    padding: 1.25rem 0.75rem;
-  }
-  
-  .profile-header {
-    margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
+  .profile-grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(5, 1fr);
+    gap: 0.5rem;
+    min-height: 320px;
   }
 
-  .preference-title, .style-title {
-    font-size: 1.25rem;
-  }
-  
-  .radar-chart-container {
-    height: 220px;
-    margin-bottom: 1rem;
-  }
-  
-  .profile-insight p {
-    font-size: 1rem;
-    margin-bottom: 1rem;
+  .profile-image-grid {
+    grid-column: 1 / 3;
+    grid-row: 1 / 3;
   }
 
-  .statistics-summary {
-    grid-template-columns: 1fr;
+  .profile-image-grid img {
+    max-width: 80px;
+    max-height: 80px;
   }
 
-  .content-wrapper {
-    padding: 1rem;
+  .profile-info-card {
+    padding: 0.75rem;
   }
-  
-  .map-container,
-  .detail-map-container {
-    height: 350px;
+
+  .card-label {
+    font-size: 0.65rem;
+    margin-bottom: 0.25rem;
   }
-  
-  .ranking-panel {
-    width: 100%;
-  }
-  
-  .ranking-list {
-    max-height: none;
-  }
-  
-  .ranking-item {
-    width: 100%;
-    border-right: none;
-    border-bottom: 1px dashed #e2e8f0;
-  }
-  
-  .trips-wrapper {
-    margin-left: 1.5rem;
-    gap: 1rem;
-  }
-  
-  .trips-wrapper::before {
-    left: -15px;
-  }
-  
-  .year-label {
-    font-size: 1.1rem;
-    padding-left: 1.5rem;
-  }
-  
-  .year-label::before {
-    width: 10px;
-    height: 10px;
-  }
-  
-  .no-trips {
-    margin-left: 1.5rem;
+
+  .card-value {
+    font-size: 0.9rem;
   }
 }
 
-/* 새 여행 계획 배너 스타일 */
+/* 뒤로가기 버튼 왼쪽 하단 스타일 */
+.bottom-left-back-button {
+  position: absolute;
+  bottom: 30px;
+  left: 30px;
+  z-index: 1000;
+}
+
+.back-button-large {
+  background-color: rgba(255, 255, 255, 0.95);
+  border: none;
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2d3748;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.back-button-large:hover {
+  background-color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  border-color: #4299e1;
+}
+
+.back-button-large svg {
+  transition: transform 0.2s ease;
+}
+
+.back-button-large:hover svg {
+  transform: translateX(-2px);
+}
+
+/* 새 여행 계획 폼 스타일 */
 .new-trip-form-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   z-index: 1000;
   padding: 1rem;
 }
 
 .new-trip-form-banner {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
   width: 100%;
-  max-width: 800px;
-  background-color: white;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
-  overflow: hidden;
-  animation: zoomIn 0.3s ease-out;
-}
-
-@keyframes zoomIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.banner-content {
-  padding: 2rem;
+  max-width: 900px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .banner-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  padding: 2rem 2rem 1rem;
+  border-bottom: 1px solid rgba(229, 231, 235, 0.5);
 }
 
 .banner-header h3 {
-  margin: 0;
   font-size: 1.5rem;
-  font-weight: 600;
-  color: #2d3748;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
 }
 
 .close-banner-btn {
   background: none;
   border: none;
-  font-size: 1.5rem;
-  color: #a0aec0;
+  font-size: 2rem;
+  color: #6b7280;
   cursor: pointer;
-  transition: color 0.2s ease;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  line-height: 1;
 }
 
 .close-banner-btn:hover {
-  color: #4a5568;
+  color: #374151;
+  background: rgba(243, 244, 246, 0.5);
 }
 
 .trip-info-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+  padding: 1.5rem 2rem 2rem;
 }
 
 .trip-info-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1.5rem;
+  margin-bottom: 1.5rem;
 }
 
 .trip-info-field {
-  flex: 1;
-  min-width: 0; /* 필요한 경우 축소 가능하도록 설정 */
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
-.trip-notes {
-  width: 100%;
+.trip-info-field.trip-notes {
+  grid-column: 1 / -1;
 }
 
 .trip-info-field label {
-  display: block;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: #4a5568;
-  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
 }
 
-.trip-info-field input, 
-.trip-info-field textarea, 
-.trip-info-field select {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 0.95rem;
-  background-color: white;
-  color: #2d3748;
-  transition: all 0.2s ease;
-}
-
-.trip-info-field input:focus, 
-.trip-info-field textarea:focus, 
-.trip-info-field select:focus {
-  outline: none;
-  border-color: #4299e1;
-  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.2);
-}
-
+.trip-info-field input,
 .trip-info-field textarea {
-  height: 100px;
-  resize: vertical;
+  padding: 0.875rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(4px);
+}
+
+.trip-info-field input:focus,
+.trip-info-field textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: white;
+}
+
+.trip-info-field input:disabled {
+  background: rgba(249, 250, 251, 0.8);
+  color: #6b7280;
 }
 
 .input-with-icon {
@@ -2896,98 +3279,43 @@ export default {
 
 .input-icon {
   position: absolute;
-  left: 0.75rem;
+  left: 1rem;
   top: 50%;
   transform: translateY(-50%);
-  color: #718096;
+  color: #6b7280;
+  font-weight: 500;
 }
 
 .input-with-icon input {
-  padding-left: 1.5rem;
+  padding-left: 2.5rem;
 }
 
 .banner-actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 1rem;
+  gap: 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(229, 231, 235, 0.5);
 }
 
 .submit-trip-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.875rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background-color: #4299e1;
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
   transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .submit-trip-btn:hover {
-  background-color: #3182ce;
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-/* 모바일 반응형 */
-@media (max-width: 768px) {
-  .trip-info-row {
-    flex-direction: column;
-    gap: 1rem;
-  }
-  
-  .trip-info-field {
-    width: 100%;
-  }
-}
-
-/* 새 여행 버튼 (타임라인 내) */
-.new-trip-item {
-  background-color: #f0f9ff;
-  border-top-color: #4299e1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-height: 222px; /* Match the height of regular trip items */
-}
-
-.new-trip-item:hover {
-  background-color: #ebf8ff;
-  transform: translateY(-5px);
-  box-shadow: 0 10px 15px rgba(66, 153, 225, 0.2);
-}
-
-.new-trip-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-}
-
-.plus-icon {
-  color: #4299e1;
-  margin-bottom: 1rem;
-}
-
-.new-trip-text {
-  font-weight: 600;
-  font-size: 1.1rem;
-  color: #4299e1;
-  text-align: center;
-}
-
-/* 뒤로가기 버튼 왼쪽 하단 스타일 */
-.bottom-left-back-button {
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  z-index: 10;
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
 }
 </style>

@@ -4,20 +4,18 @@ import regionMapping from '@/data/regionMapping.js';
 import EXIF from 'exif-js';
 
 /**
- * 파일을 Base64로 변환하는 유틸리티 함수
- * @param {File} file - 변환할 파일
- * @returns {Promise<string>} - Base64 인코딩된 문자열
+ * Converts a file to base64 string (simple version for Google Cloud Vision API)
+ * @param {File} file - The file to convert
+ * @returns {Promise<string>} Base64 string representation of the file
  */
-/* 기존 함수 주석 처리
-export const fileToBase64 = (file) => {
+function simpleFileToBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = () => resolve(reader.result);
     reader.onerror = error => reject(error);
   });
-};
-*/
+}
 
 /**
  * 파일을 조정된 크기의 Base64로 변환하는 유틸리티 함수
@@ -464,7 +462,11 @@ export const saveToElasticsearch = async (
   u_id = 1,
   u_age = 20,
   u_gender = 'M',
-  originalAddress = '' // New parameter for the original address string
+  originalAddress = '', // New parameter for the original address string
+  p_stars = 0, // 사용자 인증 별점 1~5
+  p_review = '', // 사용자 후기
+  p_tuid = null, // 해당 여행 고유번호
+  p_tauid = null // 해당 travelArea 고유번호
 ) => {
   try {
     console.log('=== Elasticsearch 저장 데이터 로깅 시작 ===');
@@ -480,6 +482,10 @@ export const saveToElasticsearch = async (
     console.log('사용자 ID (u_id):', u_id);
     console.log('사용자 나이 (u_age):', u_age);
     console.log('사용자 성별 (u_gender):', u_gender);
+    console.log('인증 별점 (p_stars):', p_stars);
+    console.log('사용자 후기 (p_review):', p_review);
+    console.log('여행 고유번호 (p_tuid):', p_tuid);
+    console.log('TravelArea 고유번호 (p_tauid):', p_tauid);
 
     // 이미지 압축 확인 및 필요 시 압축 처리
     let compressedImageBase64 = imageBase64;
@@ -609,6 +615,10 @@ export const saveToElasticsearch = async (
       p_description_en: englishDescription, // 영어 설명 (light_2 모델의 결과)
       p_image: base64Data, // 압축된 이미지 데이터
       p_vector: featuresVector, // 이미지 특성을 나타내는 10차원 벡터
+      p_stars: p_stars, // 사용자 인증 별점 1~5
+      p_review: p_review, // 사용자 후기
+      p_tuid: p_tuid, // 해당 여행 고유번호
+      p_tauid: p_tauid, // 해당 travelArea 고유번호
       u_id: u_id, // 사용자 ID - 매개변수에서 가져옴
       u_age: u_age, // 사용자 나이 - 매개변수에서 가져옴
       u_gender: u_gender, // 사용자 성별 - 매개변수에서 가져옴
@@ -2359,7 +2369,7 @@ export async function enDescToKoDescAndTags(englishDescription, signal) {
 
 /**
  * Analyzes a receipt image to extract payment information (Place, Time, Price).
- * Uses OCR.space API and then an OCR_basic AI model.
+ * Uses Google Cloud Vision API and then an OCR_basic AI model.
  * @param {File} receiptFile - The image file of the receipt.
  * @returns {Promise<Array<{Place: string, Time: string, Price: number}>>}
  * @throws {Error} If any API call or parsing fails.
@@ -2369,124 +2379,294 @@ export async function ImgToPayment(receiptFile) {
     throw new Error('영수증 파일이 제공되지 않았습니다.');
   }
 
-  console.log('API Service: OCR로 텍스트 추출 시작 (OCR.space)...');
-  const ocrFormData = new FormData();
-  // IMPORTANT: Consider moving API keys to a more secure location like .env files for production.
-  ocrFormData.append('apikey', 'K83821813888957'); 
-  ocrFormData.append('language', 'kor');
-  ocrFormData.append('isTable', 'true');
-  ocrFormData.append('OCREngine', '2');
-  ocrFormData.append('scale', 'true');
-  ocrFormData.append('file', receiptFile);
-
-  const ocrResponse = await fetch('https://api.ocr.space/parse/image', {
-    method: 'POST',
-    body: ocrFormData,
-  });
-
-  const ocrData = await ocrResponse.json();
-
-  console.log('API Service: OCR.space API 응답:', ocrData);
-
-  if (!ocrResponse.ok || ocrData.OCRExitCode !== 1) {
-    const errorMessage = ocrData.ErrorMessage?.[0] || ocrData.ErrorMessage || 'OCR 이미지 분석 중 알 수 없는 오류 발생';
-    console.error('API Service: OCR.space API 오류:', errorMessage, ocrData);
-    throw new Error(`OCR 분석 실패: ${errorMessage}`);
-  }
-
-  const parsedText = ocrData.ParsedResults?.[0]?.ParsedText;
-  if (!parsedText) {
-    console.error('API Service: OCR 결과에서 텍스트를 추출하지 못했습니다.', ocrData);
-    throw new Error('OCR 결과에서 텍스트를 추출하지 못했습니다.');
-  }
+  console.log('API Service: Google Cloud Vision OCR로 텍스트 추출 시작...');
   
-  console.log('API Service: OCR 결과:', parsedText);
-  
-  // 데이터 전처리: 특정 특수 문자 제거
-  const processedText = parsedText.replace(/[*•(){}[\]]/g, ''); // Corrected regex
-  console.log('API Service: 전처리된 OCR 결과:', processedText);
+  try {
+    // 이미지를 Base64로 변환
+    const base64Image = await simpleFileToBase64(receiptFile);
+    // data:image/jpeg;base64, 부분 제거하고 순수 base64만 추출
+    const base64Content = base64Image.split(',')[1];
 
-  console.log('API Service: AI 모델로 영수증 분석 시작 (OCR_basic)...');
-  const aiResponse = await fetch(`${config.OLLAMA_API}/api/generate`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'OCR_basic',
-      prompt: "다음 영수증 OCR 데이터를 분석하여 결제 장소, 시간, 최종 금액을 추출해주세요. 반드시 JSON 배열 형식으로만 응답하고, 마크다운 서식이나 설명은 절대 포함하지 마세요: " + processedText, // 전처리된 텍스트 사용
-      stream: false,
-    }),
-  });
-
-  if (!aiResponse.ok) {
-    throw new Error(`영수증 분석 AI API 실패 (OCR_basic): ${aiResponse.status} ${aiResponse.statusText}`);
-  }
-
-  const aiData = await aiResponse.json();
-  console.log('API Service: OCR_basic 모델 전체 응답:', aiData);
-
-  if (aiData && aiData.response) {
-    try {
-      const response = aiData.response.trim();
-      
-      // 1. 응답이 배열 형식인지 확인
-      if (response.startsWith('[') && response.endsWith(']')) {
-        // 배열 형식으로 파싱
-        const paymentArray = JSON.parse(response);
-        console.log('API Service: 배열 형식의 결제 내역 분석 완료:', paymentArray);
-        
-        // 각 항목의 Price를 숫자로 변환
-        return paymentArray.map(item => ({
-          ...item,
-          Price: Number(String(item.Price).replace(/[^\d.-]/g, '')) || 0
-        }));
-      }
-      
-      // 2. 단일 객체인 경우
-      try {
-        const parsedAIResponse = JSON.parse(response);
-        if (
-          parsedAIResponse.Place !== undefined &&
-          parsedAIResponse.Time !== undefined &&
-          parsedAIResponse.Price !== undefined
-        ) {
-          console.log('API Service: 단일 결제 내역 분석 완료:', parsedAIResponse);
-          // Ensure Price is a number
-          parsedAIResponse.Price = Number(String(parsedAIResponse.Price).replace(/[^\d.-]/g, '')) || 0;
-          // 단일 객체를 배열로 래핑하여 반환
-          return [parsedAIResponse];
+    // Google Cloud Vision API 요청 구성
+    const visionRequest = {
+      requests: [
+        {
+          image: {
+            content: base64Content
+          },
+          features: [
+            {
+              type: 'TEXT_DETECTION',
+              maxResults: 1
+            }
+          ]
         }
-      } catch (e) {
-        console.error('API Service: 단일 객체 파싱 실패:', e);
-      }
-      
-      // 3. 여러 객체가 쉼표로 구분된 경우
-      if (response.includes('{') && response.includes('}')) {
-        try {
-          // 쉼표로 구분된 객체들을 배열로 변환
-          const fixedJson = '[' + response.replace(/}\s*{/g, '},{') + ']';
-          const paymentArray = JSON.parse(fixedJson);
-          console.log('API Service: 쉼표 구분 결제 내역 분석 완료:', paymentArray);
+      ]
+    };
+
+    console.log('Google Cloud Vision API 호출 중...');
+    
+    // Google Cloud Vision API 호출
+    const visionResponse = await fetch('https://vision.googleapis.com/v1/images:annotate?key=' + config.GOOGLE_CLOUD_API_KEY, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(visionRequest)
+    });
+
+    if (!visionResponse.ok) {
+      const errorData = await visionResponse.json();
+      console.error('Google Cloud Vision API 오류:', errorData);
+      throw new Error(`Google Vision OCR 분석 실패: ${visionResponse.status} ${visionResponse.statusText}`);
+    }
+
+    const visionData = await visionResponse.json();
+    console.log('Google Cloud Vision API 응답:', visionData);
+
+    // 텍스트 추출
+    const textAnnotations = visionData.responses?.[0]?.textAnnotations;
+    if (!textAnnotations || textAnnotations.length === 0) {
+      throw new Error('Google Vision OCR에서 텍스트를 추출하지 못했습니다.');
+    }
+
+    // 첫 번째 textAnnotation이 전체 텍스트를 포함
+    const extractedText = textAnnotations[0].description;
+    console.log('Google Vision OCR 결과:', extractedText);
+
+    // 데이터 전처리: 특정 특수 문자 제거
+    const processedText = extractedText.replace(/[*•(){}[\]]/g, '');
+    console.log('전처리된 OCR 결과:', processedText);
+
+    console.log('API Service: AI 모델로 영수증 분석 시작 (OCR_basic)...');
+    const aiResponse = await fetch(`${config.OLLAMA_API}/api/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'OCR_basic',  // 또는 'OCR_basic'
+        prompt: "Please return in JSON format without markdown format. OCR data: " + processedText,
+        stream: false,
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      throw new Error(`영수증 분석 AI API 실패 (OCR_basic): ${aiResponse.status} ${aiResponse.statusText}`);
+    }
+
+    const aiData = await aiResponse.json();
+    console.log('API Service: OCR_basic 모델 전체 응답:', aiData);
+
+    if (aiData && aiData.response) {
+      try {
+        const response = aiData.response.trim();
+        
+        // 1. 응답이 배열 형식인지 확인
+        if (response.startsWith('[') && response.endsWith(']')) {
+          const paymentArray = JSON.parse(response);
+          console.log('API Service: 배열 형식의 결제 내역 분석 완료:', paymentArray);
           
-          // 각 항목의 Price를 숫자로 변환
           return paymentArray.map(item => ({
             ...item,
             Price: Number(String(item.Price).replace(/[^\d.-]/g, '')) || 0
           }));
+        }
+        
+        // 2. 단일 객체인 경우
+        try {
+          const parsedAIResponse = JSON.parse(response);
+          if (
+            parsedAIResponse.Place !== undefined &&
+            parsedAIResponse.Time !== undefined &&
+            parsedAIResponse.Price !== undefined
+          ) {
+            console.log('API Service: 단일 결제 내역 분석 완료:', parsedAIResponse);
+            parsedAIResponse.Price = Number(String(parsedAIResponse.Price).replace(/[^\d.-]/g, '')) || 0;
+            return [parsedAIResponse];
+          }
         } catch (e) {
-          console.error('API Service: 쉼표 구분 객체 파싱 실패:', e);
+          console.error('API Service: 단일 객체 파싱 실패:', e);
+        }
+        
+        // 3. 여러 객체가 쉼표로 구분된 경우
+        if (response.includes('{') && response.includes('}')) {
+          try {
+            const fixedJson = '[' + response.replace(/}\s*{/g, '},{') + ']';
+            const paymentArray = JSON.parse(fixedJson);
+            console.log('API Service: 쉼표 구분 결제 내역 분석 완료:', paymentArray);
+            
+            return paymentArray.map(item => ({
+              ...item,
+              Price: Number(String(item.Price).replace(/[^\d.-]/g, '')) || 0
+            }));
+          } catch (e) {
+            console.error('API Service: 쉼표 구분 객체 파싱 실패:', e);
+          }
+        }
+        
+        console.error('API Service: AI 응답을 적절한 형식으로 파싱할 수 없습니다:', response);
+        throw new Error('AI 응답에서 필요한 결제 정보를 추출하지 못했습니다.');
+      } catch (e) {
+        console.error('API Service: AI 응답 파싱 오류:', e, aiData.response);
+        throw new Error(`AI 응답 파싱 오류: ${e.message}. 응답 전문: ${aiData.response}`);
+      }
+    }
+    
+    console.error('API Service: AI 모델(OCR_basic)로부터 유효한 응답을 받지 못했습니다.', aiData);
+    throw new Error('AI 모델(OCR_basic)로부터 유효한 응답을 받지 못했습니다.');
+    
+  } catch (error) {
+    console.error('API Service: ImgToPayment 전체 오류:', error);
+    throw error;
+  }
+}
+
+/**
+ * 여행 지출 내역을 서버에 추가하는 함수
+ * @param {Object} paymentData - 지출 데이터
+ * @param {number} paymentData.tuid - 여행 ID
+ * @param {number} paymentData.cost - 비용
+ * @param {string} paymentData.history - 지출 내역
+ * @param {string} paymentData.payment_time - 지불 시간 (ISO 8601 형식)
+ * @returns {Promise<Object>} API 응답 결과
+ */
+export async function addTravelPayment(paymentData) {
+  try {
+    console.log('여행 지출 추가 API 호출:', paymentData);
+    
+    // auth.js에서 제공하는 apiPost 함수 사용 (인증 헤더 자동 포함)
+    const { apiPost } = await import('./auth.js');
+    const result = await apiPost('/travel-payments', paymentData);
+    
+    console.log('여행 지출 추가 성공:', result);
+    return result;
+  } catch (error) {
+    console.error('여행 지출 추가 오류:', error);
+    throw error;
+  }
+}
+
+/**
+ * 특정 사용자의 여행 인증 데이터를 ElasticSearch에서 조회
+ * @param {number} userId - 사용자 ID
+ * @param {number} tuid - 여행 ID
+ * @returns {Promise<Object>} - 인증 데이터 맵 (p_tauid를 키로 하는 객체)
+ */
+export const getUserTravelVerifications = async (userId, tuid) => {
+  try {
+    console.log(`사용자 ID ${userId}, 여행 ID ${tuid}의 인증 데이터 조회 시작`);
+
+    // ElasticSearch 쿼리 구성
+    const query = {
+      query: {
+        bool: {
+          must: [
+            {
+              term: {
+                p_tuid: tuid
+              }
+            },
+            {
+              term: {
+                u_id: userId
+              }
+            }
+          ]
+        }
+      },
+      _source: {
+        includes: [
+          "p_stars",
+          "p_review", 
+          "p_tauid",
+          "upload_date",
+          "p_name",
+          "p_address"
+        ]
+      },
+      size: 1000 // 충분히 큰 값으로 설정
+    };
+
+    console.log('ElasticSearch 쿼리:', JSON.stringify(query, null, 2));
+
+    // config에서 Elasticsearch API URL 사용
+    const response = await fetch(`${config.ES_API}/travel_places/_search`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(query)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('사용자 여행 인증 데이터 조회 API 응답 오류:', errorData);
+      throw new Error('사용자 여행 인증 데이터 조회 실패: ' + JSON.stringify(errorData));
+    }
+
+    const result = await response.json();
+    console.log('사용자 여행 인증 데이터 조회 결과:', result);
+    
+    // 결과를 p_tauid를 키로 하는 맵으로 변환
+    const verificationMap = {};
+    const hits = result.hits.hits || [];
+    
+    hits.forEach(hit => {
+      const source = hit._source;
+      const tauid = source.p_tauid;
+      
+      if (tauid) {
+        // 같은 tauid에 대해 여러 인증이 있는 경우 가장 최근 것을 선택
+        if (!verificationMap[tauid] || new Date(source.upload_date) > new Date(verificationMap[tauid].upload_date)) {
+          verificationMap[tauid] = {
+            stars: source.p_stars,
+            review: source.p_review,
+            uploadDate: source.upload_date,
+            placeName: source.p_name,
+            address: source.p_address
+          };
         }
       }
-      
-      console.error('API Service: AI 응답을 적절한 형식으로 파싱할 수 없습니다:', response);
-      throw new Error('AI 응답에서 필요한 결제 정보를 추출하지 못했습니다.');
-    } catch (e) {
-      console.error('API Service: AI 응답 파싱 오류:', e, aiData.response);
-      throw new Error(`AI 응답 파싱 오류: ${e.message}. 응답 전문: ${aiData.response}`);
-    }
+    });
+    
+    console.log('인증 데이터 맵 생성 완료:', verificationMap);
+    return verificationMap;
+  } catch (error) {
+    console.error('사용자 여행 인증 데이터 조회 오류:', error);
+    // 에러 발생 시 빈 객체 반환
+    return {};
   }
-  
-  console.error('API Service: AI 모델(OCR_basic)로부터 유효한 응답을 받지 못했습니다.', aiData);
-  throw new Error('AI 모델(OCR_basic)로부터 유효한 응답을 받지 못했습니다.');
+};
+
+/**
+ * Travel payment 삭제 함수
+ * @param {number} tpuid - Travel Payment 고유 ID
+ * @returns {Promise<Object>} API 응답 결과
+ */
+export async function deleteTravelPayment(tpuid) {
+  try {
+    console.log('여행 지출 삭제 API 호출:', { tpuid });
+    
+    const response = await fetch(`${config.API_BASE_URL}/api/travel-payments/${tpuid}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('여행 지출 삭제 API 오류:', errorText);
+      throw new Error(`서버 오류 (${response.status}): ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('여행 지출 삭제 성공:', result);
+    return result;
+    
+  } catch (error) {
+    console.error('여행 지출 삭제 오류:', error);
+    throw error;
+  }
 }

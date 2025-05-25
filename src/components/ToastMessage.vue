@@ -17,7 +17,7 @@ export default {
     },
     type: {
       type: String,
-      default: 'success', // 'success' or 'error'
+      default: 'success', // 'success', 'error', 'processing'
     },
     duration: {
       type: Number,
@@ -34,7 +34,16 @@ export default {
     let timer = null;
 
     const icon = computed(() => {
-      return props.type === 'success' ? '✅' : '❌';
+      switch (props.type) {
+        case 'success':
+          return '✅';
+        case 'error':
+          return '❌';
+        case 'processing':
+          return '🌐';
+        default:
+          return '✅';
+      }
     });
 
     const toastTypeClass = computed(() => {
@@ -103,6 +112,12 @@ export default {
 .toast-message.toast-error {
   background-color: #f56565; /* Red for error */
   color: white;
+}
+
+.toast-message.toast-processing {
+  background-color: #BEE3F8; /* Light sky blue for processing */
+  color: #2D3748; /* Dark text for better contrast */
+  border: 1px solid #90CDF4; /* Slightly darker blue border */
 }
 
 .toast-icon {

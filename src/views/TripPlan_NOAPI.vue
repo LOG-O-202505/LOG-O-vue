@@ -5,28 +5,16 @@
       heroTitle="나만의 여행 설계하기" heroSubtitle="나만의 특별한 여행 경험을 디자인해보세요" heroHeight="320px" />
 
     <!-- NEW Toast Message Component -->
-    <ToastMessage :message="toastMessage" :type="toastType" :duration="toastDuration" v-model:show="showToast" />
+    <ToastMessage 
+      :message="toastMessage" 
+      :type="toastType" 
+      :duration="toastDuration"
+      v-model:show="showToast" 
+    />
 
     <!-- 메인 콘텐츠 -->
     <div class="plan-content-wrapper">
-      <!-- 로딩 상태 -->
-      <div v-if="isLoading" class="loading-container">
-        <div class="loading-spinner">
-          <div class="spinner"></div>
-        </div>
-        <p>여행 데이터를 불러오는 중...</p>
-      </div>
-
-      <!-- 에러 상태 -->
-      <div v-else-if="loadingError" class="error-container">
-        <div class="error-icon">⚠️</div>
-        <h3>데이터 로드 실패</h3>
-        <p>{{ loadingError }}</p>
-        <button class="retry-btn" @click="fetchTravelData">다시 시도</button>
-      </div>
-
-      <!-- 정상 데이터 로드 상태 -->
-      <div v-else class="plan-container">
+      <div class="plan-container">
         <!-- 여행 기본 정보 폼 -->
         <div class="plan-section">
           <h1 class="section-title">여행 기본 정보</h1>
@@ -185,16 +173,7 @@
                         </button>
                       </template>
                       <template v-else>
-                        <!-- 인증된 항목은 삭제 버튼 비활성화 -->
-                        <button v-if="item.verified" class="delete-btn disabled" disabled title="인증된 항목은 삭제할 수 없습니다">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                          </svg>
-                        </button>
-                        <!-- 인증되지 않은 항목만 삭제 가능 -->
-                        <button v-else class="delete-btn" @click="removeScheduleItem(activeDay, item)">
+                        <button class="delete-btn" @click="removeScheduleItem(activeDay, itemIndex)">
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -213,7 +192,7 @@
                   <!-- 방문 인증 버튼 부분 수정 -->
                   <div class="verification-button-container">
                     <button v-if="!item.verified" class="visit-verification-btn"
-                      @click="verifyVisit(activeDay, item)">
+                      @click="verifyVisit(activeDay, itemIndex)">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
@@ -222,14 +201,14 @@
                       방문 인증하기
                     </button>
 
-                    <!-- 인증 완료된 경우의 표시 (기존과 동일하게) -->
+                    <!-- 인증 완료된 경우의 표시 (수정됨) -->
                     <div v-if="item.verified" class="verification-completed">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                         <polyline points="22 4 12 14.01 9 11.01"></polyline>
                       </svg>
-                      {{ formatVerificationDate(item.verifiedAt) }}에 방문 완료
+                      {{ formatDate(item.verifiedAt) }}에 방문 완료
                       <span class="stars" v-if="item.rating">
                         {{ '★'.repeat(item.rating) }}{{ '☆'.repeat(5 - item.rating) }}
                       </span>
@@ -237,7 +216,7 @@
                   </div>
                 </div>
 
-                <button class="add-schedule-btn" @click="console.log('버튼 클릭됨'); openPlaceSearch()">
+                <button class="add-schedule-btn" @click="openPlaceSearch">
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -271,16 +250,7 @@
 
         <!-- 예산 계획 -->
         <div class="plan-section">
-          <div class="section-header">
-            <h1 class="section-title">지출 관리</h1>
-            <button class="add-expense-btn-small" @click="openPaymentModal">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              지출 추가
-            </button>
-          </div>
+          <h1 class="section-title">지출 관리</h1>
           <div class="budget-container">
             <div class="budget-summary">
               <div class="budget-card">
@@ -359,150 +329,80 @@
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </div> <!-- plan-container 닫는 태그 -->
 
-      <!-- PaymentModal -->
-      <PaymentModal 
-        :show="showPaymentModal" 
-        :travel-id="tuid"
-        :travel-roots="travelRoots"
-        @close="closePaymentModal" 
-        @add-expense="handleAddExpense"
-        @payment-added="handlePaymentAdded"
-      />
-
-      <!-- 방문 인증 모달 (개선된 버전) -->
-      <div class="modal-overlay" v-if="showVerificationModal" @click="closeVerificationModal">
-        <div class="modals-container verification-container">
-          <!-- 메인 인증 모달 (왼쪽) -->
-          <div class="verification-photo-modal" @click.stop>
-            <div class="verification-content">
-              <!-- 기존 업로드 컨테이너를 VerificationImageUpload 컴포넌트로 교체 -->
-              <VerificationImageUpload
-                :currentFile="verificationPhotoFile"
-                :photoMetadata="photoMetadata"
-                :distanceFromTarget="distanceFromTarget"
-                :verificationResult="verificationResult"
-                :isVerifying="isVerifying"
-                :targetCoords="verifyingItemInfo.coords || { lat: 33.458031, lng: 126.942652 }"
-                @file-selected="handleVerificationFileSelected"
-                @file-remove="clearVerificationPhoto"
-                @verify-photo="verifyPhoto"
-                @admin-verify="adminVerify"
-                @close-modal="closeVerificationModal"
-                @verification-success="handleVerificationSuccess"
-                @verification-failed="handleVerificationFailed"
-              />
-            </div>
-          </div>
-
-          <!-- 리뷰 모달 (오른쪽) - 인증 성공 시에만 표시 -->
-          <div v-if="verificationResult && verificationResult.success" class="verification-review-container">
-            <div class="verification-review-modal" @click.stop>
-              <div v-if="!isVerifying" class="modal-header">
-                <h3>방문 후기 작성</h3>
-              </div>
-
-              <div class="review-content">
-                <!-- 인증 처리 중이거나 완료되었지만 아직 저장되지 않은 경우 스피너 표시 -->
-                <div v-if="isVerifying || loadingPhase === 'completed'" class="verification-loading-section">
-                  <VerificationImageProcessSpinner 
-                    :current-phase="loadingPhase"
-                    :image-analysis-duration="imageAnalysisDuration"
-                    :meaning-analysis-duration="meaningAnalysisDuration"
-                    :keyword-extraction-duration="keywordExtractionDuration"
-                    :morphological-analysis-duration="morphologicalAnalysisDuration"
-                    :processing-results-duration="processingResultsDuration"
-                    @save-result="saveVerificationResult"
-                  />
-                </div>
-                
-                <!-- 인증 처리가 시작되지 않았거나 저장이 완료된 경우에만 폼 표시 -->
-                <div v-else class="review-form-section">
-                  <div class="rating-container">
-                    <label>별점 평가:</label>
-                    <div class="star-rating">
-                      <span v-for="star in 5" :key="star" class="star" :class="{ 'active': star <= reviewRating }"
-                        @click="reviewRating = star">
-                        ★
-                      </span>
-                    </div>
-                  </div>
-
-                  <div class="review-text-container">
-                    <label for="review-text">방문 후기:</label>
-                    <textarea id="review-text" v-model="reviewText" placeholder="이 장소에 대한 후기를 작성해주세요..." rows="6"></textarea>
-                  </div>
-                  
-                  <!-- 테스트용 데이터 입력 필드 추가 -->
-                  <div class="test-data-container">
-                    <div class="test-data-header" @click="isTestDataExpanded = !isTestDataExpanded">
-                      <h4 class="test-data-title">테스트용 데이터 입력 (개발용)</h4>
-                      <button type="button" class="test-data-toggle-btn" :class="{ 'expanded': isTestDataExpanded }">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                      </button>
-                    </div>
-                    <div class="test-data-inputs" :class="{ 'expanded': isTestDataExpanded }">
-                      <div class="test-data-input-row">
-                        <div class="test-data-field">
-                          <label for="p_id">장소 ID (p_id):</label>
-                          <input type="number" id="p_id" v-model="testDataInputs.p_id" min="1" placeholder="장소 ID">
-                        </div>
-                        <div class="test-data-field">
-                          <label for="u_id">사용자 ID (u_id):</label>
-                          <input type="number" id="u_id" v-model="testDataInputs.u_id" min="1" placeholder="사용자 ID">
-                        </div>
-                      </div>
-                      <div class="test-data-input-row">
-                        <div class="test-data-field">
-                          <label for="u_age">나이 (u_age):</label>
-                          <input type="number" id="u_age" v-model="testDataInputs.u_age" min="1" placeholder="나이">
-                        </div>
-                        <div class="test-data-field">
-                          <label for="u_gender">성별 (u_gender):</label>
-                          <select id="u_gender" v-model="testDataInputs.u_gender">
-                            <option value="M">남성</option>
-                            <option value="F">여성</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div class="form-actions">
-                    <button @click="completeVerification" class="btn-verify">
-                      인증 완료하기
-                    </button>
-                  </div>
-                </div>
+              <!-- 지출 추가 버튼 -->
+              <div class="add-expense-buttons">
+                <button class="add-expense-btn" @click="addExpense">
+                  수동으로 추가
+                </button>
+                <button class="add-expense-btn" @click="openReceiptUpload">
+                  사진으로 자동 추가
+                </button>
               </div>
             </div>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- 장소 검색 모달 -->
-      <TravelAreasInsertModule
-        :isOpen="isPlaceSearchModalOpen"
-        :selectedDay="selectedDay"
-        :tripStartDate="tripData.startDate"
-        :travelId="tuid"
-        @close="closePlaceSearch"
-        @place-added="handlePlaceAdded"
-        @show-toast="handleToast"
-      />
+    <!-- 영수증 업로드 모달 -->
+    <div class="receipt-upload-modal" v-if="showReceiptUpload">
+      <div class="receipt-upload-content">
+        <div class="receipt-upload-header">
+          <h3>영수증/결제내역 분석</h3>
+          <button class="close-receipt-btn" @click="closeReceiptUpload">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
 
-      <!-- 영수증 업로드 모달 -->
-      <div class="receipt-upload-modal" v-if="showReceiptUpload">
-        <div class="receipt-upload-content">
-          <div class="receipt-upload-header">
-            <h3>영수증/결제내역 분석</h3>
-            <button class="close-receipt-btn" @click="closeReceiptUpload">
+        <div class="upload-container" @dragover.prevent="onDragOver" @dragleave.prevent="onDragLeave"
+          @drop.prevent="onDrop" :class="{ 'active-dropzone': isDragging }">
+          <input type="file" ref="receiptFileInput" @change="handleReceiptFileInput" accept="image/*"
+            style="display: none">
+          <div v-if="!receiptPreview" class="upload-prompt">
+            <div class="upload-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+            </div>
+            <p>영수증/결제내역 이미지를 끌어서 놓거나 클릭하여 업로드하세요</p>
+            <button @click="triggerReceiptFileInput" class="btn secondary-btn">파일 선택</button>
+          </div>
+          <div v-else class="preview-container">
+            <div class="image-container">
+              <img :src="receiptPreview" alt="영수증/결제내역 미리보기" class="receipt-preview">
+            </div>
+            <div class="preview-actions">
+              <button @click="analyzeReceipt" class="btn primary-btn" :disabled="isLoading">
+                {{ isLoading ? '분석 중...' : '이미지 분석하기' }}
+              </button>
+              <button @click="clearReceiptImage" class="btn cancel-btn">취소</button>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="isLoading" class="loading-indicator">
+          <div class="spinner"></div>
+          <p>{{ loadingMessage }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 장소 검색 모달 -->
+    <div class="modal-overlay" v-if="isPlaceSearchModalOpen" @click="closePlaceSearch">
+      <div class="modals-container" :class="{ 'with-detail': selectedPlace }">
+        <!-- 검색 모달 -->
+        <div class="place-search-modal" :class="{ 'slide-left': selectedPlace }" @click.stop>
+          <div class="modal-header">
+            <h3>장소 검색</h3>
+            <button class="close-btn" @click="closePlaceSearch">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -511,49 +411,250 @@
             </button>
           </div>
 
-          <div class="upload-container" @dragover.prevent="onDragOver" @dragleave.prevent="onDragLeave"
-            @drop.prevent="onDrop" :class="{ 'active-dropzone': isDragging }">
-            <input type="file" ref="receiptFileInput" @change="handleReceiptFileInput" accept="image/*"
-              style="display: none">
-            <div v-if="!receiptPreview" class="upload-prompt">
-              <div class="upload-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="17 8 12 3 7 8"></polyline>
-                  <line x1="12" y1="3" x2="12" y2="15"></line>
-                </svg>
+          <div class="modal-content">
+            <!-- 검색 섹션 -->
+            <div class="search-section">
+              <div class="search-box">
+                <input type="text" v-model="placeSearchKeyword" placeholder="검색할 장소를 입력하세요" @keyup.enter="searchPlaces">
+                <button class="search-btn" @click="searchPlaces">검색</button>
               </div>
-              <p>영수증/결제내역 이미지를 끌어서 놓거나 클릭하여 업로드하세요</p>
-              <button @click="triggerReceiptFileInput" class="btn secondary-btn">파일 선택</button>
+
+              <h3 class="modal-section-title">장소 검색 결과</h3>
+
+              <div class="search-results">
+                <div v-if="isSearching" class="searching-indicator">
+                  <div class="spinner"></div>
+                  <p>검색 중...</p>
+                </div>
+                <div v-else-if="searchResults.length === 0 && !hasSearched" class="no-results">
+                  <p>검색어를 입력하여 장소를 검색해보세요.</p>
+                </div>
+                <div v-else-if="searchResults.length === 0 && hasSearched" class="no-results">
+                  <p>검색 결과가 없습니다.</p>
+                </div>
+                <div v-else class="place-list">
+                  <div v-for="(place, index) in searchResults" :key="index" class="place-item">
+                    <div class="place-info" @click="openPlaceDetails(place)">
+                      <h4>{{ place.place_name }}</h4>
+                      <p class="place-address">{{ place.road_address_name || place.address_name }}</p>
+                      <p class="place-category">{{ place.category_name }}</p>
+                    </div>
+                    <div class="place-actions">
+                      <button class="wishlist-btn" @click="addToWishlist(place)"
+                        :class="{ 'active': isInWishlist(place) }">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path
+                            d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
+                          </path>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div v-else class="preview-container">
-              <div class="image-container">
-                <img :src="receiptPreview" alt="영수증/결제내역 미리보기" class="receipt-preview">
-              </div>
-              <div class="preview-actions">
-                <button @click="analyzeReceipt" class="btn primary-btn" :disabled="isReceiptAnalyzing">
-                  {{ isReceiptAnalyzing ? '분석 중...' : '이미지 분석하기' }}
-                </button>
-                <button @click="clearReceiptImage" class="btn cancel-btn">취소</button>
+
+            <!-- 수직 구분선 -->
+            <div class="modal-divider"></div>
+
+            <!-- 위시리스트 섹션 -->
+            <div class="wishlist-section">
+              <h3 class="modal-section-title">나의 찜 목록</h3>
+              <div class="wishlist-items">
+                <div v-if="wishlistPlaces.length === 0" class="no-wishlist">
+                  <p>저장한 장소가 없습니다.</p>
+                </div>
+                <div v-else class="place-list">
+                  <div v-for="(place, index) in wishlistPlaces" :key="index" class="place-item">
+                    <div class="place-info" @click="openPlaceDetails(place)">
+                      <h4>{{ place.place_name }}</h4>
+                      <p class="place-address">{{ place.road_address_name || place.address_name }}</p>
+                    </div>
+                    <div class="place-actions">
+                      <button class="remove-btn" @click="removeFromWishlist(index)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div v-if="isReceiptAnalyzing" class="loading-indicator">
-            <div class="spinner"></div>
-            <p>{{ loadingMessage }}</p>
+          <div class="modal-footer">
+            <p class="powered-by">Powered by Kakao Maps API</p>
+          </div>
+        </div>
+
+        <!-- 장소 상세 정보 모달 (선택 시에만 표시) -->
+        <div v-if="selectedPlace" class="place-detail-modal" :class="{ 'slide-in': selectedPlace }" @click.stop>
+          <div class="modal-header">
+            <h3>장소 추가</h3>
+            <button class="close-btn" @click="cancelPlaceDetails">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+
+          <div class="detail-content">
+            <div class="selected-place-info">
+              <h4>{{ selectedPlace.place_name }}</h4>
+              <p>{{ selectedPlace.road_address_name || selectedPlace.address_name }}</p>
+            </div>
+
+            <!-- 미니 지도 표시 -->
+            <div class="mini-map-container">
+              <div id="detail-map" ref="detailMapContainer"></div>
+            </div>
+
+            <div class="form-group">
+              <label for="visitTime">방문 시간</label>
+              <div class="time-input-wrapper">
+                <input type="time" id="visitTime" v-model="visitTime">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="placeMemo">메모</label>
+              <textarea 
+                id="placeMemo" 
+                v-model="placeMemo" 
+                placeholder="장소에 대한 메모를 입력하세요"
+                @input="autoResizeTextarea"
+                ref="memoTextarea"
+              ></textarea>
+            </div>
+
+            <div class="form-actions">
+              <button class="cancel-btn" @click="cancelPlaceDetails">취소</button>
+              <button class="add-btn" @click="addSelectedPlace">일정에 추가</button>
+            </div>
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- 삭제 확인 모달 -->
-      <DeleteConfirmModal
-        :show="showDeleteModal"
-        :place-name="deleteTargetInfo.placeName"
-        @confirm="confirmDelete"
-        @cancel="cancelDelete"
-      />
+    <!-- 성공 알림 배너 -->
+    <!-- REMOVED OLD BANNER -->
+
+    <!-- 방문 인증 모달 (개선된 버전) -->
+    <div class="modal-overlay" v-if="showVerificationModal" @click="closeVerificationModal">
+      <div class="modals-container verification-container">
+        <!-- 메인 인증 모달 (왼쪽) -->
+        <div class="verification-photo-modal" @click.stop>
+          <div class="verification-content">
+            <!-- 기존 업로드 컨테이너를 VerificationImageUpload 컴포넌트로 교체 -->
+            <VerificationImageUpload
+              :currentFile="verificationPhotoFile"
+              :photoMetadata="photoMetadata"
+              :distanceFromTarget="distanceFromTarget"
+              :verificationResult="verificationResult"
+              :isVerifying="isVerifying"
+              :targetCoords="verifyingItemInfo.coords || { lat: 33.458031, lng: 126.942652 }"
+              @file-selected="handleVerificationFileSelected"
+              @file-remove="clearVerificationPhoto"
+              @verify-photo="verifyPhoto"
+              @admin-verify="adminVerify"
+              @close-modal="closeVerificationModal"
+              @verification-success="handleVerificationSuccess"
+              @verification-failed="handleVerificationFailed"
+            />
+          </div>
+        </div>
+
+        <!-- 리뷰 모달 (오른쪽) - 인증 성공 시에만 표시 -->
+        <div v-if="verificationResult && verificationResult.success" class="verification-review-container">
+          <div class="verification-review-modal" @click.stop>
+            <div v-if="!isVerifying" class="modal-header">
+              <h3>방문 후기 작성</h3>
+            </div>
+
+            <div class="review-content">
+              <!-- 인증 처리 중이거나 완료되었지만 아직 저장되지 않은 경우 스피너 표시 -->
+              <div v-if="isVerifying || loadingPhase === 'completed'" class="verification-loading-section">
+                <VerificationImageProcessSpinner 
+                  :current-phase="loadingPhase"
+                  :image-analysis-duration="imageAnalysisDuration"
+                  :meaning-analysis-duration="meaningAnalysisDuration"
+                  :keyword-extraction-duration="keywordExtractionDuration"
+                  :morphological-analysis-duration="morphologicalAnalysisDuration"
+                  :processing-results-duration="processingResultsDuration"
+                  @save-result="saveVerificationResult"
+                />
+              </div>
+              
+              <!-- 인증 처리가 시작되지 않았거나 저장이 완료된 경우에만 폼 표시 -->
+              <div v-else class="review-form-section">
+                <div class="rating-container">
+                  <label>별점 평가:</label>
+                  <div class="star-rating">
+                    <span v-for="star in 5" :key="star" class="star" :class="{ 'active': star <= reviewRating }"
+                      @click="reviewRating = star">
+                      ★
+                    </span>
+                  </div>
+                </div>
+
+                <div class="review-text-container">
+                  <label for="review-text">방문 후기:</label>
+                  <textarea id="review-text" v-model="reviewText" placeholder="이 장소에 대한 후기를 작성해주세요..." rows="6"></textarea>
+                </div>
+                
+                <!-- 테스트용 데이터 입력 필드 추가 -->
+                <div class="test-data-container">
+                  <div class="test-data-header" @click="isTestDataExpanded = !isTestDataExpanded">
+                    <h4 class="test-data-title">테스트용 데이터 입력 (개발용)</h4>
+                    <button type="button" class="test-data-toggle-btn" :class="{ 'expanded': isTestDataExpanded }">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="test-data-inputs" :class="{ 'expanded': isTestDataExpanded }">
+                    <div class="test-data-input-row">
+                      <div class="test-data-field">
+                        <label for="p_id">장소 ID (p_id):</label>
+                        <input type="number" id="p_id" v-model="testDataInputs.p_id" min="1" placeholder="장소 ID">
+                      </div>
+                      <div class="test-data-field">
+                        <label for="u_id">사용자 ID (u_id):</label>
+                        <input type="number" id="u_id" v-model="testDataInputs.u_id" min="1" placeholder="사용자 ID">
+                      </div>
+                    </div>
+                    <div class="test-data-input-row">
+                      <div class="test-data-field">
+                        <label for="u_age">나이 (u_age):</label>
+                        <input type="number" id="u_age" v-model="testDataInputs.u_age" min="1" placeholder="나이">
+                      </div>
+                      <div class="test-data-field">
+                        <label for="u_gender">성별 (u_gender):</label>
+                        <select id="u_gender" v-model="testDataInputs.u_gender">
+                          <option value="M">남성</option>
+                          <option value="F">여성</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="form-actions">
+                  <button @click="completeVerification" class="btn-verify">
+                    인증 완료하기
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -563,55 +664,32 @@ import Header from '@/components/Header.vue';
 import ToastMessage from '@/components/ToastMessage.vue';
 import VerificationImageUpload from '@/components/VerificationImageUpload.vue';
 import VerificationImageProcessSpinner from '@/components/VerificationImageProcessSpinner.vue';
-import TravelAreasInsertModule from '@/components/TravelAreasInsertModule.vue';
-import DeleteConfirmModal from '@/components/DeleteConfirmModal.vue';
-import { ref, computed, onMounted, watch, nextTick, onBeforeUnmount, toRefs } from 'vue';
+import { ref, computed, onMounted, watch, nextTick, onBeforeUnmount } from 'vue';
 import config from '@/config';
 import EXIF from 'exif-js';
 import { safelyCleanupMap, isKakaoMapsLoaded, waitForKakaoMapsSDK } from '@/utils/mapUtils';
 import {
   imageToEngDescription,
   EngDescriptionToVector,
-  saveToElasticsearch,
+  saveToElasticsearch, 
   createFeaturesVector,
   reverseGeocode,
   getEnglishLocationName,
   getLocationCodes,
   enDescToKoDescAndTags, // Added import
   ImgToPayment,          // Added import
-  analyzeTextWithElasticsearch, // 새로 추가된 함수
-  getUserTravelVerifications,
-  deleteTravelPayment
+  analyzeTextWithElasticsearch // 새로 추가된 함수
 } from '@/services/api';
-import { apiGet, apiPost, apiDelete } from '@/services/auth'; // API 호출 함수를 auth.js에서 가져옴
-import PaymentModal from '@/components/PaymentModal.vue'; // Added import
 
 export default {
   name: 'TripPlan',
-  props: {
-    tuid: {
-      type: [String, Number],
-      required: true
-    }
-  },
   components: {
     Header,
     ToastMessage,
     VerificationImageUpload,
     VerificationImageProcessSpinner,
-    PaymentModal,
-    TravelAreasInsertModule,
-    DeleteConfirmModal
   },
-  setup(props) {
-    // Props에서 tuid 가져오기
-    // eslint-disable-next-line no-unused-vars
-    const { tuid } = toRefs(props);
-
-    // 로딩 상태
-    const isLoading = ref(true);
-    const loadingError = ref(null);
-
+  setup() {
     // 카카오 맵 관련 변수
     const kakaoMapContainer = ref(null);
     const kakaoMap = ref(null);
@@ -626,6 +704,10 @@ export default {
 
     // 장소 검색 관련 상태
     const isPlaceSearchModalOpen = ref(false);
+    const placeSearchKeyword = ref('');
+    const searchResults = ref([]);
+    const isSearching = ref(false);
+    const hasSearched = ref(false);
     const selectedDay = ref(0); // 장소 검색 시 선택된 날짜
 
     // 위시리스트 및 선택한 장소 관련 상태
@@ -634,176 +716,48 @@ export default {
     const visitTime = ref('');
     const placeMemo = ref('');
 
-    // 삭제 모달 관련 상태
-    const showDeleteModal = ref(false);
-    const deleteTargetItem = ref(null);
-    const deleteTargetInfo = ref({
-      dayIndex: null,
-      item: null,
-      placeName: '',
-      tauid: null
-    });
-
-    // API 호출 함수
-    const fetchTravelData = async () => {
-      try {
-        isLoading.value = true;
-        loadingError.value = null;
-
-        // 새로운 API 엔드포인트 사용
-        const response = await apiGet(`/travels/${tuid.value}/detail`);
-
-        if (response.status === 'success' && response.data) {
-          const backendData = response.data;
-
-          // userId 저장
-          userId.value = backendData.userId;
-
-          // 백엔드 데이터를 컴포넌트 형식으로 변환
-          tripData.value = {
-            title: backendData.title,
-            startDate: formatDateArray(backendData.startDate),
-            endDate: formatDateArray(backendData.endDate),
-            destination: backendData.location,
-            notes: backendData.memo || '',
-            budget: backendData.totalBudget,
-            expenses: []
-          };
-
-          // travelRoots 데이터 저장
-          if (backendData.travelRoots && Array.isArray(backendData.travelRoots)) {
-            travelRoots.value = backendData.travelRoots.map(root => ({
-              truid: root.truid,
-              travelId: root.travelId,
-              day: root.day,
-              travelDate: formatDateArray(root.travelDate)
-            }));
-
-            console.log('여행 루트 데이터:', travelRoots.value);
-          }
-
-          // travelAreas 데이터를 일정으로 변환
-          if (backendData.travelAreas && Array.isArray(backendData.travelAreas)) {
-            // 일정 데이터 초기화
-            initializeTripDays();
-
-            // travelAreas를 일정으로 매핑
-            backendData.travelAreas.forEach(area => {
-              const dayIndex = area.travelDayId - 1; // 1-based를 0-based로 변환
-              
-              if (dayIndex >= 0 && dayIndex < tripDays.value.length) {
-                const scheduleItem = {
-                  time: area.startTime ? formatTimeFromArray(area.startTime) : '',
-                  activity: area.place?.name || '장소 미정',
-                  location: area.memo || '',
-                  address: area.place?.address || '',
-                  latitude: area.place?.latitude || null,
-                  longitude: area.place?.longitude || null,
-                  coords: area.place?.latitude && area.place?.longitude ? {
-                    lat: area.place.latitude,
-                    lng: area.place.longitude
-                  } : null,
-                  tauid: area.tauid,
-                  place: area.place
-                };
-
-                tripDays.value[dayIndex].items.push(scheduleItem);
-              }
-            });
-
-            console.log('일정 데이터 매핑 완료:', tripDays.value);
-          } else {
-            // travelAreas가 없어도 일정 초기화
-            initializeTripDays();
-          }
-
-          // travelPayments 데이터를 expenses로 변환
-          if (backendData.travelPayments && Array.isArray(backendData.travelPayments)) {
-            tripData.value.expenses = backendData.travelPayments.map(payment => ({
-              id: payment.tpuid,
-              description: payment.history,
-              amount: payment.cost,
-              date: formatDateFromArray(payment.paymentTime),
-              time: formatTimeFromPaymentArray(payment.paymentTime)
-            }));
-
-            console.log('지출 데이터 매핑 완료:', tripData.value.expenses);
-          }
-
-          console.log('여행 데이터 로드 완료:', tripData.value);
-          
-          // 인증 데이터 로드
-          await loadVerificationData();
-        } else {
-          throw new Error('데이터를 가져올 수 없습니다.');
-        }
-      } catch (error) {
-        console.error('여행 데이터 로드 실패:', error);
-        loadingError.value = error.message || '데이터를 불러오는 중 오류가 발생했습니다.';
-      } finally {
-        isLoading.value = false;
-      }
-    };
-
-    // 날짜 배열을 YYYY-MM-DD 형식으로 변환하는 함수
-    const formatDateArray = (dateArray) => {
-      if (!dateArray || dateArray.length < 3) return '';
-      const [year, month, day] = dateArray;
-      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    };
-
-    // 시간 배열을 HH:MM 형식으로 변환하는 함수
-    const formatTimeFromArray = (timeArray) => {
-      if (!timeArray || timeArray.length < 5) return '';
-      // eslint-disable-next-line no-unused-vars
-      const [year, month, day, hour, minute] = timeArray;
-      return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-    };
-
-    // 날짜-시간 배열을 YYYY-MM-DD 형식으로 변환하는 함수
-    const formatDateFromArray = (dateTimeArray) => {
-      if (!dateTimeArray || dateTimeArray.length < 3) return '';
-      const [year, month, day] = dateTimeArray;
-      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    };
-
-    // 시간-분 배열을 HH:MM 형식으로 변환하는 함수
-    const formatTimeFromPaymentArray = (dateTimeArray) => {
-      if (!dateTimeArray || dateTimeArray.length < 5) return '';
-      // eslint-disable-next-line no-unused-vars
-      const [year, month, day, hour, minute] = dateTimeArray;
-      return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-    };
-
-    // 여행 데이터 - 백엔드에서 로드되므로 빈 객체로 초기화
+    // 여행 데이터 - 이미 데이터가 차있는 상태로 초기화
     const tripData = ref({
-      title: '',
-      startDate: '',
-      endDate: '',
-      destination: '',
-      notes: '',
-      budget: 0,
-      expenses: []
+      title: '제주도 봄 여행',
+      startDate: '2020-04-15',
+      endDate: '2020-04-18',
+      destination: '제주도',
+      notes: '첫 제주 여행, 올레길 걷기, 해변에서 휴식, 맛집 탐방 계획',
+      budget: 800000,
+      expenses: [
+        {
+          category: 'accommodation',
+          description: '에어비앤비 숙소',
+          amount: 300000,
+          date: '2020-05-15',
+          time: '12:00'
+        },
+        {
+          category: 'transportation',
+          description: '항공권',
+          amount: 180000,
+          date: '2020-05-15',
+          time: '09:00'
+        },
+        {
+          category: 'food',
+          description: '식비 예산',
+          amount: 120000,
+          date: '2020-05-16',
+          time: '13:30'
+        }
+      ]
     });
-
-    // 여행 루트 데이터
-    const travelRoots = ref([]);
-
-    // 인증 데이터 저장 (tauid를 키로 하는 맵)
-    const verificationData = ref({});
-    const userId = ref(null);
 
     // 현재 활성화된 일정 날짜 (DAY 탭)
     const activeDay = ref(0);
 
-    // 여행 일수별 일정 데이터
-    const tripDays = ref([]);
-
-    // 여행 일수 계산 및 tripDays 초기화
-    const initializeTripDays = () => {
+    // 여행 일수 계산
+    const tripDays = computed(() => {
       if (!tripData.value.startDate || !tripData.value.endDate) {
-        tripDays.value = [{ items: [] }]; // 기본값: 빈 일정
-        return;
+        return [{
+          items: [{ time: '09:00', activity: '조식', location: '호텔 레스토랑', coords: { lat: 33.4890113, lng: 126.4983023 } }],
+        }]; // 기본값: 1일
       }
 
       const start = new Date(tripData.value.startDate);
@@ -811,14 +765,46 @@ export default {
       const diffTime = Math.abs(end - start);
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
-      // 일정 생성
+      // 이미 존재하는 일정 유지하면서 필요한 일수만큼 배열 생성
       const days = [];
       for (let i = 0; i < diffDays; i++) {
-        days.push({ items: [] }); // 기본적으로 빈 일정으로 시작
+        // 기본 일정 데이터 추가 (날짜별 샘플 데이터)
+        if (i === 0) {
+          days.push({
+            items: [
+              { time: '09:00', activity: '제주공항 도착', location: '제주국제공항', coords: { lat: 33.5066778, lng: 126.4931069 } },
+              { time: '10:30', activity: '렌터카 픽업', location: '공항 렌터카 센터', coords: { lat: 33.5066778, lng: 126.4931069 } },
+              { time: '12:00', activity: '점심 식사', location: '제주 흑돼지 맛집', coords: { lat: 33.4890113, lng: 126.4983023 } }
+            ]
+          });
+        } else if (i === 1) {
+          days.push({
+            items: [
+              { time: '08:00', activity: '아침 식사', location: '숙소 근처 카페', coords: { lat: 33.4648938, lng: 126.3312657 } },
+              { time: '10:00', activity: '성산일출봉 관광', location: '성산일출봉', coords: { lat: 33.458031, lng: 126.942652 } }
+            ]
+          });
+        } else if (i === 2) {
+          days.push({
+            items: [
+              { time: '09:00', activity: '아침 산책', location: '한라산 둘레길', coords: { lat: 33.3616758, lng: 126.5292231 } },
+              { time: '13:00', activity: '점심 식사', location: '제주 해물 전문점', coords: { lat: 33.2541205, lng: 126.5630755 } }
+            ]
+          });
+        } else if (i === 3) {
+          days.push({
+            items: [
+              { time: '10:00', activity: '마지막 관광', location: '카멜리아 힐', coords: { lat: 33.2895471, lng: 126.3721352 } },
+              { time: '14:00', activity: '공항 이동', location: '제주국제공항', coords: { lat: 33.5066778, lng: 126.4931069 } }
+            ]
+          });
+        } else {
+          days.push({ items: [] });
+        }
       }
 
-      tripDays.value = days;
-    };
+      return days;
+    });
 
     // 몇박 계산
     const tripNights = computed(() => {
@@ -929,33 +915,33 @@ export default {
       const script = document.createElement('script');
       script.id = 'kakao-maps-sdk';
       script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${kakaoMapsApiKey}&libraries=services,clusterer,drawing&autoload=false`;
-
+      
       // 프로미스로 스크립트 로드 처리
       await new Promise((resolve) => {
-        script.onload = () => {
+      script.onload = () => {
           console.log("Kakao Maps SDK script loaded");
-          window.kakao.maps.load(() => {
+        window.kakao.maps.load(() => {
             console.log("Kakao Maps API and libraries are loaded");
             resolve();
-          });
-        };
+        });
+      };
         script.onerror = () => {
           console.error("Failed to load Kakao Maps SDK");
           resolve(); // 에러 발생해도 진행
         };
-        document.head.appendChild(script);
+      document.head.appendChild(script);
       });
-
+      
       await initGeocoderAndMap();
     };
-
+    
     // Geocoder 초기화 및 맵 로드
     const initGeocoderAndMap = async () => {
       if (!isKakaoMapsLoaded()) {
         console.error("Kakao Maps SDK not available after loading attempt");
         return;
       }
-
+      
       // Geocoder 초기화
       if (window.kakao.maps.services && window.kakao.maps.services.Geocoder) {
         try {
@@ -978,7 +964,7 @@ export default {
     // 카카오 맵 로드 및 초기화
     const loadMap = async () => {
       console.log("Loading Kakao Map...");
-
+      
       // 카카오맵 SDK가 로드되었는지 확인
       if (!isKakaoMapsLoaded()) {
         console.error("Kakao Maps SDK not available when loadMap is called");
@@ -997,7 +983,7 @@ export default {
           safelyCleanupMap(kakaoMap.value);
           kakaoMap.value = null;
         }
-
+        
         // 제주도 중심 좌표
         const jejuCenter = new window.kakao.maps.LatLng(33.3846, 126.5535);
 
@@ -1041,8 +1027,6 @@ export default {
 
       try {
         console.log("Current active day:", activeDay.value);
-        console.log("tripDays.value:", tripDays.value);
-        console.log("tripDays.value[activeDay.value]:", tripDays.value[activeDay.value]);
 
         // 기존 마커 제거
         kakaoMarkers.value.forEach(marker => marker.setMap(null));
@@ -1070,27 +1054,8 @@ export default {
 
         // 마커 추가
         dayItems.forEach((item, index) => {
-          console.log(`Processing item ${index}:`, item);
-          console.log(`Item coords:`, item.coords);
-          
           if (!item.coords) {
             console.log("No coordinates for item:", item);
-            
-            // 주소가 있으면 geocoding 시도
-            if (item.address || item.activity) {
-              const searchAddress = item.address || item.activity;
-              console.log(`Attempting to geocode address: ${searchAddress}`);
-              
-              geocodeAddress(searchAddress, (coords) => {
-                if (coords) {
-                  console.log(`Geocoded coordinates for ${searchAddress}:`, coords);
-                  // 아이템에 좌표 추가
-                  item.coords = coords;
-                  // 지도 업데이트 재시도
-                  setTimeout(() => updateMapMarkers(), 500);
-                }
-              });
-            }
             return;
           }
 
@@ -1208,9 +1173,9 @@ export default {
         };
         console.log("Using fallback coordinates due to missing geocoder.");
         if (callback && typeof callback === 'function') {
-          callback(fallbackCoords);
+          callback(fallbackCoords); 
         }
-        return;
+          return;
       }
 
       try {
@@ -1225,7 +1190,7 @@ export default {
             };
             console.log(`Geocoded coordinates for ${address}:`, coords);
             if (callback && typeof callback === 'function') {
-              callback(coords);
+            callback(coords);
             }
           } else {
             console.warn(`Geocoding failed for: ${searchAddress}, status: ${status}. Result:`, result);
@@ -1235,7 +1200,7 @@ export default {
             };
             console.log("Using fallback coordinates after geocoding failure.");
             if (callback && typeof callback === 'function') {
-              callback(fallbackCoords);
+            callback(fallbackCoords);
             }
           }
         });
@@ -1247,7 +1212,7 @@ export default {
         };
         console.log("Using fallback coordinates due to geocoding error.");
         if (callback && typeof callback === 'function') {
-          callback(errorCoords);
+        callback(errorCoords);
         }
       }
     };
@@ -1281,60 +1246,11 @@ export default {
     };
 
     // 일정 항목 삭제
-    const removeScheduleItem = (dayIndex, item) => {
-      // 삭제할 항목 정보 저장
-      deleteTargetInfo.value = {
-        dayIndex,
-        item: item,
-        placeName: item.activity || '장소',
-        tauid: item.tauid
-      };
-      
-      // 삭제 모달 표시
-      showDeleteModal.value = true;
-    };
+    const removeScheduleItem = (dayIndex, itemIndex) => {
+      tripDays.value[dayIndex].items.splice(itemIndex, 1);
 
-    // 삭제 확인 처리
-    const confirmDelete = async () => {
-      try {
-        const { dayIndex, item, tauid } = deleteTargetInfo.value;
-        
-        // API를 통해 삭제 요청
-        if (tauid) {
-          await apiDelete(`/travel-areas/${tauid}`);
-          displayToast('일정이 성공적으로 삭제되었습니다.', 'success');
-        }
-        
-        // 로컬 데이터에서 tauid로 해당 아이템을 찾아서 삭제
-        const itemIndex = tripDays.value[dayIndex].items.findIndex(scheduleItem => 
-          scheduleItem.tauid === tauid || scheduleItem === item
-        );
-        
-        if (itemIndex !== -1) {
-          tripDays.value[dayIndex].items.splice(itemIndex, 1);
-        }
-        
-        // 모달 닫기
-        showDeleteModal.value = false;
-        
-        // 화면 갱신
-        forceRefresh();
-        
-      } catch (error) {
-        console.error('일정 삭제 실패:', error);
-        displayToast('일정 삭제에 실패했습니다. 다시 시도해주세요.', 'error');
-      }
-    };
-
-    // 삭제 취소 처리
-    const cancelDelete = () => {
-      showDeleteModal.value = false;
-      deleteTargetInfo.value = {
-        dayIndex: null,
-        item: null,
-        placeName: '',
-        tauid: null
-      };
+      // 강제 화면 갱신
+      forceRefresh();
     };
 
     // 지출 항목을 날짜별로 그룹화
@@ -1395,38 +1311,8 @@ export default {
     };
 
     // 지출 항목 삭제
-    const removeExpense = async (expense) => {
-      try {
-        // expense에 id가 있는지 확인 (서버에서 온 데이터인지)
-        if (!expense.id) {
-          displayToast('지출 ID가 없어 삭제할 수 없습니다.', 'error');
-          return;
-        }
-
-        // 확인 메시지
-        if (!confirm(`"${expense.description}" 지출 내역을 삭제하시겠습니까?`)) {
-          return;
-        }
-
-        // 처리중 토스트 표시
-        displayToast('지출 내역을 삭제하는 중...', 'processing');
-
-        // 서버 API 호출
-        await deleteTravelPayment(expense.id);
-
-        // 로컬 데이터에서 제거
-        const index = tripData.value.expenses.findIndex(e => e.id === expense.id);
-        if (index !== -1) {
-          tripData.value.expenses.splice(index, 1);
-        }
-
-        // 성공 메시지
-        displayToast('지출 내역이 성공적으로 삭제되었습니다.', 'success');
-
-      } catch (error) {
-        console.error('지출 삭제 오류:', error);
-        displayToast(`지출 삭제 중 오류가 발생했습니다: ${error.message}`, 'error');
-      }
+    const removeExpense = (index) => {
+      tripData.value.expenses.splice(index, 1);
     };
 
     // 지출 날짜 포맷팅
@@ -1477,18 +1363,40 @@ export default {
 
     // 장소 검색 모달 열기
     const openPlaceSearch = () => {
-      console.log('openPlaceSearch 함수 호출됨');
-      console.log('현재 activeDay:', activeDay.value);
-      
       selectedDay.value = activeDay.value;
       isPlaceSearchModalOpen.value = true;
-      
-      console.log('isPlaceSearchModalOpen 값 변경:', isPlaceSearchModalOpen.value);
+      placeSearchKeyword.value = '';
+      searchResults.value = [];
+      hasSearched.value = false;
+      selectedPlace.value = null;
+
+      // 로컬 스토리지에서 위시리스트 불러오기
+      const savedWishlist = localStorage.getItem('wishlistPlaces');
+      if (savedWishlist) {
+        wishlistPlaces.value = JSON.parse(savedWishlist);
+      }
     };
 
     // 장소 검색 모달 닫기
     const closePlaceSearch = () => {
       isPlaceSearchModalOpen.value = false;
+      selectedPlace.value = null;
+      placeSearchKeyword.value = '';
+      searchResults.value = [];
+      hasSearched.value = false;
+      
+      // 로딩 대기 타이머가 있으면 제거
+      if (window.detailMapLoadTimer) {
+        clearInterval(window.detailMapLoadTimer);
+        window.detailMapLoadTimer = null;
+      }
+
+      // 상세 지도 인스턴스 안전하게 정리
+      if (detailMapInstance.value) {
+        safelyCleanupMap(detailMapInstance.value);
+        detailMapInstance.value = null;
+        console.log("Detail map instance cleaned up on closePlaceSearch.");
+      }
     };
 
     // 장소 상세 정보 열기
@@ -1503,18 +1411,18 @@ export default {
       placeMemo.value = '';
 
       // 지도가 생성되기 전에 모달을 먼저 나타내어 사용자 경험 개선
-      requestAnimationFrame(() => {
-        const detailModal = document.querySelector('.place-detail-modal');
-        if (detailModal) {
-          detailModal.classList.add('slide-in');
-        }
-
-        // 텍스트 영역 높이 초기화
-        if (memoTextarea.value) {
-          memoTextarea.value.style.height = '60px';
-          memoTextarea.value.classList.remove('expanded');
-        }
-      });
+        requestAnimationFrame(() => {
+          const detailModal = document.querySelector('.place-detail-modal');
+          if (detailModal) {
+            detailModal.classList.add('slide-in');
+          }
+          
+          // 텍스트 영역 높이 초기화
+          if (memoTextarea.value) {
+            memoTextarea.value.style.height = '60px';
+            memoTextarea.value.classList.remove('expanded');
+          }
+        });
 
       // 지도 초기화를 비동기적으로 처리
       nextTick(async () => {
@@ -1523,7 +1431,7 @@ export default {
           if (!isKakaoMapsLoaded()) {
             console.log("Kakao Maps SDK not ready. Waiting...");
             const sdkLoaded = await waitForKakaoMapsSDK(5000);
-
+            
             if (!sdkLoaded) {
               console.error("Kakao Maps SDK 로드 타임아웃");
               // 오류 메시지 표시
@@ -1538,11 +1446,11 @@ export default {
               return;
             }
           }
-
+          
           // SDK가 로드되었으므로 지도 초기화 실행
           console.log("Kakao Maps SDK ready, initializing detail map");
           await initDetailMap();
-
+          
         } catch (error) {
           console.error("Error in openPlaceDetails:", error);
         }
@@ -1570,7 +1478,7 @@ export default {
           safelyCleanupMap(detailMapInstance.value);
           detailMapInstance.value = null;
         }
-
+        
         // Kakao SDK 로드 확인 및 대기
         if (!isKakaoMapsLoaded()) {
           console.log("Waiting for Kakao Maps SDK to load...");
@@ -1595,7 +1503,7 @@ export default {
 
         // NextTick으로 DOM 업데이트 보장
         await nextTick();
-
+        
         // 새로운 상세 지도 인스턴스 생성 및 저장
         detailMapInstance.value = new window.kakao.maps.Map(mapElement, mapOptions);
         console.log("Detail map created successfully");
@@ -1631,7 +1539,7 @@ export default {
       if (detailModalEl) {
         detailModalEl.classList.remove('slide-in');
       }
-
+      
       // 애니메이션 완료 후 지도 관련 리소스 정리
       setTimeout(() => {
         // 지도 인스턴스 먼저 안전하게 정리
@@ -1640,7 +1548,7 @@ export default {
           safelyCleanupMap(detailMapInstance.value);
           detailMapInstance.value = null;
         }
-
+        
         // 상태 초기화
         selectedPlace.value = null;
       }, 600); // 애니메이션 지속 시간과 일치시킴
@@ -1675,141 +1583,113 @@ export default {
     };
 
     // 선택한 장소 일정에 추가
-    const addSelectedPlace = async () => {
+    const addSelectedPlace = () => {
       if (!selectedPlace.value) return;
-
+      
       // 시간 파싱 및 검증
       const timeRegex = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
       if (!timeRegex.test(visitTime.value)) {
-        displayToast('시간은 HH:MM 형식으로 입력해 주세요.', 'error');
+        alert('시간은 HH:MM 형식으로 입력해 주세요.');
         return;
       }
 
-      try {
-        // 로딩 표시
-        displayToast('일정을 추가하는 중...', 'info');
+      // 좌표 추출
+      const coords = {
+        lat: parseFloat(selectedPlace.value.y),
+        lng: parseFloat(selectedPlace.value.x)
+      };
 
-        // 좌표 추출
-        const latitude = parseFloat(selectedPlace.value.y);
-        const longitude = parseFloat(selectedPlace.value.x);
-        const coords = {
-          lat: latitude,
-          lng: longitude
-        };
+      // 새 일정 아이템 생성
+      const newItem = {
+        id: Date.now(), // 고유 ID 생성
+        time: visitTime.value,
+        activity: selectedPlace.value.place_name,
+        location: selectedPlace.value.address_name || selectedPlace.value.road_address_name,
+        memo: placeMemo.value,
+        coords: coords
+      };
+      
+      console.log('추가할 새 일정:', newItem);
+      console.log('현재 선택된 날짜:', selectedDay.value);
+      console.log('현재 tripDays 상태:', JSON.parse(JSON.stringify(tripDays.value)));
 
-        // reverse geocoding을 통해 region과 sig 추출
-        console.log('역지오코딩 시작...', { latitude, longitude });
-        const geoData = await reverseGeocode(latitude, longitude);
-        console.log('역지오코딩 결과:', geoData);
-
-        if (!geoData) {
-          throw new Error('위치 정보를 가져올 수 없습니다.');
-        }
-
-        const locationCodes = getLocationCodes(geoData);
-        console.log('추출된 지역 코드:', locationCodes);
-
-        if (!locationCodes.province_code || !locationCodes.city_code) {
-          throw new Error('지역 코드를 추출할 수 없습니다.');
-        }
-
-        // 여행 시작 날짜 + 선택된 날짜로 실제 날짜 계산
-        const startDate = new Date(tripData.value.startDate);
-        const travelDate = new Date(startDate);
-        travelDate.setDate(startDate.getDate() + selectedDay.value);
-        
-        // 시간 정보 추가
-        const [hours, minutes] = visitTime.value.split(':');
-        travelDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-
-        // API 요청 데이터 구성
-        const requestData = {
-          travel_id: tuid.value, // 현재 여행 ID (실제로는 props나 현재 데이터에서 가져와야 함)
-          travel_day_id: selectedDay.value + 1, // 1-based index
-          region: locationCodes.province_code,
-          sig: locationCodes.city_code,
-          start: travelDate.toISOString(),
-          memo: placeMemo.value || '',
-          address: selectedPlace.value.address_name || selectedPlace.value.road_address_name || '',
-          name: selectedPlace.value.place_name,
-          latitude: latitude,
-          longitude: longitude
-        };
-
-        console.log('서버에 전송할 데이터:', requestData);
-
-        // 서버 API 호출
-        const result = await apiPost('/travel-areas/add', requestData);
-
-        if (!result.ok) {
-          const errorData = await result.json().catch(() => ({}));
-          throw new Error(errorData.message || `서버 오류: ${result.status}`);
-        }
-
-        const response = await result.json();
-        console.log('서버 응답:', response);
-
-        // 새 일정 아이템 생성 (로컬 상태 업데이트용)
-        const newItem = {
-          id: response.data?.tauid || Date.now(), // 서버에서 받은 ID 사용
-          time: visitTime.value,
-          activity: selectedPlace.value.place_name,
-          location: selectedPlace.value.address_name || selectedPlace.value.road_address_name,
-          memo: placeMemo.value,
-          coords: coords,
-          tauid: response.data?.tauid, // 서버에서 받은 고유 ID 저장
-          place: {
-            name: selectedPlace.value.place_name,
-            address: selectedPlace.value.address_name || selectedPlace.value.road_address_name,
-            latitude: latitude,
-            longitude: longitude
-          }
-        };
-
-        console.log('추가할 새 일정:', newItem);
-        console.log('현재 선택된 날짜:', selectedDay.value);
-
-        // 선택한 날짜의 일정에 추가
-        if (!tripDays.value[selectedDay.value].items) {
-          tripDays.value[selectedDay.value].items = [];
-        }
-
-        tripDays.value[selectedDay.value].items.push(newItem);
-
-        // 모달 닫기
-        closePlaceSearch();
-
-        // 활성 날짜를 선택한 날짜로 변경 (다른 날짜에 일정을 추가한 경우)
-        if (selectedDay.value !== activeDay.value) {
-          activeDay.value = selectedDay.value;
-        }
-
-        // 강제 화면 갱신 - 일정 추가 후 즉시 실행
-        forceRefresh();
-
-        // 성공 메시지
-        displayToast(`${newItem.activity}이(가) 일정에 추가되었습니다.`, 'success');
-
-        // 입력 필드 초기화
-        visitTime.value = '';
-        placeMemo.value = '';
-
-      } catch (error) {
-        console.error('일정 추가 실패:', error);
-        displayToast(`일정 추가 중 오류가 발생했습니다: ${error.message}`, 'error');
+      // 선택한 날짜의 일정에 추가
+      if (!tripDays.value[selectedDay.value].items) {
+        tripDays.value[selectedDay.value].items = [];
       }
+
+      tripDays.value[selectedDay.value].items.push(newItem);
+
+      // 모달 닫기
+      closePlaceSearch();
+
+      // 활성 날짜를 선택한 날짜로 변경 (다른 날짜에 일정을 추가한 경우)
+      if (selectedDay.value !== activeDay.value) {
+        activeDay.value = selectedDay.value;
+      }
+
+      // 강제 화면 갱신 - 일정 추가 후 즉시 실행
+      forceRefresh();
+      
+      // 성공 메시지
+      displayToast(`${newItem.activity}이(가) 일정에 추가되었습니다.`, 'success');
     };
+
+    // 장소 검색 실행
+    const searchPlaces = () => {
+      if (!placeSearchKeyword.value.trim()) {
+        alert('검색어를 입력해주세요');
+        return;
+      }
+
+      if (!window.kakao || !window.kakao.maps || !window.kakao.maps.services) {
+        alert('카카오맵 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+        return;
+      }
+
+      isSearching.value = true;
+      hasSearched.value = true;
+      searchResults.value = [];
+
+      // 카카오 장소 검색 API 사용
+      const places = new window.kakao.maps.services.Places();
+
+      // 검색 옵션 - 지역 제한 없이 전국 검색
+      const searchOptions = {
+        size: 15 // 최대 15개 결과
+      };
+
+      // 키워드로 검색 - 제주도 제한 없이 검색
+      const keyword = placeSearchKeyword.value;
+
+      places.keywordSearch(keyword, (result, status) => {
+        isSearching.value = false;
+
+        if (status === window.kakao.maps.services.Status.OK) {
+          console.log('검색 결과:', result);
+          searchResults.value = result;
+        } else if (status === window.kakao.maps.services.Status.ZERO_RESULT) {
+          console.log('검색 결과가 없습니다.');
+        } else {
+          alert('검색 중 오류가 발생했습니다.');
+          console.error('Kakao Places API Error:', status);
+        }
+      }, searchOptions);
+    };
+
+    // 장소 선택 및 일정 추가
+    const selectPlace = (place) => {
+      openPlaceDetails(place);
+    };
+
 
     // 컴포넌트 마운트 시 지도 초기화
     onMounted(async () => {
       console.log("Component mounted");
-
-      // 여행 데이터 로드
-      await fetchTravelData();
-
+      
       // DOM이 완전히 렌더링될 때까지 대기
       await nextTick();
-
+      
       // 약간의 지연 후 초기화 (더 안정적인 DOM 렌더링을 위해)
       setTimeout(async () => {
         try {
@@ -1879,7 +1759,7 @@ export default {
     const receiptFile = ref(null);
     const receiptPreview = ref(null);
     const isDragging = ref(false);
-    const isReceiptAnalyzing = ref(false);
+    const isLoading = ref(false);
     const loadingMessage = ref('이미지 분석 중...');
     const parsedReceiptData = ref({
       Place: '',
@@ -1999,15 +1879,15 @@ export default {
         return;
       }
 
-      isReceiptAnalyzing.value = true;
+      isLoading.value = true;
       loadingMessage.value = '영수증 분석 중... (OCR 및 AI 처리)';
 
       try {
         const paymentDataArray = await ImgToPayment(receiptFile.value);
-
+        
         if (paymentDataArray && paymentDataArray.length > 0) {
           let addedCount = 0;
-
+          
           for (const paymentData of paymentDataArray) {
             if (paymentData && paymentData.Place && paymentData.Time && paymentData.Price !== undefined) {
               addFromReceipt(
@@ -2018,10 +1898,10 @@ export default {
               addedCount++;
             }
           }
-
+          
           if (addedCount > 0) {
             displayToast(`총 ${addedCount}건의 결제 내역이 추가되었습니다!!`, 'success');
-            closeReceiptUpload();
+        closeReceiptUpload();
           } else {
             // Changed alert to displayToast
             displayToast('영수증에서 유효한 결제 내역을 찾을 수 없습니다.', 'error');
@@ -2031,11 +1911,11 @@ export default {
           displayToast('영수증에서 결제 내역을 찾을 수 없습니다.', 'error');
         }
       } catch (error) {
-        console.error('영수증 분석 오류:', error);
+        console.error('영수증 분석 API 오류 (TripPlan.vue):', error);
         // Message is already specific
         displayToast(`영수증 자동 분석 실패: ${error.message || '서버 오류'}`, 'error');
       } finally {
-        isReceiptAnalyzing.value = false;
+        isLoading.value = false;
         loadingMessage.value = '';
       }
     };
@@ -2233,7 +2113,9 @@ export default {
     };
 
     // 방문 인증 함수
-    const verifyVisit = (dayIndex, item) => {
+    const verifyVisit = (dayIndex, itemIndex) => {
+      const item = tripDays.value[dayIndex].items[itemIndex];
+
       // 이미 인증된 항목이면 인증 취소
       if (item.verified) {
         item.verified = false;
@@ -2244,37 +2126,22 @@ export default {
         return;
       }
 
-      // 인증 대상 정보 저장 (실제 객체의 모든 정보 포함)
+      // 인증 대상 정보 저장
       verifyingDay.value = dayIndex;
-      verifyingItem.value = item;
+      verifyingItem.value = itemIndex;
       verifyingItemInfo.value = {
         activity: item.activity,
         location: item.location,
-        address: item.address,
-        coords: item.coords,
-        tauid: item.tauid,
-        place: item.place,
-        latitude: item.latitude,
-        longitude: item.longitude
+        coords: item.coords
       };
 
-      // 인증하려는 장소의 상세 데이터를 콘솔에 출력
+      // 인증하려는 장소의 데이터를 콘솔에 출력
       console.log('===== 인증하려는 장소 정보 =====');
       console.log('장소명:', item.activity);
-      console.log('메모/주소:', item.location);
-      console.log('실제 주소:', item.address);
+      console.log('주소:', item.location);
       console.log('좌표:', item.coords);
-      console.log('위도:', item.latitude);
-      console.log('경도:', item.longitude);
-      console.log('TAUID:', item.tauid);
-      console.log('Place 객체:', item.place);
       console.log('여행 날짜:', addDays(new Date(tripData.value.startDate), dayIndex).toLocaleDateString('ko-KR'));
       console.log('===============================');
-
-      // 좌표가 없는 경우 경고 메시지
-      if (!item.coords && (!item.latitude || !item.longitude)) {
-        displayToast('이 장소의 좌표 정보가 없어 정확한 위치 인증이 어려울 수 있습니다.', 'warning');
-      }
 
       // 상태 초기화
       verificationPhotoPreview.value = null;
@@ -2301,14 +2168,9 @@ export default {
     const verifyingItemInfo = ref({
       activity: '',
       location: '',
-      address: '',
-      coords: null,
-      tauid: null,
-      place: null,
-      latitude: null,
-      longitude: null
+      coords: null
     });
-
+    
     // 로딩 스피너 관련 상태
     const loadingPhase = ref('imageAnalysis'); // 현재 로딩 단계
     const imageAnalysisDuration = ref(null); // 이미지 분석 소요 시간
@@ -2316,7 +2178,7 @@ export default {
     const keywordExtractionDuration = ref(null); // 키워드 추출 소요 시간
     const morphologicalAnalysisDuration = ref(null); // 형태소 분석 소요 시간
     const processingResultsDuration = ref(null); // 최종 처리 소요 시간
-
+    
     // 임시 인증 데이터 저장용
     const tempVerificationData = ref(null);
 
@@ -2397,10 +2259,10 @@ export default {
         longitude: data.location.lng
       };
       distanceFromTarget.value = data.distance;
-
+      
       // 성공 토스트 메시지 표시
       displayToast('방문 인증에 성공했습니다! 후기를 작성해주세요.', 'success', 3000);
-
+      
       // 인증 결과 설정
       verificationResult.value = {
         success: true,
@@ -2410,16 +2272,16 @@ export default {
 
     const handleVerificationFailed = (data) => {
       console.log('인증 실패:', data);
-
+      
       // 실패 토스트 메시지 표시
       displayToast(data.message, 'error', 5000);
-
+      
       // 인증 결과 설정
       verificationResult.value = {
         success: false,
         message: data.message
       };
-
+      
       // 사진 데이터 초기화
       clearVerificationPhoto();
     };
@@ -2761,8 +2623,7 @@ export default {
     // 인증 완료 및 저장
     const confirmVerification = () => {
       if (verificationResult.value && verificationResult.value.success) {
-        // verifyingItem.value는 이제 실제 item 객체임
-        const item = verifyingItem.value;
+        const item = tripDays.value[verifyingDay.value].items[verifyingItem.value];
 
         // 인증 정보 저장
         item.verified = true;
@@ -2819,7 +2680,7 @@ export default {
     // 별점과 후기 상태 추가
     const reviewRating = ref(0);
     const reviewText = ref('');
-
+    
     // 테스트 데이터 입력용 상태 추가
     const testDataInputs = ref({
       p_id: 1,
@@ -2827,7 +2688,7 @@ export default {
       u_age: 20,
       u_gender: 'M'
     });
-
+    
     // 테스트 데이터 컨테이너 토글 상태
     const isTestDataExpanded = ref(false);
 
@@ -2846,16 +2707,15 @@ export default {
 
       try {
         isVerifying.value = true;
-        loadingPhase.value = 'imageAnalysis';
-
+        loadingPhase.value = 'imageAnalysis'; 
+        
         imageAnalysisDuration.value = null;
         meaningAnalysisDuration.value = null;
         keywordExtractionDuration.value = null;
         morphologicalAnalysisDuration.value = null;
         processingResultsDuration.value = null;
 
-        // verifyingItem.value는 이제 실제 item 객체임
-        const item = verifyingItem.value;
+        const item = tripDays.value[verifyingDay.value].items[verifyingItem.value];
         if (!item) {
           throw new Error('인증할 아이템을 찾을 수 없습니다.');
         }
@@ -2865,16 +2725,16 @@ export default {
         const imageFile = new File([blob], `verification-${Date.now()}.jpg`, { type: 'image/jpeg' });
 
         const abortController = new AbortController();
-
+        
         let locationInfo = null;
         let locationText = '';
         let englishLocationName = '';
-
+        
         if (item.coords && item.coords.lat && item.coords.lng) {
           try {
             const geoData = await reverseGeocode(item.coords.lat, item.coords.lng);
             console.log('역지오코딩 결과:', geoData);
-
+            
             if (geoData) {
               locationText = [
                 geoData.country,
@@ -2883,9 +2743,9 @@ export default {
                 geoData.borough,
                 geoData.quarter
               ].filter(Boolean).join(' ');
-
+              
               const locationCodes = getLocationCodes(geoData);
-
+              
               locationInfo = {
                 full_text: locationText,
                 province_code: locationCodes.province_code,
@@ -2893,41 +2753,41 @@ export default {
                 city_code: locationCodes.city_code,
                 city_name: locationCodes.city_name || geoData.city || geoData.borough
               };
-
-              console.log('추출된 지역 코드 정보:',
+              
+              console.log('추출된 지역 코드 정보:', 
                 `province(${locationInfo.province_code}:${locationInfo.province_name}) ` +
                 `city(${locationInfo.city_code}:${locationInfo.city_name})`
               );
-
+              
               englishLocationName = getEnglishLocationName(geoData);
               console.log('추출된 영어 지역 이름:', englishLocationName);
             }
           } catch (geoError) {
             console.error('역지오코딩 API 호출 오류:', geoError);
             displayToast(`위치 정보 조회 실패 (역지오코딩): ${geoError.message || '서버 오류'}`, 'error');
-            isVerifying.value = false;
-            loadingPhase.value = 'error';
-            return;
+            isVerifying.value = false; 
+            loadingPhase.value = 'error'; 
+            return; 
           }
         }
-
+        
         if (!locationText) {
           locationText = item.location || verifyingItemInfo.value.location || '장소 정보 없음';
         }
-
+        
         loadingPhase.value = 'imageAnalysis'; // Ensure phase is set before API call
         console.log('1. Llava 이미지 분석 시작 (light_2 모델 - 영문 설명 추출)...', englishLocationName);
         const imageAnalysisStartTime = performance.now();
         const engDescription = await imageToEngDescription(imageFile, abortController.signal, englishLocationName);
         const imageAnalysisEndTime = performance.now();
         imageAnalysisDuration.value = Number(((imageAnalysisEndTime - imageAnalysisStartTime) / 1000).toFixed(1));
-
+        
         if (!engDescription && !abortController.signal.aborted) { // Check if not aborted
           // Consider if imageToEngDescription itself throws a detailed error.
           // If it returns null/undefined on failure without throwing, this is needed.
           throw new Error('영어 설명을 얻을 수 없습니다.');
         }
-
+        
         loadingPhase.value = 'meaningAnalysis';
         console.log('2. Llama 의미 분석 시작 (ko_2 모델 - 10차원 특성 벡터 추출)...');
         const meaningAnalysisStartTime = performance.now();
@@ -2945,43 +2805,43 @@ export default {
         if ((!featuresVector || !featuresVector.length) && !abortController.signal.aborted) {
           throw new Error('10차원 벡터 생성에 실패했습니다.');
         }
-
+        
         loadingPhase.value = 'keywordExtraction';
         console.log('3. Llama 키워드 추출 시작 (ko_3 모델 - 한글 설명과 키워드 추출)...');
         const keywordExtractionStartTime = performance.now();
-
+        
         const { koreanDescription, extractedKeywords } = await enDescToKoDescAndTags(engDescription, abortController.signal);
-
+        
         const keywordExtractionEndTime = performance.now();
         keywordExtractionDuration.value = Number(((keywordExtractionEndTime - keywordExtractionStartTime) / 1000).toFixed(1));
         console.log('3. 키워드 추출 완료 (API 서비스 결과):', extractedKeywords, '한글 설명:', koreanDescription);
-
+        
         loadingPhase.value = 'morphologicalAnalysis';
         console.log('4. Nori 형태소 분석기 시작 (p_name, p_address 토큰화)...');
         const morphologicalAnalysisStartTime = performance.now();
-
+        
         const imageId = `trip-verification-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
-
+        
         // ElasticSearch analyzer를 사용하여 장소명(p_name)과 주소(p_address) 토큰화
         const combinedText = `${item.activity} ${locationText}`.trim();
         console.log('4. ElasticSearch analyzer로 장소명+주소 토큰화 시작:', combinedText);
         const placeNameTokens = await analyzeTextWithElasticsearch(combinedText);
         console.log('4. 장소명+주소 토큰화 결과:', placeNameTokens);
-
+        
         const morphologicalAnalysisEndTime = performance.now();
         morphologicalAnalysisDuration.value = Number(((morphologicalAnalysisEndTime - morphologicalAnalysisStartTime) / 1000).toFixed(1));
-
+        
         // 최종 태그 배열: ko_3 모델 키워드 먼저, ElasticSearch 토큰화 결과 나중에
         const tags = [
           ...(extractedKeywords && extractedKeywords.length > 0 ? extractedKeywords : []),
           ...(placeNameTokens && placeNameTokens.length > 0 ? placeNameTokens : [])
         ];
-
+        
         // 중복 제거
         const uniqueTags = [...new Set(tags)];
-
+        
         const description = koreanDescription || reviewText.value || '방문 인증 사진';
-
+        
         console.log('4. 형태소 분석 완료 - 최종 데이터:');
         console.log('- 이미지 ID:', imageId);
         console.log('- 위치:', locationText);
@@ -2991,26 +2851,26 @@ export default {
         console.log('- 최종 태그 (중복 제거):', uniqueTags);
         console.log('- 설명:', description);
         console.log('- 10차원 벡터:', featuresVector);
-
+        
         if (locationInfo && englishLocationName) {
           locationInfo.englishLocationName = englishLocationName;
         }
-
+        
         // 5단계: 최종 처리 시간 계산
         loadingPhase.value = 'processingResults';
         console.log('5. 최종 처리 시간 계산 중...');
         const processingStartTime = performance.now();
-
+        
         // 결과 처리 시뮬레이션 (1-2초)
         await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
-
+        
         const processingEndTime = performance.now();
         processingResultsDuration.value = Number(((processingEndTime - processingStartTime) / 1000).toFixed(1));
         console.log('5. 최종 처리 완료');
-
+        
         loadingPhase.value = 'completed';
         console.log('모든 처리가 완료되었습니다. 저장 버튼을 클릭하여 최종 저장하세요.');
-
+        
         // 임시 저장 데이터 (실제 ElasticSearch 저장은 saveVerificationResult에서 수행)
         tempVerificationData.value = {
           item,
@@ -3033,9 +2893,9 @@ export default {
           u_gender: testDataInputs.value.u_gender,
           addressName: verifyingItemInfo.value.location || verifyingItemInfo.value.place_name || verifyingItemInfo.value.address_name || ''
         };
-
+        
         displayToast('인증 처리가 완료되었습니다. 저장 버튼을 클릭하여 최종 저장하세요.', 'success');
-
+        
       } catch (error) {
         // AbortError is often thrown by fetch when a signal is aborted.
         // We don't want to show an error toast if the user cancelled.
@@ -3080,13 +2940,13 @@ export default {
     const memoTextarea = ref(null);
     const autoResizeTextarea = () => {
       if (!memoTextarea.value) return;
-
+      
       // Reset height to calculate based on content
       memoTextarea.value.style.height = 'auto';
-
+      
       // Set height based on scrollHeight (content height)
       memoTextarea.value.style.height = `${memoTextarea.value.scrollHeight}px`;
-
+      
       // Add 'expanded' class if content exceeds max-height
       if (memoTextarea.value.scrollHeight > 200) {
         memoTextarea.value.classList.add('expanded');
@@ -3149,11 +3009,7 @@ export default {
           data.u_id,
           data.u_age,
           data.u_gender,
-          data.item.address || data.addressName, // p_address: 실제 객체의 상세 주소 사용
-          reviewRating.value, // p_stars: 사용자 인증 별점
-          reviewText.value, // p_review: 사용자 후기
-          tuid.value, // p_tuid: 해당 여행 고유번호 (props에서)
-          data.item.tauid // p_tauid: 해당 travelArea 고유번호
+          data.addressName
         );
         
         if (!esResponse || !esResponse._id) {
@@ -3190,156 +3046,25 @@ export default {
     // 컴포넌트 소멸 시 정리
     onBeforeUnmount(() => {
       console.log("TripPlan Component unmounting. Cleaning up resources...");
-
+      
       // 모든 지도 인스턴스 정리
       if (kakaoMap.value) {
         safelyCleanupMap(kakaoMap.value);
         kakaoMap.value = null;
       }
-
+      
       if (detailMapInstance.value) {
         safelyCleanupMap(detailMapInstance.value);
         detailMapInstance.value = null;
       }
-
+      
       // 이벤트 리스너 제거
       window.removeEventListener('resize', handleResize);
     });
 
-    // mapUtils에서 가져온 유틸리티 함수 사용
-
-    // PaymentModal 관련 상태
-    const showPaymentModal = ref(false);
-
-    // PaymentModal 함수들
-    const openPaymentModal = () => {
-      showPaymentModal.value = true;
-      console.log("PaymentModal 열림");
-    };
-
-    const closePaymentModal = () => {
-      showPaymentModal.value = false;
-      console.log("PaymentModal 닫힘");
-    };
-
-    const handleAddExpense = (expense) => {
-      console.log("지출 추가:", expense);
-      tripData.value.expenses.push(expense);
-      displayToast('지출 내역이 추가되었습니다.', 'success');
-    };
-
-    // 지출 데이터만 부분적으로 로드하는 함수
-    const fetchExpensesOnly = async () => {
-      try {
-        console.log('지출 데이터만 다시 로드 중...');
-        
-        // API에서 전체 데이터를 가져와서 지출 부분만 업데이트
-        const response = await apiGet(`/travels/${tuid.value}/detail`);
-        
-        if (response.status === 'success' && response.data) {
-          const backendData = response.data;
-          
-          // travelPayments 데이터만 업데이트
-          if (backendData.travelPayments && Array.isArray(backendData.travelPayments)) {
-            tripData.value.expenses = backendData.travelPayments.map(payment => ({
-              id: payment.tpuid,
-              description: payment.history,
-              amount: payment.cost,
-              date: formatDateFromArray(payment.paymentTime),
-              time: formatTimeFromPaymentArray(payment.paymentTime)
-            }));
-
-            console.log('지출 데이터 업데이트 완료:', tripData.value.expenses);
-          }
-        }
-      } catch (error) {
-        console.error('지출 데이터 로드 실패:', error);
-        // 실패 시 전체 데이터 로드로 폴백
-        console.log('전체 데이터 로드로 폴백...');
-        await fetchTravelData();
-      }
-    };
-
-    const handlePaymentAdded = async () => {
-      console.log("지출 데이터가 서버에 추가됨, 지출 데이터만 다시 로드합니다.");
-      // 지출 데이터만 다시 로드하여 스크롤 위치 유지
-      await fetchExpensesOnly();
-      displayToast('지출 내역이 성공적으로 추가되었습니다!', 'success');
-    };
-
-    // 장소 추가 이벤트 핸들러 (새로운 컴포넌트에서 발생)
-    const handlePlaceAdded = ({ dayIndex, newItem }) => {
-      console.log('장소 추가 이벤트:', { dayIndex, newItem });
-
-      // 선택한 날짜의 일정에 추가
-      if (!tripDays.value[dayIndex].items) {
-        tripDays.value[dayIndex].items = [];
-      }
-
-      tripDays.value[dayIndex].items.push(newItem);
-
-      // 활성 날짜를 선택한 날짜로 변경 (다른 날짜에 일정을 추가한 경우)
-      if (dayIndex !== activeDay.value) {
-        activeDay.value = dayIndex;
-      }
-
-      // 강제 화면 갱신
-      forceRefresh();
-    };
-
-    // 토스트 메시지 표시 핸들러
-    const handleToast = (message, type = 'info') => {
-      displayToast(message, type);
-    };
-
-    // 인증 데이터 로드 함수
-    const loadVerificationData = async () => {
-      try {
-        if (!userId.value || !tuid.value) {
-          console.log('userId 또는 tuid가 없어서 인증 데이터를 로드할 수 없습니다.');
-          return;
-        }
-
-        console.log('인증 데이터 로드 시작:', { userId: userId.value, tuid: tuid.value });
-        
-        const verifications = await getUserTravelVerifications(userId.value, tuid.value);
-        verificationData.value = verifications;
-        
-        // 각 schedule item에 인증 정보 매핑
-        tripDays.value.forEach(day => {
-          day.items.forEach(item => {
-            if (item.tauid && verificationData.value[item.tauid]) {
-              const verification = verificationData.value[item.tauid];
-              item.verified = true;
-              item.verifiedAt = verification.uploadDate;
-              item.rating = verification.stars;
-              item.review = verification.review;
-              item.verificationDate = formatVerificationDate(verification.uploadDate);
-            }
-          });
-        });
-        
-        console.log('인증 데이터 매핑 완료:', verificationData.value);
-      } catch (error) {
-        console.error('인증 데이터 로드 실패:', error);
-      }
-    };
-
-    // 인증 날짜 포맷팅 함수
-    const formatVerificationDate = (dateString) => {
-      if (!dateString) return '';
-      const date = new Date(dateString);
-      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-    };
+         // mapUtils에서 가져온 유틸리티 함수 사용
 
     return {
-      // 로딩 및 에러 상태
-      isLoading,
-      loadingError,
-      fetchTravelData,
-      fetchExpensesOnly,
-      travelRoots,
-
       tripData,
       tripDays,
       tripNights,
@@ -3359,9 +3084,15 @@ export default {
       saveTripPlan,
       updateLocation,
       isPlaceSearchModalOpen,
+      placeSearchKeyword,
+      searchResults,
+      isSearching,
+      hasSearched,
       selectedDay,
       openPlaceSearch,
       closePlaceSearch,
+      searchPlaces,
+      selectPlace,
       formatDistance,
       wishlistPlaces,
       selectedPlace,
@@ -3388,7 +3119,7 @@ export default {
       receiptFile,
       receiptPreview,
       isDragging,
-      isReceiptAnalyzing,
+      isLoading,
       loadingMessage,
       parsedReceiptData,
       openReceiptUpload,
@@ -3460,24 +3191,7 @@ export default {
       testDataInputs,
       isTestDataExpanded,
       saveVerificationResult,
-      detailMapContainer, // expose to template if not already (it is used by ref="detailMapContainer")
-      showPaymentModal,
-      openPaymentModal,
-      closePaymentModal,
-      handleAddExpense,
-      handlePaymentAdded,
-      handlePlaceAdded,
-      handleToast,
-      showDeleteModal,
-      deleteTargetItem,
-      deleteTargetInfo,
-      confirmDelete,
-      cancelDelete,
-      // 인증 데이터 관련 추가
-      verificationData,
-      userId,
-      loadVerificationData,
-      formatVerificationDate
+      detailMapContainer // expose to template if not already (it is used by ref="detailMapContainer")
     };
   }
 };
@@ -3554,15 +3268,12 @@ export default {
   overflow-x: auto;
   padding-bottom: 1rem;
   margin-bottom: 1.5rem;
-  -ms-overflow-style: none;
-  /* IE and Edge */
-  scrollbar-width: none;
-  /* Firefox */
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
 
 .day-tabs::-webkit-scrollbar {
-  display: none;
-  /* Chrome, Safari and Opera */
+  display: none; /* Chrome, Safari and Opera */
 }
 
 .day-tab {
@@ -3600,8 +3311,7 @@ export default {
 
 .day-schedule {
   flex: 1;
-  min-width: 0;
-  /* 필요하면 줄어들 수 있도록 */
+  min-width: 0; /* 필요하면 줄어들 수 있도록 */
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   overflow: hidden;
@@ -3650,18 +3360,15 @@ export default {
 }
 
 .legend-dot.start {
-  background-color: #f03e3e;
-  /* 출발지 - 빨간색 */
+  background-color: #f03e3e; /* 출발지 - 빨간색 */
 }
 
 .legend-dot.waypoint {
-  background-color: #f59f00;
-  /* 경유지 - 노란색 */
+  background-color: #f59f00; /* 경유지 - 노란색 */
 }
 
 .legend-dot.end {
-  background-color: #1971c2;
-  /* 도착지 - 파란색 */
+  background-color: #1971c2; /* 도착지 - 파란색 */
 }
 
 /* 폼 스타일 */
@@ -3686,9 +3393,7 @@ label {
   color: #4a5568;
 }
 
-input,
-select,
-textarea {
+input, select, textarea {
   width: 100%;
   padding: 0.75rem;
   border: 1px solid #e2e8f0;
@@ -3704,9 +3409,7 @@ textarea {
   width: 100%;
 }
 
-input:focus,
-select:focus,
-textarea:focus {
+input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: #4299e1;
   box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.2);
@@ -3732,8 +3435,7 @@ textarea {
   transition: all 0.2s ease;
   overflow: hidden;
   border: 1px solid #e2e8f0;
-  margin-bottom: 0.3rem;
-  /* 줄어든 마진 */
+  margin-bottom: 0.3rem; /* 줄어든 마진 */
 }
 
 .schedule-item:hover {
@@ -3744,8 +3446,7 @@ textarea {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 0.75rem;
-  /* 줄어든 패딩 */
+  padding: 0.5rem 0.75rem; /* 줄어든 패딩 */
 }
 
 .item-actions {
@@ -3753,9 +3454,7 @@ textarea {
   gap: 0.25rem;
 }
 
-.edit-btn,
-.save-edit-btn,
-.cancel-edit-btn {
+.edit-btn, .save-edit-btn, .cancel-edit-btn {
   background: none;
   border: none;
   cursor: pointer;
@@ -3850,8 +3549,7 @@ textarea {
   background-color: rgba(229, 62, 62, 0.1);
 }
 
-.add-schedule-btn,
-.add-expense-btn {
+.add-schedule-btn, .add-expense-btn {
   width: 100%;
   padding: 0.75rem;
   background-color: #ebf8ff;
@@ -3865,11 +3563,10 @@ textarea {
   align-items: center;
   gap: 0.5rem;
   transition: all 0.3s ease;
-  margin: 0;
+  margin-top: 0.5rem;
 }
 
-.add-schedule-btn:hover,
-.add-expense-btn:hover {
+.add-schedule-btn:hover, .add-expense-btn:hover {
   background-color: #bee3f8;
 }
 
@@ -3936,7 +3633,6 @@ textarea {
   margin-bottom: 0.75rem;
   align-items: center;
 }
-
 .expense-category {
   width: 150px;
 }
@@ -3948,7 +3644,6 @@ textarea {
 .expense-amount {
   width: 150px;
 }
-
 /* 저장 버튼 */
 .save-section {
   display: flex;
@@ -3981,7 +3676,7 @@ textarea {
   .schedule-and-maps {
     flex-direction: column;
   }
-
+  
   .map-container {
     margin-top: 1rem;
   }
@@ -3992,27 +3687,22 @@ textarea {
     flex-direction: column;
     gap: 0;
   }
-
+  
   .budget-summary {
     flex-direction: column;
   }
-
-  .schedule-item,
-  .expense-item {
+  
+  .schedule-item, .expense-item {
     flex-direction: column;
     gap: 0.5rem;
     padding: 1rem;
   }
-
-  .time-column,
-  .activity-column,
-  .location-column,
-  .expense-category,
-  .expense-description,
-  .expense-amount {
+  
+  .time-column, .activity-column, .location-column,
+  .expense-category, .expense-description, .expense-amount {
     width: 100%;
   }
-
+  
   .action-column {
     width: 100%;
     justify-content: flex-end;
@@ -4023,7 +3713,7 @@ textarea {
   .tab-panel {
     padding: 0.5rem;
   }
-
+  
   .budget-summary-grid {
     grid-template-columns: 1fr;
   }
@@ -4059,8 +3749,7 @@ textarea {
 
 .modals-container.with-detail {
   justify-content: space-between;
-  gap: 12px;
-  /* Reduced gap to 60% of original 20px */
+  gap: 12px; /* Reduced gap to 60% of original 20px */
 }
 
 .place-search-modal {
@@ -4089,8 +3778,7 @@ textarea {
   background-color: white;
   border-radius: 12px;
   width: 35%;
-  height: 90vh;
-  /* Same height as search modal */
+  height: 90vh; /* Same height as search modal */
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -4126,8 +3814,7 @@ textarea {
 
 .modal-content {
   display: flex;
-  flex-direction: row;
-  /* 좌우 배치를 위한 명시적 설정 */
+  flex-direction: row; /* 좌우 배치를 위한 명시적 설정 */
   flex: 1;
   overflow: hidden;
   height: calc(90vh - 110px);
@@ -4149,16 +3836,14 @@ textarea {
 }
 
 .search-section {
-  flex: 3;
-  /* 검색 섹션에 더 많은 공간 할당 */
+  flex: 3; /* 검색 섹션에 더 많은 공간 할당 */
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
 .wishlist-section {
-  flex: 2;
-  /* 찜 목록에 적절한 공간 할당 */
+  flex: 2; /* 찜 목록에 적절한 공간 할당 */
   padding: 1rem 1.5rem;
   display: flex;
   flex-direction: column;
@@ -4247,13 +3932,10 @@ textarea {
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 
-.no-results,
-.no-wishlist {
+.no-results, .no-wishlist {
   text-align: center;
   padding: 2rem;
   color: #718096;
@@ -4312,8 +3994,7 @@ textarea {
   gap: 0.5rem;
 }
 
-.wishlist-btn,
-.remove-btn {
+.wishlist-btn, .remove-btn {
   background: none;
   border: none;
   cursor: pointer;
@@ -4326,8 +4007,7 @@ textarea {
   transition: all 0.2s ease;
 }
 
-.wishlist-btn:hover,
-.remove-btn:hover {
+.wishlist-btn:hover, .remove-btn:hover {
   background-color: #f7fafc;
   color: #4299e1;
 }
@@ -4393,8 +4073,7 @@ textarea {
   color: #2d3748;
 }
 
-.form-group input,
-.form-group textarea {
+.form-group input, .form-group textarea {
   width: 100%;
   padding: 1rem;
   border: 1px solid #e2e8f0;
@@ -4414,8 +4093,7 @@ textarea {
   margin-top: 2rem;
 }
 
-.cancel-btn,
-.add-btn {
+.cancel-btn, .add-btn {
   flex: 1;
   padding: 1rem 1.5rem;
   border: none;
@@ -4463,16 +4141,16 @@ textarea {
   .modal-content {
     flex-direction: column;
   }
-
+  
   .search-section {
     border-right: none;
     border-bottom: 1px solid #e2e8f0;
   }
-
+  
   .search-results {
     max-height: 300px;
   }
-
+  
   .wishlist-section {
     max-height: 200px;
   }
@@ -4528,7 +4206,6 @@ textarea {
   overflow: hidden;
   border: 1px solid #e2e8f0;
 }
-
 #detail-map {
   width: 100%;
   height: 100%;
@@ -4599,14 +4276,12 @@ textarea {
 
 .add-expense-buttons {
   display: flex;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
 }
 
-.add-schedule-btn,
 .add-expense-btn {
-  width: 100%;
+  width: 48%;
   padding: 0.75rem;
   background-color: #ebf8ff;
   border: 1px dashed #4299e1;
@@ -4617,12 +4292,9 @@ textarea {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 0.5rem;
   transition: all 0.3s ease;
-  margin: 0;
 }
 
-.add-schedule-btn:hover,
 .add-expense-btn:hover {
   background-color: #bee3f8;
 }
@@ -4633,29 +4305,29 @@ textarea {
     flex-direction: column;
     gap: 0.5rem;
   }
-
+  
   .add-expense-btn {
     width: 100%;
   }
-
+  
   .expense-item {
     flex-wrap: wrap;
   }
-
+  
   .expense-time {
     width: 30%;
   }
-
+  
   .expense-place {
     width: 70%;
     padding: 0;
   }
-
+  
   .expense-amount {
     width: 70%;
     margin-top: 0.5rem;
   }
-
+  
   .action-column {
     width: 30%;
     display: flex;
@@ -4708,30 +4380,26 @@ textarea {
 }
 
 /* 지출 항목 스타일 업데이트 */
-.expense-view-mode,
-.expense-edit-mode {
+.expense-view-mode, .expense-edit-mode {
   display: flex;
   width: 100%;
   align-items: center;
 }
 
-.expense-time,
-.expense-time-edit {
+.expense-time, .expense-time-edit {
   width: 80px;
   font-size: 0.9rem;
   color: #4a5568;
   font-weight: 500;
 }
 
-.expense-place,
-.expense-place-edit {
+.expense-place, .expense-place-edit {
   flex: 2;
   padding: 0 1rem;
   font-weight: 500;
 }
 
-.expense-amount,
-.expense-amount-edit {
+.expense-amount, .expense-amount-edit {
   width: 120px;
   font-weight: 500;
 }
@@ -4744,8 +4412,7 @@ textarea {
   z-index: 10;
 }
 
-.expense-time-edit input,
-.expense-place-edit input {
+.expense-time-edit input, .expense-place-edit input {
   width: 100%;
   padding: 0.5rem;
   border: 1px solid #e2e8f0;
@@ -4758,9 +4425,7 @@ textarea {
 }
 
 /* 편집 버튼 스타일 */
-.edit-btn,
-.save-edit-btn,
-.cancel-edit-btn {
+.edit-btn, .save-edit-btn, .cancel-edit-btn {
   background: none;
   border: none;
   cursor: pointer;
@@ -4853,9 +4518,7 @@ textarea {
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 
 /* 이미지 미리보기 버튼 스타일 개선 */
@@ -4939,25 +4602,10 @@ textarea {
 }
 
 @keyframes fadeInOut {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, 20px);
-  }
-
-  15% {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-
-  85% {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -20px);
-  }
+  0% { opacity: 0; transform: translate(-50%, 20px); }
+  15% { opacity: 1; transform: translate(-50%, 0); }
+  85% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -20px); }
 }
 
 .success-icon {
@@ -4980,29 +4628,25 @@ textarea {
   gap: 0.25rem;
   margin-left: 0.5rem;
   position: relative;
-  z-index: 20;
-  /* 더 높은 z-index로 설정 */
+  z-index: 20; /* 더 높은 z-index로 설정 */
 }
 
 .expense-amount-edit {
   position: relative;
   z-index: 5;
-  max-width: 150px;
-  /* 최대 너비 제한 */
+  max-width: 150px; /* 최대 너비 제한 */
 }
 
 .expense-amount-edit .input-with-icon input {
   width: 100%;
-  padding-left: 1.5rem;
-  /* 아이콘과 텍스트 간격 조정 */
+  padding-left: 1.5rem; /* 아이콘과 텍스트 간격 조정 */
 }
 
 .expense-place-edit {
   flex: 2;
   padding: 0 1rem;
   font-weight: 500;
-  max-width: calc(100% - 260px);
-  /* 충분한 공간 확보 */
+  max-width: calc(100% - 260px); /* 충분한 공간 확보 */
 }
 
 .expense-time-edit {
@@ -5012,10 +4656,8 @@ textarea {
   font-weight: 500;
 }
 
-.save-edit-btn,
-.cancel-edit-btn {
-  z-index: 25;
-  /* 가장 높은 z-index */
+.save-edit-btn, .cancel-edit-btn {
+  z-index: 25; /* 가장 높은 z-index */
   position: relative;
 }
 
@@ -5096,11 +4738,11 @@ textarea {
   .info-row {
     flex-direction: column;
   }
-
+  
   .info-item {
     margin-bottom: 1rem;
   }
-
+  
   .info-value {
     font-size: 1.1rem;
   }
@@ -5114,8 +4756,7 @@ textarea {
   justify-content: flex-end;
 }
 
-.save-info-btn,
-.cancel-info-btn {
+.save-info-btn, .cancel-info-btn {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -5181,10 +4822,8 @@ textarea {
   padding: 0.35rem 0.75rem;
   border-radius: 20px;
   border: none;
-  background-color: #10b981;
-  /* 초록색 배경 */
-  color: white;
-  /* 흰색 글씨 */
+  background-color: #10b981; /* 초록색 배경 */
+  color: white; /* 흰색 글씨 */
   font-size: 0.8rem;
   font-weight: 500;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -5255,8 +4894,7 @@ textarea {
   flex: 1;
 }
 
-.verification-content,
-.review-content {
+.verification-content, .review-content {
   padding: 1rem 1.5rem;
   overflow-y: auto;
   flex: 1;
@@ -5269,16 +4907,14 @@ textarea {
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid #e2e8f0;
-  max-height: 350px;
-  /* 사진 크기 축소 */
+  max-height: 350px; /* 사진 크기 축소 */
   display: flex;
   justify-content: center;
 }
 
 .photo-preview {
   max-width: 100%;
-  max-height: 350px;
-  /* 사진 크기 축소 */
+  max-height: 350px; /* 사진 크기 축소 */
   object-fit: contain;
 }
 
@@ -5312,8 +4948,7 @@ textarea {
   transition: color 0.2s ease;
 }
 
-.star:hover,
-.star.active {
+.star:hover, .star.active {
   color: #eab308;
 }
 
@@ -5363,12 +4998,12 @@ textarea {
   .verification-container {
     flex-direction: column;
   }
-
+  
   .verification-photo-modal,
   .verification-review-modal {
     width: 100%;
   }
-
+  
   .verification-review-modal {
     margin-top: 1rem;
   }
@@ -5462,8 +5097,8 @@ textarea {
   margin: 10px 0;
 }
 
-.close-btn:disabled,
-.btn.cancel-btn:disabled,
+.close-btn:disabled, 
+.btn.cancel-btn:disabled, 
 .btn.primary-btn:disabled,
 .btn-verify:disabled {
   opacity: 0.5;
@@ -5491,13 +5126,8 @@ textarea {
 }
 
 @keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .verification-loading-section p {
@@ -5506,8 +5136,7 @@ textarea {
   font-weight: 500;
   text-align: center;
   margin: 5px 0;
-  white-space: nowrap;
-  /* 텍스트 줄바꿈 방지 */
+  white-space: nowrap; /* 텍스트 줄바꿈 방지 */
 }
 
 .form-group textarea {
@@ -5517,12 +5146,9 @@ textarea {
   border-radius: 8px;
   font-size: 1rem;
   min-height: 60px;
-  max-height: 200px;
-  /* Maximum height before scrolling */
-  resize: none;
-  /* Remove manual resize handle */
-  overflow-y: hidden;
-  /* Hide scrollbar initially */
+  max-height: 200px; /* Maximum height before scrolling */
+  resize: none; /* Remove manual resize handle */
+  overflow-y: hidden; /* Hide scrollbar initially */
   transition: min-height 0.2s ease;
 }
 
@@ -5680,206 +5306,22 @@ textarea {
     min-height: auto;
     gap: 1rem;
   }
-
+  
   .verification-photo-modal {
     width: 100%;
     min-height: 400px;
   }
-
+  
   .verification-review-container {
     width: 100% !important;
     margin-top: 0;
     min-height: auto;
     align-items: stretch;
   }
-
+  
   .verification-loading-section {
     min-height: 400px;
     padding: 1.5rem 1rem;
   }
-}
-
-/* 로딩 상태 스타일 */
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 400px;
-  text-align: center;
-}
-
-.loading-spinner {
-  margin-bottom: 20px;
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #007bff;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-/* 에러 상태 스타일 */
-.error-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 400px;
-  text-align: center;
-  padding: 40px;
-}
-
-.error-icon {
-  font-size: 48px;
-  margin-bottom: 20px;
-}
-
-.error-container h3 {
-  color: #dc3545;
-  margin-bottom: 10px;
-}
-
-.error-container p {
-  color: #666;
-  margin-bottom: 20px;
-}
-
-.retry-btn {
-  background-color: #007bff;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.retry-btn:hover {
-  background-color: #0056b3;
-}
-
-.plan-content-wrapper {
-  padding: 2rem 0;
-}
-
-/* 새로운 인증 완료 표시 스타일 */
-.verification-info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.verification-info svg {
-  stroke: #10b981;
-  flex-shrink: 0;
-}
-
-.verification-text {
-  font-weight: 600;
-  color: #10b981;
-}
-
-.verification-details {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  margin-left: 1.25rem;
-  font-size: 0.8rem;
-}
-
-.verification-date {
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.verification-stars {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.stars-label {
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.rating-number {
-  color: #6b7280;
-  font-weight: 500;
-  font-size: 0.75rem;
-}
-
-.verification-review {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.review-label {
-  color: #6b7280;
-  font-weight: 500;
-}
-
-.review-text {
-  color: #374151;
-  font-style: italic;
-  line-height: 1.4;
-  word-break: break-word;
-}
-
-/* 비활성화된 삭제 버튼 스타일 */
-.delete-btn.disabled {
-  background-color: #e5e7eb;
-  color: #9ca3af;
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.delete-btn.disabled:hover {
-  background-color: #e5e7eb;
-  transform: none;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.add-expense-btn-small {
-  background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  box-shadow: 0 2px 8px rgba(66, 153, 225, 0.3);
-}
-
-.add-expense-btn-small:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(66, 153, 225, 0.4);
-  background: linear-gradient(135deg, #3182ce 0%, #2c5282 100%);
 }
 </style>
