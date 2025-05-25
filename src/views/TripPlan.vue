@@ -344,17 +344,27 @@
 
               <!-- 지출 추가 버튼 -->
               <div class="add-expense-buttons">
-                <button class="add-expense-btn" @click="addExpense">
-                  수동으로 추가
-                </button>
-                <button class="add-expense-btn" @click="openReceiptUpload">
-                  사진으로 자동 추가
+                <button class="add-expense-btn" @click="openPaymentModal">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  지출 내역 추가
                 </button>
               </div>
             </div>
           </div>
         </div>
       </div> <!-- plan-container 닫는 태그 -->
+
+      <!-- PaymentModal -->
+      <PaymentModal 
+        :show="showPaymentModal" 
+        :travel-id="1"
+        @close="closePaymentModal" 
+        @add-expense="handleAddExpense"
+        @payment-added="handlePaymentAdded"
+      />
 
       <!-- 방문 인증 모달 -->
       <div class="modal-overlay" v-if="showVerificationModal" @click="closeVerificationModal">
@@ -678,6 +688,7 @@ import {
   analyzeTextWithElasticsearch // 새로 추가된 함수
 } from '@/services/api';
 import { apiGet } from '@/services/auth'; // API 호출 함수를 auth.js에서 가져옴
+import PaymentModal from '@/components/PaymentModal.vue'; // Added import
 
 export default {
   name: 'TripPlan',
@@ -692,9 +703,11 @@ export default {
     ToastMessage,
     VerificationImageUpload,
     VerificationImageProcessSpinner,
+    PaymentModal
   },
   setup(props) {
     // Props에서 tuid 가져오기
+    // eslint-disable-next-line no-unused-vars
     const { tuid } = toRefs(props);
 
     // 로딩 상태
@@ -733,7 +746,8 @@ export default {
         isLoading.value = true;
         loadingError.value = null;
 
-        const response = await apiGet(`/travels/${tuid.value}?details=true`);
+        // 새로운 API 엔드포인트 사용
+        const response = await apiGet(`/travels/1/detail`);
 
         if (response.status === 'success' && response.data) {
           const backendData = response.data;
@@ -746,7 +760,7 @@ export default {
             destination: backendData.location,
             notes: backendData.memo || '',
             budget: backendData.totalBudget,
-            expenses: [] // 기본 빈 배열로 초기화
+            expenses: []
           };
 
           // travelRoots 데이터 저장
@@ -759,6 +773,49 @@ export default {
             }));
 
             console.log('여행 루트 데이터:', travelRoots.value);
+          }
+
+          // travelAreas 데이터를 일정으로 변환
+          if (backendData.travelAreas && Array.isArray(backendData.travelAreas)) {
+            // 일정 데이터 초기화
+            tripDays.value.forEach(day => {
+              day.items = [];
+            });
+
+            // travelAreas를 일정으로 매핑
+            backendData.travelAreas.forEach(area => {
+              const dayIndex = area.travelDayId - 1; // 1-based를 0-based로 변환
+              
+              if (dayIndex >= 0 && dayIndex < tripDays.value.length) {
+                const scheduleItem = {
+                  time: area.startTime ? formatTimeFromArray(area.startTime) : '',
+                  activity: area.place?.name || '장소 미정',
+                  location: area.memo || '',
+                  address: area.place?.address || '',
+                  latitude: area.place?.latitude || null,
+                  longitude: area.place?.longitude || null,
+                  tauid: area.tauid,
+                  place: area.place
+                };
+
+                tripDays.value[dayIndex].items.push(scheduleItem);
+              }
+            });
+
+            console.log('일정 데이터 매핑 완료:', tripDays.value);
+          }
+
+          // travelPayments 데이터를 expenses로 변환
+          if (backendData.travelPayments && Array.isArray(backendData.travelPayments)) {
+            tripData.value.expenses = backendData.travelPayments.map(payment => ({
+              id: payment.tpuid,
+              description: payment.history,
+              amount: payment.cost,
+              date: formatDateFromArray(payment.paymentTime),
+              time: formatTimeFromPaymentArray(payment.paymentTime)
+            }));
+
+            console.log('지출 데이터 매핑 완료:', tripData.value.expenses);
           }
 
           console.log('여행 데이터 로드 완료:', tripData.value);
@@ -778,6 +835,29 @@ export default {
       if (!dateArray || dateArray.length < 3) return '';
       const [year, month, day] = dateArray;
       return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    };
+
+    // 시간 배열을 HH:MM 형식으로 변환하는 함수
+    const formatTimeFromArray = (timeArray) => {
+      if (!timeArray || timeArray.length < 5) return '';
+      // eslint-disable-next-line no-unused-vars
+      const [year, month, day, hour, minute] = timeArray;
+      return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    };
+
+    // 날짜-시간 배열을 YYYY-MM-DD 형식으로 변환하는 함수
+    const formatDateFromArray = (dateTimeArray) => {
+      if (!dateTimeArray || dateTimeArray.length < 3) return '';
+      const [year, month, day] = dateTimeArray;
+      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    };
+
+    // 시간-분 배열을 HH:MM 형식으로 변환하는 함수
+    const formatTimeFromPaymentArray = (dateTimeArray) => {
+      if (!dateTimeArray || dateTimeArray.length < 5) return '';
+      // eslint-disable-next-line no-unused-vars
+      const [year, month, day, hour, minute] = dateTimeArray;
+      return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
     };
 
     // 여행 데이터 - 백엔드에서 로드되므로 빈 객체로 초기화
@@ -1925,7 +2005,7 @@ export default {
           displayToast('영수증에서 결제 내역을 찾을 수 없습니다.', 'error');
         }
       } catch (error) {
-        console.error('영수증 분석 API 오류 (TripPlan.vue):', error);
+        console.error('영수증 분석 오류:', error);
         // Message is already specific
         displayToast(`영수증 자동 분석 실패: ${error.message || '서버 오류'}`, 'error');
       } finally {
@@ -3078,6 +3158,33 @@ export default {
 
     // mapUtils에서 가져온 유틸리티 함수 사용
 
+    // PaymentModal 관련 상태
+    const showPaymentModal = ref(false);
+
+    // PaymentModal 함수들
+    const openPaymentModal = () => {
+      showPaymentModal.value = true;
+      console.log("PaymentModal 열림");
+    };
+
+    const closePaymentModal = () => {
+      showPaymentModal.value = false;
+      console.log("PaymentModal 닫힘");
+    };
+
+    const handleAddExpense = (expense) => {
+      console.log("지출 추가:", expense);
+      tripData.value.expenses.push(expense);
+      displayToast('지출 내역이 추가되었습니다.', 'success');
+    };
+
+    const handlePaymentAdded = async () => {
+      console.log("지출 데이터가 서버에 추가됨, 여행 데이터를 다시 로드합니다.");
+      // 여행 데이터를 다시 로드하여 최신 지출 내역을 가져옴
+      await fetchTravelData();
+      displayToast('지출 내역이 성공적으로 추가되었습니다!', 'success');
+    };
+
     return {
       // 로딩 및 에러 상태
       isLoading,
@@ -3211,7 +3318,12 @@ export default {
       testDataInputs,
       isTestDataExpanded,
       saveVerificationResult,
-      detailMapContainer // expose to template if not already (it is used by ref="detailMapContainer")
+      detailMapContainer, // expose to template if not already (it is used by ref="detailMapContainer")
+      showPaymentModal,
+      openPaymentModal,
+      closePaymentModal,
+      handleAddExpense,
+      handlePaymentAdded
     };
   }
 };
