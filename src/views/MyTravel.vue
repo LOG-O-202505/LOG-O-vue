@@ -185,15 +185,27 @@
       <div class="travel-map-container section-container">
         <div class="section-header">
           <h2 class="section-title">나의 여행 히트맵</h2>
+          
+          <!-- 오른쪽에 지역 정보 표시 -->
+          <div class="region-info-container">
+            <!-- hover 시 표시되는 부분 (왼쪽) -->
+            <div v-if="hoveredRegion" class="hovered-region-info">
+              <span class="location-icon">📌</span>
+              <span class="hovered-label">보고있는 구역 :</span>
+              <span class="hovered-content">{{ tooltipContent }}</span>
+            </div>
+            
+            <!-- 선택된 지역 표시 (오른쪽) -->
+            <div class="selected-region-main">
+              <span class="region-icon">👀</span>
+              <span class="region-label">선택된 지역 :</span>
+              <span class="region-name">{{ getSelectedRegionName() }}</span>
+            </div>
+          </div>
         </div>
         
         <!-- 지도 시각화 영역 -->
         <div class="map-visualization">
-          <!-- 툴팁 -->
-          <div v-if="hoveredRegion" class="region-tooltip" :style="tooltipStyle">
-            {{ tooltipContent }}
-          </div>
-          
           <!-- 랭킹 정보 패널 -->
           <div class="ranking-panel">
             <div class="ranking-header">
@@ -771,17 +783,46 @@ export default {
     };
     // 마우스 위치 추적
     const updateMousePosition = (event) => {
-      mousePosition.value = {
-        x: event.clientX,
-        y: event.clientY
-      };
+      // map-container 또는 detail-map-container의 위치를 기준으로 계산
+      const mapElement = currentMapLevel.value === 'ctprvn' 
+        ? mapContainer.value 
+        : detailMapContainer.value;
+      
+      if (mapElement) {
+        const rect = mapElement.getBoundingClientRect();
+        mousePosition.value = {
+          x: event.clientX - rect.left,
+          y: event.clientY - rect.top
+        };
+      } else {
+        mousePosition.value = {
+          x: event.clientX,
+          y: event.clientY
+        };
+      }
     };
 
     // 툴팁 스타일 계산
     const tooltipStyle = computed(() => {
+      const mapElement = currentMapLevel.value === 'ctprvn' 
+        ? mapContainer.value 
+        : detailMapContainer.value;
+      
+      if (mapElement) {
+        const rect = mapElement.getBoundingClientRect();
+        return {
+          left: `${rect.left + mousePosition.value.x + 10}px`,
+          top: `${rect.top + mousePosition.value.y - 30}px`,
+          position: 'fixed',
+          zIndex: '1000'
+        };
+      }
+      
       return {
-        left: `${mousePosition.value.x}px`,
-        top: `${mousePosition.value.y - 40}px`
+        left: `${mousePosition.value.x + 10}px`,
+        top: `${mousePosition.value.y - 30}px`,
+        position: 'fixed',
+        zIndex: '1000'
       };
     });
 
@@ -1920,6 +1961,13 @@ export default {
       return rankings.sort((a, b) => b.count - a.count).slice(0, 5);
     });
 
+    // 선택된 지역 이름 계산
+    const getSelectedRegionName = () => {
+      if (!activeRegion.value) return '대한민국';
+      const region = propertiesData.find(r => r.CTPRVN_CD === activeRegion.value);
+      return region ? region.CTP_KOR_NM : '대한민국';
+    };
+
     return {
       // 사용자 프로필 관련
       userProfile,
@@ -1986,7 +2034,8 @@ export default {
       getRegionColor,
       getSigColor,
       logRegionVisitData,
-      updateDetailMapSelection
+      updateDetailMapSelection,
+      getSelectedRegionName
     };
   }
 };
@@ -3318,4 +3367,89 @@ export default {
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
 }
+
+/* 선택된 지역 표시 스타일 - section-header 내부용 */
+.region-info-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.selected-region-main {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.9rem;
+  color: #2d3748;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  white-space: nowrap;
+}
+
+.region-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.region-label {
+  font-weight: 600;
+  color: #4a5568;
+  flex-shrink: 0;
+}
+
+.region-name {
+  font-weight: 700;
+  color: #2d3748;
+  flex-shrink: 0;
+}
+
+.hovered-region-info {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  animation: fadeInSlide 0.2s ease-out;
+  white-space: nowrap;
+}
+
+.location-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.hovered-label {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  flex-shrink: 0;
+}
+
+.hovered-content {
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+
+@keyframes fadeInSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 툴팁 스타일 - 기존 툴팁 제거됨 */
 </style>
