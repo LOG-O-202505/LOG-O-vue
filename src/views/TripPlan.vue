@@ -185,7 +185,16 @@
                         </button>
                       </template>
                       <template v-else>
-                        <button class="delete-btn" @click="removeScheduleItem(activeDay, item)">
+                        <!-- 인증된 항목은 삭제 버튼 비활성화 -->
+                        <button v-if="item.verified" class="delete-btn disabled" disabled title="인증된 항목은 삭제할 수 없습니다">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                          </svg>
+                        </button>
+                        <!-- 인증되지 않은 항목만 삭제 가능 -->
+                        <button v-else class="delete-btn" @click="removeScheduleItem(activeDay, item)">
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -213,14 +222,14 @@
                       방문 인증하기
                     </button>
 
-                    <!-- 인증 완료된 경우의 표시 (수정됨) -->
+                    <!-- 인증 완료된 경우의 표시 (기존과 동일하게) -->
                     <div v-if="item.verified" class="verification-completed">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                         <polyline points="22 4 12 14.01 9 11.01"></polyline>
                       </svg>
-                      {{ formatDate(item.verifiedAt) }}에 방문 완료
+                      {{ formatVerificationDate(item.verifiedAt) }}에 방문 완료
                       <span class="stars" v-if="item.rating">
                         {{ '★'.repeat(item.rating) }}{{ '☆'.repeat(5 - item.rating) }}
                       </span>
@@ -571,7 +580,8 @@ import {
   getLocationCodes,
   enDescToKoDescAndTags, // Added import
   ImgToPayment,          // Added import
-  analyzeTextWithElasticsearch // 새로 추가된 함수
+  analyzeTextWithElasticsearch, // 새로 추가된 함수
+  getUserTravelVerifications
 } from '@/services/api';
 import { apiGet, apiPost, apiDelete } from '@/services/auth'; // API 호출 함수를 auth.js에서 가져옴
 import PaymentModal from '@/components/PaymentModal.vue'; // Added import
@@ -646,6 +656,9 @@ export default {
         if (response.status === 'success' && response.data) {
           const backendData = response.data;
 
+          // userId 저장
+          userId.value = backendData.userId;
+
           // 백엔드 데이터를 컴포넌트 형식으로 변환
           tripData.value = {
             title: backendData.title,
@@ -718,6 +731,9 @@ export default {
           }
 
           console.log('여행 데이터 로드 완료:', tripData.value);
+          
+          // 인증 데이터 로드
+          await loadVerificationData();
         } else {
           throw new Error('데이터를 가져올 수 없습니다.');
         }
@@ -772,6 +788,10 @@ export default {
 
     // 여행 루트 데이터
     const travelRoots = ref([]);
+
+    // 인증 데이터 저장 (tauid를 키로 하는 맵)
+    const verificationData = ref({});
+    const userId = ref(null);
 
     // 현재 활성화된 일정 날짜 (DAY 탭)
     const activeDay = ref(0);
@@ -3099,7 +3119,7 @@ export default {
           data.u_id,
           data.u_age,
           data.u_gender,
-          data.addressName,
+          data.item.address || data.addressName, // p_address: 실제 객체의 상세 주소 사용
           reviewRating.value, // p_stars: 사용자 인증 별점
           reviewText.value, // p_review: 사용자 후기
           tuid.value, // p_tuid: 해당 여행 고유번호 (props에서)
@@ -3208,6 +3228,46 @@ export default {
     // 토스트 메시지 표시 핸들러
     const handleToast = (message, type = 'info') => {
       displayToast(message, type);
+    };
+
+    // 인증 데이터 로드 함수
+    const loadVerificationData = async () => {
+      try {
+        if (!userId.value || !tuid.value) {
+          console.log('userId 또는 tuid가 없어서 인증 데이터를 로드할 수 없습니다.');
+          return;
+        }
+
+        console.log('인증 데이터 로드 시작:', { userId: userId.value, tuid: tuid.value });
+        
+        const verifications = await getUserTravelVerifications(userId.value, tuid.value);
+        verificationData.value = verifications;
+        
+        // 각 schedule item에 인증 정보 매핑
+        tripDays.value.forEach(day => {
+          day.items.forEach(item => {
+            if (item.tauid && verificationData.value[item.tauid]) {
+              const verification = verificationData.value[item.tauid];
+              item.verified = true;
+              item.verifiedAt = verification.uploadDate;
+              item.rating = verification.stars;
+              item.review = verification.review;
+              item.verificationDate = formatVerificationDate(verification.uploadDate);
+            }
+          });
+        });
+        
+        console.log('인증 데이터 매핑 완료:', verificationData.value);
+      } catch (error) {
+        console.error('인증 데이터 로드 실패:', error);
+      }
+    };
+
+    // 인증 날짜 포맷팅 함수
+    const formatVerificationDate = (dateString) => {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
     };
 
     return {
@@ -3349,7 +3409,12 @@ export default {
       deleteTargetItem,
       deleteTargetInfo,
       confirmDelete,
-      cancelDelete
+      cancelDelete,
+      // 인증 데이터 관련 추가
+      verificationData,
+      userId,
+      loadVerificationData,
+      formatVerificationDate
     };
   }
 };
@@ -5641,5 +5706,83 @@ textarea {
 
 .plan-content-wrapper {
   padding: 2rem 0;
+}
+
+/* 새로운 인증 완료 표시 스타일 */
+.verification-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.verification-info svg {
+  stroke: #10b981;
+  flex-shrink: 0;
+}
+
+.verification-text {
+  font-weight: 600;
+  color: #10b981;
+}
+
+.verification-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-left: 1.25rem;
+  font-size: 0.8rem;
+}
+
+.verification-date {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.verification-stars {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stars-label {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.rating-number {
+  color: #6b7280;
+  font-weight: 500;
+  font-size: 0.75rem;
+}
+
+.verification-review {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.review-label {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.review-text {
+  color: #374151;
+  font-style: italic;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* 비활성화된 삭제 버튼 스타일 */
+.delete-btn.disabled {
+  background-color: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.delete-btn.disabled:hover {
+  background-color: #e5e7eb;
+  transform: none;
 }
 </style>

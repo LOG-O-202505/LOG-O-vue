@@ -2546,3 +2546,95 @@ export async function addTravelPayment(paymentData) {
     throw error;
   }
 }
+
+/**
+ * 특정 사용자의 여행 인증 데이터를 ElasticSearch에서 조회
+ * @param {number} userId - 사용자 ID
+ * @param {number} tuid - 여행 ID
+ * @returns {Promise<Object>} - 인증 데이터 맵 (p_tauid를 키로 하는 객체)
+ */
+export const getUserTravelVerifications = async (userId, tuid) => {
+  try {
+    console.log(`사용자 ID ${userId}, 여행 ID ${tuid}의 인증 데이터 조회 시작`);
+
+    // ElasticSearch 쿼리 구성
+    const query = {
+      query: {
+        bool: {
+          must: [
+            {
+              term: {
+                p_tuid: tuid
+              }
+            },
+            {
+              term: {
+                u_id: userId
+              }
+            }
+          ]
+        }
+      },
+      _source: {
+        includes: [
+          "p_stars",
+          "p_review", 
+          "p_tauid",
+          "upload_date",
+          "p_name",
+          "p_address"
+        ]
+      },
+      size: 1000 // 충분히 큰 값으로 설정
+    };
+
+    console.log('ElasticSearch 쿼리:', JSON.stringify(query, null, 2));
+
+    // config에서 Elasticsearch API URL 사용
+    const response = await fetch(`${config.ES_API}/travel_places/_search`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(query)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('사용자 여행 인증 데이터 조회 API 응답 오류:', errorData);
+      throw new Error('사용자 여행 인증 데이터 조회 실패: ' + JSON.stringify(errorData));
+    }
+
+    const result = await response.json();
+    console.log('사용자 여행 인증 데이터 조회 결과:', result);
+    
+    // 결과를 p_tauid를 키로 하는 맵으로 변환
+    const verificationMap = {};
+    const hits = result.hits.hits || [];
+    
+    hits.forEach(hit => {
+      const source = hit._source;
+      const tauid = source.p_tauid;
+      
+      if (tauid) {
+        // 같은 tauid에 대해 여러 인증이 있는 경우 가장 최근 것을 선택
+        if (!verificationMap[tauid] || new Date(source.upload_date) > new Date(verificationMap[tauid].upload_date)) {
+          verificationMap[tauid] = {
+            stars: source.p_stars,
+            review: source.p_review,
+            uploadDate: source.upload_date,
+            placeName: source.p_name,
+            address: source.p_address
+          };
+        }
+      }
+    });
+    
+    console.log('인증 데이터 맵 생성 완료:', verificationMap);
+    return verificationMap;
+  } catch (error) {
+    console.error('사용자 여행 인증 데이터 조회 오류:', error);
+    // 에러 발생 시 빈 객체 반환
+    return {};
+  }
+};
