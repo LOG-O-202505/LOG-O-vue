@@ -245,27 +245,31 @@
               <div class="legend-title">방문율</div>
               <div class="legend-scale">
                 <div class="legend-item">
-                  <div class="legend-color" style="background-color: #e2f0fa"></div>
+                  <div class="legend-color" style="background-color: #3b82f6"></div>
                   <div class="legend-label">0%</div>
                 </div>
                 <div class="legend-item">
-                  <div class="legend-color" style="background-color: #fff9c4"></div>
-                  <div class="legend-label">20%</div>
+                  <div class="legend-color" style="background-color: #fbbf24"></div>
+                  <div class="legend-label">1-20%</div>
                 </div>
                 <div class="legend-item">
-                  <div class="legend-color" style="background-color: #ffcc80"></div>
-                  <div class="legend-label">40%</div>
+                  <div class="legend-color" style="background-color: #f97316"></div>
+                  <div class="legend-label">21-40%</div>
                 </div>
                 <div class="legend-item">
-                  <div class="legend-color" style="background-color: #ffcdd2"></div>
-                  <div class="legend-label">60%</div>
+                  <div class="legend-color" style="background-color: #ec4899"></div>
+                  <div class="legend-label">41-60%</div>
                 </div>
                 <div class="legend-item">
-                  <div class="legend-color" style="background-color: #ffab91"></div>
-                  <div class="legend-label">80%</div>
+                  <div class="legend-color" style="background-color: #be185d"></div>
+                  <div class="legend-label">61-80%</div>
                 </div>
                 <div class="legend-item">
-                  <div class="legend-color" style="background-color: #ff9e80"></div>
+                  <div class="legend-color" style="background-color: #ea580c"></div>
+                  <div class="legend-label">81-99%</div>
+                </div>
+                <div class="legend-item">
+                  <div class="legend-color" style="background-color: #dc2626"></div>
                   <div class="legend-label">100%</div>
                 </div>
               </div>
@@ -1101,24 +1105,16 @@ export default {
 
     // 비율에 따른 색상 반환 (0~100%)
     const getColorForPercentage = (percentage) => {
-      // 10단계 색상 배열 (0% ~ 100%, 파스텔 색상 팔레트)
-      const colorScale = [
-        '#e2f0fa', // 0-10% (연한 하늘색)
-        '#e8f4f8', // 10-20%
-        '#fff9c4', // 20-30% (파스텔 노랑)
-        '#fff2d9', // 30-40%
-        '#ffcc80', // 40-50% (파스텔 주황)
-        '#ffc09d', // 50-60%
-        '#ffcdd2', // 60-70% (파스텔 빨강)
-        '#ffb5b3', // 70-80%
-        '#ffab91', // 80-90% (코랄/주황빛 파스텔)
-        '#ff9e80'  // 90-100%
-      ];
-
-      // 비율에 따른 색상 인덱스 계산 (0~9)
-      const colorIndex = Math.min(Math.floor(percentage / 10), 9);
-
-      return colorScale[colorIndex];
+      // 새로운 색상 구분 적용
+      if (percentage === 0) return '#3b82f6'; // 파랑
+      if (percentage >= 1 && percentage <= 20) return '#fbbf24'; // 노랑
+      if (percentage >= 21 && percentage <= 40) return '#f97316'; // 주황
+      if (percentage >= 41 && percentage <= 60) return '#ec4899'; // 핑크
+      if (percentage >= 61 && percentage <= 80) return '#be185d'; // 진한 핑크
+      if (percentage >= 81 && percentage <= 99) return '#ea580c'; // 진한 주황
+      if (percentage === 100) return '#dc2626'; // 최종 색 (빨강)
+      
+      return '#e2e8f0'; // 기본값 (회색)
     };
 
     // 시군구 방문 빈도에 따른 색상 반환
