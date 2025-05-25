@@ -462,7 +462,11 @@ export const saveToElasticsearch = async (
   u_id = 1,
   u_age = 20,
   u_gender = 'M',
-  originalAddress = '' // New parameter for the original address string
+  originalAddress = '', // New parameter for the original address string
+  p_stars = 0, // 사용자 인증 별점 1~5
+  p_review = '', // 사용자 후기
+  p_tuid = null, // 해당 여행 고유번호
+  p_tauid = null // 해당 travelArea 고유번호
 ) => {
   try {
     console.log('=== Elasticsearch 저장 데이터 로깅 시작 ===');
@@ -478,6 +482,10 @@ export const saveToElasticsearch = async (
     console.log('사용자 ID (u_id):', u_id);
     console.log('사용자 나이 (u_age):', u_age);
     console.log('사용자 성별 (u_gender):', u_gender);
+    console.log('인증 별점 (p_stars):', p_stars);
+    console.log('사용자 후기 (p_review):', p_review);
+    console.log('여행 고유번호 (p_tuid):', p_tuid);
+    console.log('TravelArea 고유번호 (p_tauid):', p_tauid);
 
     // 이미지 압축 확인 및 필요 시 압축 처리
     let compressedImageBase64 = imageBase64;
@@ -607,6 +615,10 @@ export const saveToElasticsearch = async (
       p_description_en: englishDescription, // 영어 설명 (light_2 모델의 결과)
       p_image: base64Data, // 압축된 이미지 데이터
       p_vector: featuresVector, // 이미지 특성을 나타내는 10차원 벡터
+      p_stars: p_stars, // 사용자 인증 별점 1~5
+      p_review: p_review, // 사용자 후기
+      p_tuid: p_tuid, // 해당 여행 고유번호
+      p_tauid: p_tauid, // 해당 travelArea 고유번호
       u_id: u_id, // 사용자 ID - 매개변수에서 가져옴
       u_age: u_age, // 사용자 나이 - 매개변수에서 가져옴
       u_gender: u_gender, // 사용자 성별 - 매개변수에서 가져옴

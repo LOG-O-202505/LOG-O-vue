@@ -185,7 +185,7 @@
                         </button>
                       </template>
                       <template v-else>
-                        <button class="delete-btn" @click="removeScheduleItem(activeDay, itemIndex)">
+                        <button class="delete-btn" @click="removeScheduleItem(activeDay, item)">
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -204,7 +204,7 @@
                   <!-- 방문 인증 버튼 부분 수정 -->
                   <div class="verification-button-container">
                     <button v-if="!item.verified" class="visit-verification-btn"
-                      @click="verifyVisit(activeDay, itemIndex)">
+                      @click="verifyVisit(activeDay, item)">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
@@ -538,6 +538,14 @@
           </div>
         </div>
       </div>
+
+      <!-- 삭제 확인 모달 -->
+      <DeleteConfirmModal
+        :show="showDeleteModal"
+        :place-name="deleteTargetInfo.placeName"
+        @confirm="confirmDelete"
+        @cancel="cancelDelete"
+      />
     </div>
   </div>
 </template>
@@ -548,6 +556,7 @@ import ToastMessage from '@/components/ToastMessage.vue';
 import VerificationImageUpload from '@/components/VerificationImageUpload.vue';
 import VerificationImageProcessSpinner from '@/components/VerificationImageProcessSpinner.vue';
 import TravelAreasInsertModule from '@/components/TravelAreasInsertModule.vue';
+import DeleteConfirmModal from '@/components/DeleteConfirmModal.vue';
 import { ref, computed, onMounted, watch, nextTick, onBeforeUnmount, toRefs } from 'vue';
 import config from '@/config';
 import EXIF from 'exif-js';
@@ -564,7 +573,7 @@ import {
   ImgToPayment,          // Added import
   analyzeTextWithElasticsearch // 새로 추가된 함수
 } from '@/services/api';
-import { apiGet, apiPost } from '@/services/auth'; // API 호출 함수를 auth.js에서 가져옴
+import { apiGet, apiPost, apiDelete } from '@/services/auth'; // API 호출 함수를 auth.js에서 가져옴
 import PaymentModal from '@/components/PaymentModal.vue'; // Added import
 
 export default {
@@ -581,7 +590,8 @@ export default {
     VerificationImageUpload,
     VerificationImageProcessSpinner,
     PaymentModal,
-    TravelAreasInsertModule
+    TravelAreasInsertModule,
+    DeleteConfirmModal
   },
   setup(props) {
     // Props에서 tuid 가져오기
@@ -613,6 +623,16 @@ export default {
     const selectedPlace = ref(null);
     const visitTime = ref('');
     const placeMemo = ref('');
+
+    // 삭제 모달 관련 상태
+    const showDeleteModal = ref(false);
+    const deleteTargetItem = ref(null);
+    const deleteTargetInfo = ref({
+      dayIndex: null,
+      item: null,
+      placeName: '',
+      tauid: null
+    });
 
     // API 호출 함수
     const fetchTravelData = async () => {
@@ -1241,11 +1261,60 @@ export default {
     };
 
     // 일정 항목 삭제
-    const removeScheduleItem = (dayIndex, itemIndex) => {
-      tripDays.value[dayIndex].items.splice(itemIndex, 1);
+    const removeScheduleItem = (dayIndex, item) => {
+      // 삭제할 항목 정보 저장
+      deleteTargetInfo.value = {
+        dayIndex,
+        item: item,
+        placeName: item.activity || '장소',
+        tauid: item.tauid
+      };
+      
+      // 삭제 모달 표시
+      showDeleteModal.value = true;
+    };
 
-      // 강제 화면 갱신
-      forceRefresh();
+    // 삭제 확인 처리
+    const confirmDelete = async () => {
+      try {
+        const { dayIndex, item, tauid } = deleteTargetInfo.value;
+        
+        // API를 통해 삭제 요청
+        if (tauid) {
+          await apiDelete(`/travel-areas/${tauid}`);
+          displayToast('일정이 성공적으로 삭제되었습니다.', 'success');
+        }
+        
+        // 로컬 데이터에서 tauid로 해당 아이템을 찾아서 삭제
+        const itemIndex = tripDays.value[dayIndex].items.findIndex(scheduleItem => 
+          scheduleItem.tauid === tauid || scheduleItem === item
+        );
+        
+        if (itemIndex !== -1) {
+          tripDays.value[dayIndex].items.splice(itemIndex, 1);
+        }
+        
+        // 모달 닫기
+        showDeleteModal.value = false;
+        
+        // 화면 갱신
+        forceRefresh();
+        
+      } catch (error) {
+        console.error('일정 삭제 실패:', error);
+        displayToast('일정 삭제에 실패했습니다. 다시 시도해주세요.', 'error');
+      }
+    };
+
+    // 삭제 취소 처리
+    const cancelDelete = () => {
+      showDeleteModal.value = false;
+      deleteTargetInfo.value = {
+        dayIndex: null,
+        item: null,
+        placeName: '',
+        tauid: null
+      };
     };
 
     // 지출 항목을 날짜별로 그룹화
@@ -2114,9 +2183,7 @@ export default {
     };
 
     // 방문 인증 함수
-    const verifyVisit = (dayIndex, itemIndex) => {
-      const item = tripDays.value[dayIndex].items[itemIndex];
-
+    const verifyVisit = (dayIndex, item) => {
       // 이미 인증된 항목이면 인증 취소
       if (item.verified) {
         item.verified = false;
@@ -2127,22 +2194,37 @@ export default {
         return;
       }
 
-      // 인증 대상 정보 저장
+      // 인증 대상 정보 저장 (실제 객체의 모든 정보 포함)
       verifyingDay.value = dayIndex;
-      verifyingItem.value = itemIndex;
+      verifyingItem.value = item;
       verifyingItemInfo.value = {
         activity: item.activity,
         location: item.location,
-        coords: item.coords
+        address: item.address,
+        coords: item.coords,
+        tauid: item.tauid,
+        place: item.place,
+        latitude: item.latitude,
+        longitude: item.longitude
       };
 
-      // 인증하려는 장소의 데이터를 콘솔에 출력
+      // 인증하려는 장소의 상세 데이터를 콘솔에 출력
       console.log('===== 인증하려는 장소 정보 =====');
       console.log('장소명:', item.activity);
-      console.log('주소:', item.location);
+      console.log('메모/주소:', item.location);
+      console.log('실제 주소:', item.address);
       console.log('좌표:', item.coords);
+      console.log('위도:', item.latitude);
+      console.log('경도:', item.longitude);
+      console.log('TAUID:', item.tauid);
+      console.log('Place 객체:', item.place);
       console.log('여행 날짜:', addDays(new Date(tripData.value.startDate), dayIndex).toLocaleDateString('ko-KR'));
       console.log('===============================');
+
+      // 좌표가 없는 경우 경고 메시지
+      if (!item.coords && (!item.latitude || !item.longitude)) {
+        displayToast('이 장소의 좌표 정보가 없어 정확한 위치 인증이 어려울 수 있습니다.', 'warning');
+      }
 
       // 상태 초기화
       verificationPhotoPreview.value = null;
@@ -2169,7 +2251,12 @@ export default {
     const verifyingItemInfo = ref({
       activity: '',
       location: '',
-      coords: null
+      address: '',
+      coords: null,
+      tauid: null,
+      place: null,
+      latitude: null,
+      longitude: null
     });
 
     // 로딩 스피너 관련 상태
@@ -2624,7 +2711,8 @@ export default {
     // 인증 완료 및 저장
     const confirmVerification = () => {
       if (verificationResult.value && verificationResult.value.success) {
-        const item = tripDays.value[verifyingDay.value].items[verifyingItem.value];
+        // verifyingItem.value는 이제 실제 item 객체임
+        const item = verifyingItem.value;
 
         // 인증 정보 저장
         item.verified = true;
@@ -2716,7 +2804,8 @@ export default {
         morphologicalAnalysisDuration.value = null;
         processingResultsDuration.value = null;
 
-        const item = tripDays.value[verifyingDay.value].items[verifyingItem.value];
+        // verifyingItem.value는 이제 실제 item 객체임
+        const item = verifyingItem.value;
         if (!item) {
           throw new Error('인증할 아이템을 찾을 수 없습니다.');
         }
@@ -3010,7 +3099,11 @@ export default {
           data.u_id,
           data.u_age,
           data.u_gender,
-          data.addressName
+          data.addressName,
+          reviewRating.value, // p_stars: 사용자 인증 별점
+          reviewText.value, // p_review: 사용자 후기
+          tuid.value, // p_tuid: 해당 여행 고유번호 (props에서)
+          data.item.tauid // p_tauid: 해당 travelArea 고유번호
         );
         
         if (!esResponse || !esResponse._id) {
@@ -3251,7 +3344,12 @@ export default {
       handleAddExpense,
       handlePaymentAdded,
       handlePlaceAdded,
-      handleToast
+      handleToast,
+      showDeleteModal,
+      deleteTargetItem,
+      deleteTargetInfo,
+      confirmDelete,
+      cancelDelete
     };
   }
 };

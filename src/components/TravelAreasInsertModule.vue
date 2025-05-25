@@ -24,7 +24,6 @@
               <button class="search-btn" @click="searchPlaces">검색</button>
             </div>
 
-            <h3 class="modal-section-title">장소 검색 결과</h3>
 
             <div class="search-results">
               <div v-if="isSearching" class="searching-indicator">
