@@ -23,10 +23,10 @@
             <!-- 프로필 정보 영역 -->
             <div class="profile-info-area">
               <div class="profile-image-container">
-                <img :src="userProfile.profileImage" :alt="userProfile.name" />
+              <img :src="userProfile.profileImage" :alt="userProfile.name" />
                 <div class="online-indicator"></div>
-              </div>
-              
+            </div>
+            
               <h3 class="profile-name">{{ userProfile.nickname }}</h3>
               <p class="profile-email">{{ userProfile.email }}</p>
 
@@ -34,25 +34,25 @@
                 <div class="profile-detail-item">
                   <span class="profile-detail-label">나이</span>
                   <span class="profile-detail-value">{{ calculateAge(userProfile.birthday) }}세</span>
-                </div>
+            </div>
                 <div class="profile-detail-item">
                   <span class="profile-detail-label">성별</span>
                   <span class="profile-detail-value">{{ userProfile.gender || '미설정' }}</span>
-                </div>
+            </div>
                 <div class="profile-detail-item">
                   <span class="profile-detail-label">노션 ID</span>
                   <span class="profile-detail-value">{{ userProfile.notionId || '미설정' }}</span>
-                </div>
-              </div>
             </div>
-
+            </div>
+            </div>
+            
             <!-- 통계 그리드 -->
             <div class="stats-grid">
               <div class="stat-card">
                 <div class="stat-icon">📍</div>
                 <div class="stat-value">{{ totalTripsCount }}</div>
                 <div class="stat-label">전체 여행수</div>
-              </div>
+            </div>
               <div class="stat-card">
                 <div class="stat-icon">🗺️</div>
                 <div class="stat-value">{{ userStats.visitedRegions }}</div>
@@ -1619,7 +1619,7 @@ export default {
 
       // 데이터 유효성 검사
       const hasData = Object.keys(dimensionScores).length > 0 && 
-                      Object.values(dimensionScores).some(value => value > 0);
+                           Object.values(dimensionScores).some(value => value > 0);
       
       if (!hasData) {
         console.log('차원 데이터가 유효하지 않습니다.');
@@ -1638,7 +1638,7 @@ export default {
 
     const renderRadarChartInternal = () => {
       console.log('D3.js 레이더 차트 렌더링 시작');
-      
+
       // 기존 차트 정리
       if (radarSvg) {
         console.log('기존 차트 삭제');
@@ -1648,7 +1648,7 @@ export default {
 
       // 컨테이너 정리
       radarChartContainer.value.innerHTML = '';
-
+      
       // 차트 설정
       const width = 400;
       const height = 400;
@@ -1689,7 +1689,7 @@ export default {
             .attr('fill', 'none')
             .attr('stroke', 'rgba(0, 0, 0, 0.1)')
             .attr('stroke-width', 1);
-        }
+      }
 
         // 축선 그리기
         g.selectAll('.axis-line')
@@ -1791,8 +1791,8 @@ export default {
             tooltip.transition()
               .duration(200)
               .style('opacity', 0);
-          });
-
+        });
+        
         console.log('D3.js 레이더 차트 생성 완료');
         
       } catch (error) {

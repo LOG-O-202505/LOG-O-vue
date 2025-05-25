@@ -2433,8 +2433,8 @@ export async function ImgToPayment(receiptFile) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'OCR_basic',
-        prompt: "Extract payment location, datetime, and final amount from OCR receipt data. Return ONLY JSON array format. Include full date and time in datetime field (YYYY-MM-DD HH:MM:SS). Use ONLY information explicitly present in the OCR data - never assume or infer dates not clearly shown. Here is the korean OCR data: " + processedText,
+        model: 'OCR_basic',  // 또는 'OCR_basic'
+        prompt: "Please return in JSON format without markdown format. OCR data: " + processedText,
         stream: false,
       }),
     });
