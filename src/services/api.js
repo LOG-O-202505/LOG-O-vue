@@ -1054,7 +1054,7 @@ export const reverseGeocode = async (latitude, longitude) => {
     }
 
     let bestResult = {
-      address: null, // 베스트 파싱된 주소 컴포넌트 객체
+      address: null, // 베스트 파싱된 주소 컴포넌트
       regionInfo: null, // 베스트 매핑된 regionInfo
       display_name: '' // 베스트 결과의 formatted_address
     };
@@ -2763,5 +2763,42 @@ export const getTravelRecentImages = async (userId) => {
   } catch (error) {
     console.error('여행별 최근 이미지 조회 실패:', error);
     return {};
+  }
+};
+
+/**
+ * 장소 상세 정보를 가져오는 함수
+ * @param {number} puid - 장소 고유 ID (ElasticSearch 결과의 p_id)
+ * @param {string} address - 장소 주소 (ElasticSearch 결과의 p_address)
+ * @returns {Promise<object>} - 장소 상세 정보 (latitude, longitude 포함)
+ */
+export const getPlaceDetails = async (puid, address) => {
+  try {
+    // auth.js의 getAuthHeaders 함수를 import해서 사용
+    const { getAuthHeaders } = await import('./auth.js');
+    const authHeaders = getAuthHeaders();
+    
+    // URL 인코딩된 주소로 쿼리 파라미터 구성
+    const encodedAddress = encodeURIComponent(address);
+    const endpoint = `/places/${puid}?address=${encodedAddress}`;
+    
+    console.log(`장소 상세 정보 요청: ${endpoint}`);
+    
+    const response = await fetch(`http://localhost:8080/api${endpoint}`, {
+      method: 'GET',
+      headers: authHeaders
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log('장소 상세 정보 응답:', result);
+    
+    return result;
+  } catch (error) {
+    console.error('장소 상세 정보 가져오기 오류:', error);
+    throw error;
   }
 };

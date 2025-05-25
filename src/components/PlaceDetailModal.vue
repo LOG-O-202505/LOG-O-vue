@@ -194,6 +194,7 @@
 import { ref, computed, onMounted, watch, nextTick } from "vue";
 import Chart from 'chart.js/auto';
 import config from "@/config.js";
+import { getPlaceDetails } from "@/services/api.js";
 
 export default {
   name: "PlaceDetailModal",
@@ -213,6 +214,10 @@ export default {
     const ageChartCanvas = ref(null);
     let ageChart = null;
     const detailMapContainer = ref(null);
+    
+    // API 응답 데이터를 저장할 상태 변수들
+    const placeDetailsData = ref(null);
+    const isLoadingPlaceDetails = ref(false);
     
     const displayImageUrl = computed(() => {
       if (!props.detail) {
@@ -392,6 +397,50 @@ export default {
       });
     };
     
+    // 장소 상세 정보를 API에서 가져오는 함수
+    const fetchPlaceDetails = async () => {
+      if (!props.detail) return;
+      
+      try {
+        isLoadingPlaceDetails.value = true;
+        
+        // ElasticSearch 결과에서 p_id와 p_address 추출
+        let puid, address;
+        
+        if (props.detail._source) {
+          // Elasticsearch _source 직접 포함된 경우
+          puid = props.detail._source.p_id;
+          address = props.detail._source.p_address;
+        } else {
+          // _source가 추출된 경우
+          puid = props.detail.p_id;
+          address = props.detail.address || props.detail.p_address;
+        }
+        
+        if (!puid || !address) {
+          console.warn('puid 또는 address가 없어 API 호출을 건너뜁니다:', { puid, address });
+          return;
+        }
+        
+        console.log(`장소 상세 정보 API 호출: puid=${puid}, address=${address}`);
+        
+        const response = await getPlaceDetails(puid, address);
+        
+        if (response && response.status === 'success' && response.data) {
+          placeDetailsData.value = response.data;
+          console.log('장소 상세 정보 로드 완료:', response.data);
+        } else {
+          console.warn('API 응답이 예상 형식과 다릅니다:', response);
+        }
+        
+      } catch (error) {
+        console.error('장소 상세 정보 로드 오류:', error);
+        // API 오류가 발생해도 기존 데이터로 지도를 표시할 수 있도록 함
+      } finally {
+        isLoadingPlaceDetails.value = false;
+      }
+    };
+    
     // 카카오맵 초기화
     const initDetailMap = async () => {
       console.log('지도 초기화 함수 호출됨');
@@ -413,20 +462,30 @@ export default {
         let lat = 37.5665; // 기본값: 서울시청
         let lng = 126.9780;
         
-        // LogoSearch(searchSimilarImages)와 KeywordSearch(searchImagesByKeyword) 양쪽 모두 처리
-        let locationData = null;
-        
-        if (props.detail._source && props.detail._source.location_data) {
-          // Elasticsearch _source 직접 포함된 경우 (searchSimilarImages 형식)
-          locationData = props.detail._source.location_data;
-        } else if (props.detail.location_data) {
-          // _source가 추출된 경우 (일반 형식)
-          locationData = props.detail.location_data;
-        }
-        
-        if (locationData) {
-          lat = locationData.latitude || lat;
-          lng = locationData.longitude || lng;
+        // 1순위: API에서 받은 위도/경도 사용
+        if (placeDetailsData.value && placeDetailsData.value.latitude && placeDetailsData.value.longitude) {
+          lat = placeDetailsData.value.latitude;
+          lng = placeDetailsData.value.longitude;
+          console.log('API에서 받은 좌표 사용:', { lat, lng });
+        } else {
+          // 2순위: 기존 ElasticSearch location_data 사용
+          let locationData = null;
+          
+          if (props.detail._source && props.detail._source.location_data) {
+            // Elasticsearch _source 직접 포함된 경우 (searchSimilarImages 형식)
+            locationData = props.detail._source.location_data;
+          } else if (props.detail.location_data) {
+            // _source가 추출된 경우 (일반 형식)
+            locationData = props.detail.location_data;
+          }
+          
+          if (locationData) {
+            lat = locationData.latitude || lat;
+            lng = locationData.longitude || lng;
+            console.log('ElasticSearch location_data 사용:', { lat, lng });
+          } else {
+            console.log('기본 좌표 사용 (서울시청):', { lat, lng });
+          }
         }
         
         // 지도 옵션
@@ -519,7 +578,10 @@ export default {
     // 컴포넌트 라이프사이클 훅
     watch(() => props.show, (newVal) => {
       if (newVal) {
-        nextTick(() => {
+        nextTick(async () => {
+          // 모달이 열릴 때 먼저 API에서 장소 상세 정보를 가져옴
+          await fetchPlaceDetails();
+          
           // 약간의 지연 추가로 모달 애니메이션 완료 후 지도 초기화
           setTimeout(() => {
             console.log("모달 표시 후 지도 초기화 시작");
@@ -527,6 +589,9 @@ export default {
             initDetailMap();
           }, 300);
         });
+      } else {
+        // 모달이 닫힐 때 API 데이터 초기화
+        placeDetailsData.value = null;
       }
     });
     
@@ -538,7 +603,10 @@ export default {
     
     onMounted(() => {
       if (props.show) {
-        nextTick(() => {
+        nextTick(async () => {
+          // 초기 마운트 시에도 API 호출 후 지도 초기화
+          await fetchPlaceDetails();
+          
           setTimeout(() => {
             console.log("초기 마운트 시 지도 초기화 시작");
             console.log("장소 상세 데이터 형식:", props.detail._source ? "ElasticSearch 직접 포맷" : "추출된 포맷");
@@ -616,7 +684,10 @@ export default {
       getPlaceAddress,
       getPlaceTags,
       getPlaceDescription,
-      getMaskId
+      getMaskId,
+      placeDetailsData,
+      isLoadingPlaceDetails,
+      fetchPlaceDetails
     };
   }
 };
