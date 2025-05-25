@@ -541,11 +541,11 @@ export default {
         };
 
         // 서버에 데이터 저장
-        await addTravelPayment(paymentData);
+        const result = await addTravelPayment(paymentData);
 
-        // 로컬 데이터도 부모 컴포넌트에 전달
+        // 서버에서 반환된 실제 tpuid를 사용하여 로컬 데이터 생성
         const expense = {
-          id: Date.now(),
+          id: result.data?.tpuid || Date.now(), // 서버 응답에서 tpuid 사용, 없으면 타임스탬프
           description: manualData.value.description,
           amount: Number(manualData.value.amount),
           time: manualData.value.time || '',
@@ -573,11 +573,11 @@ export default {
         };
 
         // 서버에 데이터 저장
-        await addTravelPayment(paymentData);
+        const result = await addTravelPayment(paymentData);
 
-        // 로컬 데이터도 부모 컴포넌트에 전달
+        // 서버에서 반환된 실제 tpuid를 사용하여 로컬 데이터 생성
         const expense = {
-          id: Date.now(),
+          id: result.data?.tpuid || Date.now(), // 서버 응답에서 tpuid 사용, 없으면 타임스탬프
           description: parsedData.value.description,
           amount: Number(parsedData.value.amount),
           time: parsedData.value.time || '',
@@ -739,11 +739,11 @@ export default {
               payment_time: formatToISO(selectedDate.value, extractedTime)
             };
 
-            await addTravelPayment(serverPaymentData);
+            const result = await addTravelPayment(serverPaymentData);
 
-            // 로컬 데이터도 부모 컴포넌트에 전달
+            // 서버에서 반환된 실제 tpuid를 사용하여 로컬 데이터 생성
             const expense = {
-              id: Date.now() + addedCount,
+              id: result.data?.tpuid || Date.now(), // 서버 응답에서 tpuid 사용, 없으면 타임스탬프
               description: paymentData.Place,
               amount: Number(paymentData.Price) || 0,
               time: extractedTime,

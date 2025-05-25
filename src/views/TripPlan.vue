@@ -348,7 +348,7 @@
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                         </svg>
                       </button>
-                      <button class="delete-btn" @click="removeExpense(getExpenseIndex(expense))">
+                      <button class="delete-btn" @click="removeExpense(expense)">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                           stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                           <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -581,7 +581,8 @@ import {
   ImgToPayment,          // Added import
   analyzeTextWithElasticsearch, // 새로 추가된 함수
   getUserTravelVerifications,
-  deleteTravelPayment
+  deleteTravelPayment,
+  updateTravelPayment
 } from '@/services/api';
 import { apiGet, apiPost, apiDelete } from '@/services/auth'; // API 호출 함수를 auth.js에서 가져옴
 import PaymentModal from '@/components/PaymentModal.vue'; // Added import
@@ -2175,13 +2176,43 @@ export default {
     };
 
     // 지출 항목 수정 저장
-    const saveExpenseEdit = (expense) => {
-      expense.time = editExpenseTime.value;
-      expense.description = editExpenseDesc.value;
-      expense.amount = Number(editExpenseAmount.value);
+    const saveExpenseEdit = async (expense) => {
+      try {
+        // 수정된 값으로 업데이트
+        expense.time = editExpenseTime.value;
+        expense.description = editExpenseDesc.value;
+        expense.amount = Number(editExpenseAmount.value);
 
-      // 수정 모드 종료
-      editingExpense.value = null;
+        // 서버 동기화 수행
+        if (expense.id) {
+          // 날짜와 시간을 ISO 형식으로 변환
+          const formatToISO = (date, time) => {
+            if (!date || !time) {
+              return new Date().toISOString();
+            }
+            return new Date(`${date}T${time}:00`).toISOString();
+          };
+
+          const updateData = {
+            history: expense.description,
+            cost: expense.amount,
+            payment_time: formatToISO(expense.date, expense.time)
+          };
+
+          await updateTravelPayment(expense.id, updateData);
+        }
+
+        // 수정 모드 종료
+        editingExpense.value = null;
+        
+        displayToast('지출 내역이 수정되었습니다.', 'success');
+      } catch (error) {
+        console.error('지출 수정 오류:', error);
+        displayToast('지출 수정 중 오류가 발생했습니다.', 'error');
+        
+        // 오류 발생 시 원본 값으로 복원
+        cancelExpenseEdit();
+      }
     };
 
     // 지출 항목 수정 취소

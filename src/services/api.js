@@ -2648,25 +2648,39 @@ export async function deleteTravelPayment(tpuid) {
   try {
     console.log('여행 지출 삭제 API 호출:', { tpuid });
     
-    const response = await fetch(`${config.API_BASE_URL}/api/travel-payments/${tpuid}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('여행 지출 삭제 API 오류:', errorText);
-      throw new Error(`서버 오류 (${response.status}): ${errorText}`);
-    }
-
-    const result = await response.json();
+    // auth.js에서 제공하는 apiDelete 함수 사용 (인증 헤더 자동 포함)
+    const { apiDelete } = await import('./auth.js');
+    const result = await apiDelete(`/travel-payments/${tpuid}`);
+    
     console.log('여행 지출 삭제 성공:', result);
     return result;
-    
   } catch (error) {
     console.error('여행 지출 삭제 오류:', error);
+    throw error;
+  }
+}
+
+/**
+ * Travel payment 수정 함수
+ * @param {number} tpuid - Travel Payment 고유 ID
+ * @param {Object} updateData - 수정할 지출 데이터
+ * @param {string} updateData.history - 지출 내역
+ * @param {number} updateData.cost - 비용
+ * @param {string} updateData.payment_time - 지불 시간 (ISO 8601 형식)
+ * @returns {Promise<Object>} API 응답 결과
+ */
+export async function updateTravelPayment(tpuid, updateData) {
+  try {
+    console.log('여행 지출 수정 API 호출:', { tpuid, updateData });
+    
+    // auth.js에서 제공하는 apiPut 함수 사용 (인증 헤더 자동 포함)
+    const { apiPut } = await import('./auth.js');
+    const result = await apiPut(`/travel-payments/${tpuid}`, updateData);
+    
+    console.log('여행 지출 수정 성공:', result);
+    return result;
+  } catch (error) {
+    console.error('여행 지출 수정 오류:', error);
     throw error;
   }
 }
