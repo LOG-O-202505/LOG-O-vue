@@ -370,6 +370,7 @@
       <PaymentModal 
         :show="showPaymentModal" 
         :travel-id="1"
+        :travel-roots="travelRoots"
         @close="closePaymentModal" 
         @add-expense="handleAddExpense"
         @payment-added="handlePaymentAdded"

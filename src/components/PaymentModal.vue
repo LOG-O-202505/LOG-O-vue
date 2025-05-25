@@ -12,8 +12,32 @@
       </div>
 
       <div class="modal-content">
+        <!-- 날짜 선택 -->
+        <div v-if="step === 'dateSelect'" class="date-select-step">
+          <h3>지출 내역을 추가할 날짜를 선택하세요</h3>
+          <div class="date-selection-grid">
+            <div 
+              v-for="(root, index) in travelRoots" 
+              :key="root.truid || index"
+              class="date-card"
+              @click="selectDate(root.travelDate)"
+            >
+              <div class="date-card-header">
+                <span class="day-number">DAY {{ root.day }}</span>
+              </div>
+              <div class="date-card-content">
+                <div class="date-text">{{ formatTravelDateFromString(root.travelDate) }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- 추가 방법 선택 -->
-        <div v-if="step === 'select'" class="selection-step">
+        <div v-else-if="step === 'select'" class="selection-step">
+          <div class="selected-date-info">
+            <h4>선택된 날짜: {{ formatSelectedDate(selectedDate) }}</h4>
+            <button class="change-date-btn" @click="goBackToDateSelect">날짜 변경</button>
+          </div>
           <h3>지출 추가 방법을 선택하세요</h3>
           <div class="selection-buttons">
             <button class="selection-btn manual" @click="selectMethod('manual')">
@@ -55,6 +79,10 @@
             </button>
           </div>
           
+          <div class="selected-date-info">
+            <h4>선택된 날짜: {{ formatSelectedDate(selectedDate) }}</h4>
+          </div>
+          
           <h3>지출 정보 입력</h3>
           <form @submit.prevent="addManualExpense" class="manual-form">
             <div class="form-group">
@@ -86,18 +114,9 @@
                   type="time" 
                   id="time" 
                   v-model="manualData.time"
+                  placeholder="선택사항"
                 >
               </div>
-            </div>
-
-            <div class="form-group">
-              <label for="date">날짜</label>
-              <input 
-                type="date" 
-                id="date" 
-                v-model="manualData.date"
-                required
-              >
             </div>
 
             <div class="form-actions">
@@ -121,6 +140,10 @@
               </svg>
               방법 선택으로 돌아가기
             </button>
+          </div>
+
+          <div class="selected-date-info">
+            <h4>선택된 날짜: {{ formatSelectedDate(selectedDate) }}</h4>
           </div>
 
           <h3>영수증 사진 업로드</h3>
@@ -190,6 +213,10 @@
             </button>
           </div>
 
+          <div class="selected-date-info">
+            <h4>선택된 날짜: {{ formatSelectedDate(selectedDate) }}</h4>
+          </div>
+
           <h3>분석 결과 확인</h3>
           <p class="result-desc">분석된 정보를 확인하고 수정해주세요.</p>
           
@@ -223,18 +250,9 @@
                   type="time" 
                   id="parsed-time" 
                   v-model="parsedData.time"
+                  placeholder="선택사항"
                 >
               </div>
-            </div>
-
-            <div class="form-group">
-              <label for="parsed-date">날짜</label>
-              <input 
-                type="date" 
-                id="parsed-date" 
-                v-model="parsedData.date"
-                required
-              >
             </div>
 
             <div class="form-actions">
@@ -279,11 +297,16 @@ export default {
     travelId: {
       type: Number,
       default: 1
+    },
+    travelRoots: {
+      type: Array,
+      default: () => []
     }
   },
   emits: ['close', 'add-expense', 'payment-added'],
   setup(props, { emit }) {
-    const step = ref('select');
+    const step = ref('dateSelect');
+    const selectedDate = ref(null);
     const fileInput = ref(null);
     const isDragging = ref(false);
     const receiptPreview = ref(null);
@@ -315,13 +338,13 @@ export default {
     const isManualFormValid = computed(() => {
       return manualData.value.description && 
              manualData.value.amount && 
-             manualData.value.date;
+             selectedDate.value;
     });
 
     const isParsedFormValid = computed(() => {
       return parsedData.value.description && 
              parsedData.value.amount && 
-             parsedData.value.date;
+             selectedDate.value;
     });
 
     // 모달 닫기
@@ -332,7 +355,8 @@ export default {
 
     // 모달 리셋
     const resetModal = () => {
-      step.value = 'select';
+      step.value = 'dateSelect';
+      selectedDate.value = null;
       clearReceiptImage();
       manualData.value = {
         description: '',
@@ -358,11 +382,29 @@ export default {
     // 방법 선택
     const selectMethod = (method) => {
       step.value = method;
+      
+      // 선택된 날짜를 기본값으로 설정
+      if (selectedDate.value) {
+        manualData.value.date = selectedDate.value;
+        parsedData.value.date = selectedDate.value;
+      }
+    };
+
+    // 날짜 선택
+    const selectDate = (date) => {
+      selectedDate.value = date;
+      step.value = 'select'; // 날짜 선택 후 방법 선택으로 이동
     };
 
     // 뒤로 가기
     const goBack = () => {
       step.value = 'select';
+    };
+
+    // 날짜 선택으로 돌아가기
+    const goBackToDateSelect = () => {
+      step.value = 'dateSelect';
+      selectedDate.value = null;
     };
 
     const goBackToReceipt = () => {
@@ -383,6 +425,64 @@ export default {
       return isoString;
     };
 
+    // 날짜 배열을 YYYY-MM-DD 형식으로 변환하는 함수
+    const formatDateArray = (dateArray) => {
+      if (!dateArray || dateArray.length < 3) return '';
+      const [year, month, day] = dateArray;
+      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    };
+
+    // 여행 날짜 포맷팅 (한국어) - 배열 형태
+    const formatTravelDate = (dateArray) => {
+      if (!dateArray || dateArray.length < 3) return '';
+      const [year, month, day] = dateArray;
+      return `${year}년 ${month}월 ${day}일`;
+    };
+
+    // 문자열 형태의 날짜를 한국어로 포맷팅
+    const formatTravelDateFromString = (dateString) => {
+      if (!dateString) return '';
+      
+      try {
+        const date = new Date(dateString + 'T00:00:00');
+        if (isNaN(date.getTime())) {
+          console.error('Invalid date string:', dateString);
+          return dateString;
+        }
+        
+        return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
+      } catch (error) {
+        console.error('날짜 포맷팅 오류:', error);
+        return dateString;
+      }
+    };
+
+    // 선택된 날짜 포맷팅
+    const formatSelectedDate = (dateString) => {
+      if (!dateString) return '';
+      
+      // 날짜 형식 확인 및 변환
+      let date;
+      if (typeof dateString === 'string') {
+        // YYYY-MM-DD 형식인지 확인
+        if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          date = new Date(dateString + 'T00:00:00');
+        } else {
+          date = new Date(dateString);
+        }
+      } else {
+        date = new Date(dateString);
+      }
+      
+      // 유효한 날짜인지 확인
+      if (isNaN(date.getTime())) {
+        console.error('Invalid date:', dateString);
+        return dateString; // 원본 문자열 반환
+      }
+      
+      return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
+    };
+
     // 수동 지출 추가
     const addManualExpense = async () => {
       try {
@@ -390,7 +490,7 @@ export default {
           tuid: props.travelId,
           cost: Number(manualData.value.amount),
           history: manualData.value.description,
-          payment_time: formatToISO(manualData.value.date, manualData.value.time)
+          payment_time: formatToISO(selectedDate.value, manualData.value.time)
         };
 
         // 서버에 데이터 저장
@@ -402,11 +502,12 @@ export default {
           description: manualData.value.description,
           amount: Number(manualData.value.amount),
           time: manualData.value.time || '',
-          date: manualData.value.date
+          date: selectedDate.value
         };
 
         emit('add-expense', expense);
         emit('payment-added'); // 데이터 갱신 이벤트
+        showToastMessage('지출 내역이 성공적으로 추가되었습니다!', 'success');
         closeModal();
       } catch (error) {
         console.error('수동 지출 추가 오류:', error);
@@ -421,7 +522,7 @@ export default {
           tuid: props.travelId,
           cost: Number(parsedData.value.amount),
           history: parsedData.value.description,
-          payment_time: formatToISO(parsedData.value.date, parsedData.value.time)
+          payment_time: formatToISO(selectedDate.value, parsedData.value.time)
         };
 
         // 서버에 데이터 저장
@@ -433,11 +534,12 @@ export default {
           description: parsedData.value.description,
           amount: Number(parsedData.value.amount),
           time: parsedData.value.time || '',
-          date: parsedData.value.date
+          date: selectedDate.value
         };
 
         emit('add-expense', expense);
         emit('payment-added'); // 데이터 갱신 이벤트
+        showToastMessage('지출 내역이 성공적으로 추가되었습니다!', 'success');
         closeModal();
       } catch (error) {
         console.error('영수증 지출 추가 오류:', error);
@@ -549,12 +651,15 @@ export default {
           for (const paymentData of paymentDataArray) {
             if (paymentData && paymentData.Place && paymentData.Time && paymentData.Price !== undefined) {
               try {
+                // 영수증에서 시간만 추출하고 선택된 날짜와 조합
+                const extractedTime = extractTimeFromString(paymentData.Time);
+                
                 // 서버에 데이터 저장
                 const serverPaymentData = {
                   tuid: props.travelId,
                   cost: Number(paymentData.Price) || 0,
                   history: paymentData.Place,
-                  payment_time: formatTimeToISO(paymentData.Time)
+                  payment_time: formatToISO(selectedDate.value, extractedTime)
                 };
 
                 await addTravelPayment(serverPaymentData);
@@ -564,8 +669,8 @@ export default {
                   id: Date.now() + addedCount,
                   description: paymentData.Place,
                   amount: Number(paymentData.Price) || 0,
-                  time: extractTimeFromString(paymentData.Time),
-                  date: extractDateFromString(paymentData.Time)
+                  time: extractedTime,
+                  date: selectedDate.value
                 };
 
                 emit('add-expense', expense);
@@ -594,55 +699,6 @@ export default {
       }
     };
 
-    // 시간 문자열을 ISO 형식으로 변환하는 도우미 함수
-    const formatTimeToISO = (timeStr) => {
-      if (!timeStr) return new Date().toISOString();
-
-      let dateObj = new Date();
-      
-      // 날짜 추출 시도
-      const dateFormats = [
-        /(\d{4})[-./](\d{1,2})[-./](\d{1,2})/,  // YYYY-MM-DD
-        /(\d{1,2})[-./](\d{1,2})[-./](\d{4})/,  // DD-MM-YYYY
-        /(\d{1,2})[-./](\d{1,2})[-./](\d{2})/   // DD-MM-YY
-      ];
-
-      for (let i = 0; i < dateFormats.length; i++) {
-        const match = timeStr.match(dateFormats[i]);
-        if (match) {
-          try {
-            if (i === 0) {
-              dateObj = new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
-            } else if (i === 1) {
-              dateObj = new Date(parseInt(match[3]), parseInt(match[2]) - 1, parseInt(match[1]));
-            } else if (i === 2) {
-              const year = parseInt(match[3]) + (parseInt(match[3]) < 50 ? 2000 : 1900);
-              dateObj = new Date(year, parseInt(match[2]) - 1, parseInt(match[1]));
-            }
-          } catch (e) {
-            console.error('날짜 파싱 오류:', e);
-          }
-          break;
-        }
-      }
-
-      // 시간 추출 시도
-      const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
-      if (timeMatch) {
-        try {
-          dateObj.setHours(parseInt(timeMatch[1]));
-          dateObj.setMinutes(parseInt(timeMatch[2]));
-          if (timeMatch[3]) {
-            dateObj.setSeconds(parseInt(timeMatch[3]));
-          }
-        } catch (e) {
-          console.error('시간 파싱 오류:', e);
-        }
-      }
-
-      return dateObj.toISOString();
-    };
-
     // 시간 문자열에서 시간만 추출
     const extractTimeFromString = (timeStr) => {
       if (!timeStr) return '';
@@ -655,39 +711,6 @@ export default {
       return '';
     };
 
-    // 시간 문자열에서 날짜만 추출
-    const extractDateFromString = (timeStr) => {
-      if (!timeStr) return new Date().toISOString().split('T')[0];
-
-      const dateFormats = [
-        /(\d{4})[-./](\d{1,2})[-./](\d{1,2})/,  // YYYY-MM-DD
-        /(\d{1,2})[-./](\d{1,2})[-./](\d{4})/,  // DD-MM-YYYY
-        /(\d{1,2})[-./](\d{1,2})[-./](\d{2})/   // DD-MM-YY
-      ];
-
-      for (let i = 0; i < dateFormats.length; i++) {
-        const match = timeStr.match(dateFormats[i]);
-        if (match) {
-          try {
-            let dateObj;
-            if (i === 0) {
-              dateObj = new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
-            } else if (i === 1) {
-              dateObj = new Date(parseInt(match[3]), parseInt(match[2]) - 1, parseInt(match[1]));
-            } else if (i === 2) {
-              const year = parseInt(match[3]) + (parseInt(match[3]) < 50 ? 2000 : 1900);
-              dateObj = new Date(year, parseInt(match[2]) - 1, parseInt(match[1]));
-            }
-            return dateObj.toISOString().split('T')[0];
-          } catch (e) {
-            console.error('날짜 파싱 오류:', e);
-          }
-        }
-      }
-
-      return new Date().toISOString().split('T')[0];
-    };
-
     // 모달이 닫힐 때 리셋
     watch(() => props.show, (newShow) => {
       if (!newShow) {
@@ -697,6 +720,7 @@ export default {
 
     return {
       step,
+      selectedDate,
       fileInput,
       isDragging,
       receiptPreview,
@@ -711,7 +735,9 @@ export default {
       toastType,
       closeModal,
       selectMethod,
+      selectDate,
       goBack,
+      goBackToDateSelect,
       goBackToReceipt,
       addManualExpense,
       addReceiptExpense,
@@ -721,7 +747,13 @@ export default {
       onDragLeave,
       onDrop,
       clearReceiptImage,
-      analyzeReceipt
+      analyzeReceipt,
+      extractTimeFromString,
+      formatToISO,
+      formatDateArray,
+      formatTravelDate,
+      formatTravelDateFromString,
+      formatSelectedDate
     };
   }
 };
@@ -784,6 +816,95 @@ export default {
 
 .modal-content {
   padding: 24px;
+}
+
+/* 날짜 선택 단계 */
+.date-select-step h3 {
+  margin: 0 0 24px;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: center;
+}
+
+.date-selection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 16px;
+}
+
+.date-card {
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.date-card:hover {
+  border-color: #3b82f6;
+  background: #f8fafc;
+}
+
+.date-card-header {
+  margin-bottom: 16px;
+}
+
+.day-number {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.date-card-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.date-text {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+/* 선택된 날짜 정보 */
+.selected-date-info {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.selected-date-info h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.change-date-btn {
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 0.875rem;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.change-date-btn:hover {
+  border-color: #9ca3af;
+  color: #374151;
 }
 
 /* 선택 단계 */
