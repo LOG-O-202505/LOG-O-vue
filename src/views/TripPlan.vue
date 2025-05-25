@@ -554,6 +554,16 @@
         @confirm="confirmDelete"
         @cancel="cancelDelete"
       />
+
+      <!-- 지출 삭제 모달 -->
+      <ExpenseDeleteModal
+        :show="showExpenseDeleteModal"
+        :expenseDescription="expenseToDelete?.description || ''"
+        :expenseAmount="expenseToDelete?.amount || 0"
+        :expenseDate="expenseToDelete?.date || ''"
+        @confirm="confirmExpenseDelete"
+        @cancel="cancelExpenseDelete"
+      />
     </div>
   </div>
 </template>
@@ -565,6 +575,7 @@ import VerificationImageUpload from '@/components/VerificationImageUpload.vue';
 import VerificationImageProcessSpinner from '@/components/VerificationImageProcessSpinner.vue';
 import TravelAreasInsertModule from '@/components/TravelAreasInsertModule.vue';
 import DeleteConfirmModal from '@/components/DeleteConfirmModal.vue';
+import ExpenseDeleteModal from '@/components/ExpenseDeleteModal.vue';
 import { ref, computed, onMounted, watch, nextTick, onBeforeUnmount, toRefs } from 'vue';
 import config from '@/config';
 import EXIF from 'exif-js';
@@ -602,7 +613,8 @@ export default {
     VerificationImageProcessSpinner,
     PaymentModal,
     TravelAreasInsertModule,
-    DeleteConfirmModal
+    DeleteConfirmModal,
+    ExpenseDeleteModal
   },
   setup(props) {
     // Props에서 tuid 가져오기
@@ -644,6 +656,10 @@ export default {
       placeName: '',
       tauid: null
     });
+
+    // 지출 삭제 모달 관련 상태
+    const showExpenseDeleteModal = ref(false);
+    const expenseToDelete = ref(null);
 
     // API 호출 함수
     const fetchTravelData = async () => {
@@ -1397,37 +1413,15 @@ export default {
 
     // 지출 항목 삭제
     const removeExpense = async (expense) => {
-      try {
-        // expense에 id가 있는지 확인 (서버에서 온 데이터인지)
-        if (!expense.id) {
-          displayToast('지출 ID가 없어 삭제할 수 없습니다.', 'error');
-          return;
-        }
-
-        // 확인 메시지
-        if (!confirm(`"${expense.description}" 지출 내역을 삭제하시겠습니까?`)) {
-          return;
-        }
-
-        // 처리중 토스트 표시
-        displayToast('지출 내역을 삭제하는 중...', 'processing');
-
-        // 서버 API 호출
-        await deleteTravelPayment(expense.id);
-
-        // 로컬 데이터에서 제거
-        const index = tripData.value.expenses.findIndex(e => e.id === expense.id);
-        if (index !== -1) {
-          tripData.value.expenses.splice(index, 1);
-        }
-
-        // 성공 메시지
-        displayToast('지출 내역이 성공적으로 삭제되었습니다.', 'success');
-
-      } catch (error) {
-        console.error('지출 삭제 오류:', error);
-        displayToast(`지출 삭제 중 오류가 발생했습니다: ${error.message}`, 'error');
+      // expense에 id가 있는지 확인 (서버에서 온 데이터인지)
+      if (!expense.id) {
+        displayToast('지출 ID가 없어 삭제할 수 없습니다.', 'error');
+        return;
       }
+
+      // 삭제할 지출 정보 저장하고 모달 표시
+      expenseToDelete.value = expense;
+      showExpenseDeleteModal.value = true;
     };
 
     // 지출 날짜 포맷팅
@@ -3363,6 +3357,41 @@ export default {
       return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
     };
 
+    // 지출 항목 삭제 처리
+    const confirmExpenseDelete = async () => {
+      if (!expenseToDelete.value) return;
+
+      try {
+        // 처리중 토스트 표시
+        displayToast('지출 내역을 삭제하는 중...', 'processing');
+
+        // 서버 API 호출
+        await deleteTravelPayment(expenseToDelete.value.id);
+
+        // 로컬 데이터에서 제거
+        const index = tripData.value.expenses.findIndex(e => e.id === expenseToDelete.value.id);
+        if (index !== -1) {
+          tripData.value.expenses.splice(index, 1);
+        }
+
+        // 성공 메시지
+        displayToast('지출 내역이 성공적으로 삭제되었습니다.', 'success');
+
+        // 모달 닫기
+        cancelExpenseDelete();
+
+      } catch (error) {
+        console.error('지출 삭제 오류:', error);
+        displayToast(`지출 삭제 중 오류가 발생했습니다: ${error.message}`, 'error');
+      }
+    };
+
+    // 지출 항목 삭제 취소
+    const cancelExpenseDelete = () => {
+      showExpenseDeleteModal.value = false;
+      expenseToDelete.value = null;
+    };
+
     return {
       // 로딩 및 에러 상태
       isLoading,
@@ -3508,7 +3537,11 @@ export default {
       verificationData,
       userId,
       loadVerificationData,
-      formatVerificationDate
+      formatVerificationDate,
+      showExpenseDeleteModal,
+      expenseToDelete,
+      confirmExpenseDelete,
+      cancelExpenseDelete
     };
   }
 };
