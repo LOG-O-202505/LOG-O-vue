@@ -246,31 +246,31 @@
               <div class="legend-scale">
                 <div class="legend-item">
                   <div class="legend-color" style="background-color: #3b82f6"></div>
-                  <div class="legend-label">0%</div>
+                  <div class="legend-label">0</div>
                 </div>
                 <div class="legend-item">
                   <div class="legend-color" style="background-color: #fbbf24"></div>
-                  <div class="legend-label">1-20%</div>
+                  <div class="legend-label">~19</div>
                 </div>
                 <div class="legend-item">
                   <div class="legend-color" style="background-color: #f97316"></div>
-                  <div class="legend-label">21-40%</div>
+                  <div class="legend-label">~39</div>
                 </div>
                 <div class="legend-item">
                   <div class="legend-color" style="background-color: #ec4899"></div>
-                  <div class="legend-label">41-60%</div>
+                  <div class="legend-label">~59</div>
                 </div>
                 <div class="legend-item">
                   <div class="legend-color" style="background-color: #be185d"></div>
-                  <div class="legend-label">61-80%</div>
+                  <div class="legend-label">~79</div>
                 </div>
                 <div class="legend-item">
                   <div class="legend-color" style="background-color: #ea580c"></div>
-                  <div class="legend-label">81-99%</div>
+                  <div class="legend-label">~99</div>
                 </div>
                 <div class="legend-item">
                   <div class="legend-color" style="background-color: #dc2626"></div>
-                  <div class="legend-label">100%</div>
+                  <div class="legend-label">100</div>
                 </div>
               </div>
             </div>

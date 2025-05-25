@@ -29,11 +29,34 @@
       <div v-else class="plan-container">
         <!-- 여행 기본 정보 폼 -->
         <div class="plan-section">
-          <h1 class="section-title">여행 기본 정보</h1>
+          <div class="section-header">
+            <h1 class="section-title">여행 기본 정보</h1>
+            <div class="section-actions" style="display: flex; gap: 10px;" v-if="!isEditingInfo">
+              <button class="edit-info-btn" @click="startEditInfo">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+                정보 수정
+              </button>
+              <button class="delete-travel-btn" @click="openDeleteTravelModal">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="m19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c0 1 1 2 2 2v2"></path>
+                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+                여행 삭제
+              </button>
+            </div>
+          </div>
 
           <!-- 보기 모드 -->
           <div v-if="!isEditingInfo" class="trip-info-view-mode">
-            <div class="info-row">
+            <div class="info-grid">
+              <!-- 첫 번째 행 -->
               <div class="info-item">
                 <span class="info-label">여행 제목</span>
                 <span class="info-value">{{ tripData.title }}</span>
@@ -43,12 +66,11 @@
                 <span class="info-value">{{ tripData.destination }}</span>
               </div>
               <div class="info-item">
-                <span class="info-label">총 예산</span>
-                <span class="info-value">₩{{ formatNumber(totalBudget) }}</span>
+                <span class="info-label">여행 인원</span>
+                <span class="info-value">{{ tripData.peoples }}명</span>
               </div>
-            </div>
 
-            <div class="info-row">
+              <!-- 두 번째 행 -->
               <div class="info-item">
                 <span class="info-label">출발일</span>
                 <span class="info-value">{{ formatDateFull(tripData.startDate) }}</span>
@@ -61,23 +83,17 @@
                 <span class="info-label">여행 기간</span>
                 <span class="info-value">{{ tripNights }}박 {{ tripDays.length }}일</span>
               </div>
-            </div>
 
-            <div class="info-row">
-              <div class="info-item info-memo">
+              <!-- 세 번째 행 -->
+              <div class="info-item">
+                <span class="info-label">총 예산</span>
+                <span class="info-value">₩{{ formatNumber(totalBudget) }}</span>
+              </div>
+              <div class="info-item info-memo-wide">
                 <span class="info-label">여행 메모</span>
                 <span class="info-value memo-text">{{ tripData.notes || '없음' }}</span>
               </div>
             </div>
-
-            <button class="edit-info-btn" @click="startEditInfo">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-              </svg>
-              정보 수정
-            </button>
           </div>
 
           <!-- 수정 모드 -->
@@ -96,15 +112,9 @@
                 <input type="text" id="tripTitle" v-model="tripData.title" placeholder="여행 제목을 입력하세요">
               </div>
 
-              <div class="form-row">
-                <div class="form-group">
-                  <label for="startDate">출발일</label>
-                  <input type="date" id="startDate" v-model="tripData.startDate" class="date-input">
-                </div>
-                <div class="form-group">
-                  <label for="endDate">도착일</label>
-                  <input type="date" id="endDate" v-model="tripData.endDate" class="date-input">
-                </div>
+              <div class="form-group">
+                <label for="peoples">여행 인원</label>
+                <input type="number" id="peoples" v-model="tripData.peoples" placeholder="1" min="1">
               </div>
 
               <div class="form-group">
@@ -212,8 +222,7 @@
                   </div>
                   <!-- 방문 인증 버튼 부분 수정 -->
                   <div class="verification-button-container">
-                    <button v-if="!item.verified" class="visit-verification-btn"
-                      @click="verifyVisit(activeDay, item)">
+                    <button v-if="!item.verified" class="visit-verification-btn" @click="verifyVisit(activeDay, item)">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
@@ -274,7 +283,8 @@
           <div class="section-header">
             <h1 class="section-title">지출 관리</h1>
             <button class="add-expense-btn-small" @click="openPaymentModal">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
               </svg>
@@ -365,14 +375,8 @@
       </div> <!-- plan-container 닫는 태그 -->
 
       <!-- PaymentModal -->
-      <PaymentModal 
-        :show="showPaymentModal" 
-        :travel-id="tuid"
-        :travel-roots="travelRoots"
-        @close="closePaymentModal" 
-        @add-expense="handleAddExpense"
-        @payment-added="handlePaymentAdded"
-      />
+      <PaymentModal :show="showPaymentModal" :travel-id="tuid" :travel-roots="travelRoots" @close="closePaymentModal"
+        @add-expense="handleAddExpense" @payment-added="handlePaymentAdded" />
 
       <!-- 방문 인증 모달 (개선된 버전) -->
       <div class="modal-overlay" v-if="showVerificationModal" @click="closeVerificationModal">
@@ -381,21 +385,13 @@
           <div class="verification-photo-modal" @click.stop>
             <div class="verification-content">
               <!-- 기존 업로드 컨테이너를 VerificationImageUpload 컴포넌트로 교체 -->
-              <VerificationImageUpload
-                :currentFile="verificationPhotoFile"
-                :photoMetadata="photoMetadata"
-                :distanceFromTarget="distanceFromTarget"
-                :verificationResult="verificationResult"
+              <VerificationImageUpload :currentFile="verificationPhotoFile" :photoMetadata="photoMetadata"
+                :distanceFromTarget="distanceFromTarget" :verificationResult="verificationResult"
                 :isVerifying="isVerifying"
                 :targetCoords="verifyingItemInfo.coords || { lat: 33.458031, lng: 126.942652 }"
-                @file-selected="handleVerificationFileSelected"
-                @file-remove="clearVerificationPhoto"
-                @verify-photo="verifyPhoto"
-                @admin-verify="adminVerify"
-                @close-modal="closeVerificationModal"
-                @verification-success="handleVerificationSuccess"
-                @verification-failed="handleVerificationFailed"
-              />
+                @file-selected="handleVerificationFileSelected" @file-remove="clearVerificationPhoto"
+                @verify-photo="verifyPhoto" @admin-verify="adminVerify" @close-modal="closeVerificationModal"
+                @verification-success="handleVerificationSuccess" @verification-failed="handleVerificationFailed" />
             </div>
           </div>
 
@@ -409,17 +405,14 @@
               <div class="review-content">
                 <!-- 인증 처리 중이거나 완료되었지만 아직 저장되지 않은 경우 스피너 표시 -->
                 <div v-if="isVerifying || loadingPhase === 'completed'" class="verification-loading-section">
-                  <VerificationImageProcessSpinner 
-                    :current-phase="loadingPhase"
+                  <VerificationImageProcessSpinner :current-phase="loadingPhase"
                     :image-analysis-duration="imageAnalysisDuration"
                     :meaning-analysis-duration="meaningAnalysisDuration"
                     :keyword-extraction-duration="keywordExtractionDuration"
                     :morphological-analysis-duration="morphologicalAnalysisDuration"
-                    :processing-results-duration="processingResultsDuration"
-                    @save-result="saveVerificationResult"
-                  />
+                    :processing-results-duration="processingResultsDuration" @save-result="saveVerificationResult" />
                 </div>
-                
+
                 <!-- 인증 처리가 시작되지 않았거나 저장이 완료된 경우에만 폼 표시 -->
                 <div v-else class="review-form-section">
                   <div class="rating-container">
@@ -434,15 +427,17 @@
 
                   <div class="review-text-container">
                     <label for="review-text">방문 후기:</label>
-                    <textarea id="review-text" v-model="reviewText" placeholder="이 장소에 대한 후기를 작성해주세요..." rows="6"></textarea>
+                    <textarea id="review-text" v-model="reviewText" placeholder="이 장소에 대한 후기를 작성해주세요..."
+                      rows="6"></textarea>
                   </div>
-                  
+
                   <!-- 테스트용 데이터 입력 필드 추가 -->
                   <div class="test-data-container">
                     <div class="test-data-header" @click="isTestDataExpanded = !isTestDataExpanded">
                       <h4 class="test-data-title">테스트용 데이터 입력 (개발용)</h4>
                       <button type="button" class="test-data-toggle-btn" :class="{ 'expanded': isTestDataExpanded }">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                           <polyline points="6 9 12 15 18 9"></polyline>
                         </svg>
                       </button>
@@ -473,7 +468,7 @@
                       </div>
                     </div>
                   </div>
-                  
+
                   <div class="form-actions">
                     <button @click="completeVerification" class="btn-verify">
                       인증 완료하기
@@ -487,15 +482,9 @@
       </div>
 
       <!-- 장소 검색 모달 -->
-      <TravelAreasInsertModule
-        :isOpen="isPlaceSearchModalOpen"
-        :selectedDay="selectedDay"
-        :tripStartDate="tripData.startDate"
-        :travelId="tuid"
-        @close="closePlaceSearch"
-        @place-added="handlePlaceAdded"
-        @show-toast="handleToast"
-      />
+      <TravelAreasInsertModule :isOpen="isPlaceSearchModalOpen" :selectedDay="selectedDay"
+        :tripStartDate="tripData.startDate" :travelId="tuid" @close="closePlaceSearch" @place-added="handlePlaceAdded"
+        @show-toast="handleToast" />
 
       <!-- 영수증 업로드 모달 -->
       <div class="receipt-upload-modal" v-if="showReceiptUpload">
@@ -548,22 +537,37 @@
       </div>
 
       <!-- 삭제 확인 모달 -->
-      <DeleteConfirmModal
-        :show="showDeleteModal"
-        :place-name="deleteTargetInfo.placeName"
-        @confirm="confirmDelete"
-        @cancel="cancelDelete"
-      />
+      <DeleteConfirmModal :show="showDeleteModal" :place-name="deleteTargetInfo.placeName" @confirm="confirmDelete"
+        @cancel="cancelDelete" />
 
       <!-- 지출 삭제 모달 -->
-      <ExpenseDeleteModal
-        :show="showExpenseDeleteModal"
-        :expenseDescription="expenseToDelete?.description || ''"
-        :expenseAmount="expenseToDelete?.amount || 0"
-        :expenseDate="expenseToDelete?.date || ''"
-        @confirm="confirmExpenseDelete"
-        @cancel="cancelExpenseDelete"
-      />
+      <ExpenseDeleteModal :show="showExpenseDeleteModal" :expenseDescription="expenseToDelete?.description || ''"
+        :expenseAmount="expenseToDelete?.amount || 0" :expenseDate="expenseToDelete?.date || ''"
+        @confirm="confirmExpenseDelete" @cancel="cancelExpenseDelete" />
+
+      <!-- 여행 삭제 확인 모달 -->
+      <div class="modal-overlay" v-if="showDeleteTravelModal" @click="closeDeleteTravelModal">
+        <div class="modal-container delete-travel-modal" @click.stop>
+          <div class="modal-header">
+            <h3>여행 삭제 확인</h3>
+          </div>
+          <div class="modal-body">
+            <div class="travel-info">
+              <div class="travel-detail">
+                <span class="travel-period" style="color: black;">{{ tripData.title }}</span>
+              </div>
+              <div class="travel-period" v-if="tripData.startDate && tripData.endDate">
+                {{ formatDateFull(tripData.startDate) }} ~ {{ formatDateFull(tripData.endDate) }}
+              </div>
+            </div>
+            <p class="warning-text">삭제된 여행은 복구할 수 없습니다.</p>
+          </div>
+          <div class="modal-footer">
+            <button class="cancel-btn" @click="closeDeleteTravelModal">취소</button>
+            <button class="delete-btn" @click="confirmDeleteTravel">삭제</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -595,7 +599,7 @@ import {
   deleteTravelPayment,
   updateTravelPayment
 } from '@/services/api';
-import { apiGet, apiPost, apiDelete } from '@/services/auth'; // API 호출 함수를 auth.js에서 가져옴
+import { apiGet, apiPost, apiDelete, apiPut } from '@/services/auth'; // API 호출 함수를 auth.js에서 가져옴
 import PaymentModal from '@/components/PaymentModal.vue'; // Added import
 
 export default {
@@ -684,6 +688,7 @@ export default {
             destination: backendData.location,
             notes: backendData.memo || '',
             budget: backendData.totalBudget,
+            peoples: backendData.peoples || 1,
             expenses: []
           };
 
@@ -707,7 +712,7 @@ export default {
             // travelAreas를 일정으로 매핑
             backendData.travelAreas.forEach(area => {
               const dayIndex = area.travelDayId - 1; // 1-based를 0-based로 변환
-              
+
               if (dayIndex >= 0 && dayIndex < tripDays.value.length) {
                 const scheduleItem = {
                   time: area.startTime ? formatTimeFromArray(area.startTime) : '',
@@ -748,7 +753,7 @@ export default {
           }
 
           console.log('여행 데이터 로드 완료:', tripData.value);
-          
+
           // 인증 데이터 로드
           await loadVerificationData();
         } else {
@@ -800,6 +805,7 @@ export default {
       destination: '',
       notes: '',
       budget: 0,
+      peoples: 1,
       expenses: []
     });
 
@@ -1089,15 +1095,15 @@ export default {
         dayItems.forEach((item, index) => {
           console.log(`Processing item ${index}:`, item);
           console.log(`Item coords:`, item.coords);
-          
+
           if (!item.coords) {
             console.log("No coordinates for item:", item);
-            
+
             // 주소가 있으면 geocoding 시도
             if (item.address || item.activity) {
               const searchAddress = item.address || item.activity;
               console.log(`Attempting to geocode address: ${searchAddress}`);
-              
+
               geocodeAddress(searchAddress, (coords) => {
                 if (coords) {
                   console.log(`Geocoded coordinates for ${searchAddress}:`, coords);
@@ -1306,7 +1312,7 @@ export default {
         placeName: item.activity || '장소',
         tauid: item.tauid
       };
-      
+
       // 삭제 모달 표시
       showDeleteModal.value = true;
     };
@@ -1315,28 +1321,28 @@ export default {
     const confirmDelete = async () => {
       try {
         const { dayIndex, item, tauid } = deleteTargetInfo.value;
-        
+
         // API를 통해 삭제 요청
         if (tauid) {
           await apiDelete(`/travel-areas/${tauid}`);
           displayToast('일정이 성공적으로 삭제되었습니다.', 'success');
         }
-        
+
         // 로컬 데이터에서 tauid로 해당 아이템을 찾아서 삭제
-        const itemIndex = tripDays.value[dayIndex].items.findIndex(scheduleItem => 
+        const itemIndex = tripDays.value[dayIndex].items.findIndex(scheduleItem =>
           scheduleItem.tauid === tauid || scheduleItem === item
         );
-        
+
         if (itemIndex !== -1) {
           tripDays.value[dayIndex].items.splice(itemIndex, 1);
         }
-        
+
         // 모달 닫기
         showDeleteModal.value = false;
-        
+
         // 화면 갱신
         forceRefresh();
-        
+
       } catch (error) {
         console.error('일정 삭제 실패:', error);
         displayToast('일정 삭제에 실패했습니다. 다시 시도해주세요.', 'error');
@@ -1474,10 +1480,10 @@ export default {
     const openPlaceSearch = () => {
       console.log('openPlaceSearch 함수 호출됨');
       console.log('현재 activeDay:', activeDay.value);
-      
+
       selectedDay.value = activeDay.value;
       isPlaceSearchModalOpen.value = true;
-      
+
       console.log('isPlaceSearchModalOpen 값 변경:', isPlaceSearchModalOpen.value);
     };
 
@@ -1712,7 +1718,7 @@ export default {
         const startDate = new Date(tripData.value.startDate);
         const travelDate = new Date(startDate);
         travelDate.setDate(startDate.getDate() + selectedDay.value);
-        
+
         // 시간 정보 추가
         const [hours, minutes] = visitTime.value.split(':');
         travelDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
@@ -2198,12 +2204,12 @@ export default {
 
         // 수정 모드 종료
         editingExpense.value = null;
-        
+
         displayToast('지출 내역이 수정되었습니다.', 'success');
       } catch (error) {
         console.error('지출 수정 오류:', error);
         displayToast('지출 수정 중 오류가 발생했습니다.', 'error');
-        
+
         // 오류 발생 시 원본 값으로 복원
         cancelExpenseEdit();
       }
@@ -2234,8 +2240,28 @@ export default {
     };
 
     // 여행 기본 정보 수정 저장
-    const saveEditInfo = () => {
-      isEditingInfo.value = false;
+    const saveEditInfo = async () => {
+      try {
+        const updateData = {
+          location: tripData.value.destination,
+          title: tripData.value.title,
+          peoples: tripData.value.peoples,
+          memo: tripData.value.notes,
+          totalBudget: tripData.value.budget
+        };
+
+        const response = await apiPut(`/travels/${tuid.value}`, updateData);
+
+        if (response.status === 'success') {
+          displayToast('여행 정보가 성공적으로 수정되었습니다.', 'success');
+          isEditingInfo.value = false;
+        } else {
+          throw new Error('여행 정보 수정에 실패했습니다.');
+        }
+      } catch (error) {
+        console.error('여행 정보 수정 실패:', error);
+        displayToast('여행 정보 수정에 실패했습니다.', 'error');
+      }
     };
 
     // 여행 기본 정보 수정 취소
@@ -3123,26 +3149,26 @@ export default {
     // 관리자 인증 함수 추가
     const adminVerify = () => {
       if (!verificationPhotoPreview.value) return;
-      
+
       // 로딩 상태 설정
       isVerifying.value = true;
-      
+
       console.log('===== 관리자 인증 시작 =====');
-      
+
       // 관리자 인증은 GPS 체크를 우회하고 항상 성공 처리
       verificationResult.value = {
         success: true,
         message: '관리자 권한으로 인증되었습니다!'
       };
-      
+
       // 리뷰 모달 표시를 위해 필요한 거리 정보 설정
       if (distanceFromTarget.value === null) {
         distanceFromTarget.value = 0; // 거리를 0으로 설정하여 항상 통과하도록 함
       }
-      
+
       console.log('관리자 권한으로 인증 성공 처리됨');
       console.log('===== 관리자 인증 완료 =====');
-      
+
       // 로딩 상태 해제
       isVerifying.value = false;
     };
@@ -3156,9 +3182,9 @@ export default {
 
       try {
         const data = tempVerificationData.value;
-        
+
         console.log('ElasticSearch에 최종 저장 시작...');
-        
+
         // ElasticSearch에 저장
         const esResponse = await saveToElasticsearch(
           data.imageId,
@@ -3180,13 +3206,13 @@ export default {
           tuid.value, // p_tuid: 해당 여행 고유번호 (props에서)
           data.item.tauid // p_tauid: 해당 travelArea 고유번호
         );
-        
+
         if (!esResponse || !esResponse._id) {
           throw new Error('Elasticsearch 저장에 실패했습니다.');
         }
-        
+
         console.log('ElasticSearch 저장 완료:', data.imageId);
-        
+
         // 실제 아이템에 인증 정보 저장
         data.item.verified = true;
         data.item.verifiedAt = data.verifiedAt;
@@ -3194,18 +3220,18 @@ export default {
         data.item.photoMetadata = photoMetadata.value;
         data.item.rating = reviewRating.value;
         data.item.review = reviewText.value;
-        
+
         displayToast('방문 인증이 저장되었습니다!', 'success');
-        
+
         // 상태 초기화 및 모달 닫기
         loadingPhase.value = 'imageAnalysis'; // 초기 상태로 재설정
         isVerifying.value = false; // 인증 상태 해제
-        
+
         setTimeout(() => {
           showVerificationModal.value = false;
           tempVerificationData.value = null; // 임시 데이터 초기화
         }, 1000);
-        
+
       } catch (error) {
         console.error('인증 결과 저장 중 오류:', error);
         displayToast(`저장 중 오류가 발생했습니다: ${error.message}`, 'error');
@@ -3257,13 +3283,13 @@ export default {
     const fetchExpensesOnly = async () => {
       try {
         console.log('지출 데이터만 다시 로드 중...');
-        
+
         // API에서 전체 데이터를 가져와서 지출 부분만 업데이트
         const response = await apiGet(`/travels/${tuid.value}/detail`);
-        
+
         if (response.status === 'success' && response.data) {
           const backendData = response.data;
-          
+
           // travelPayments 데이터만 업데이트
           if (backendData.travelPayments && Array.isArray(backendData.travelPayments)) {
             tripData.value.expenses = backendData.travelPayments.map(payment => ({
@@ -3326,10 +3352,10 @@ export default {
         }
 
         console.log('인증 데이터 로드 시작:', { userId: userId.value, tuid: tuid.value });
-        
+
         const verifications = await getUserTravelVerifications(userId.value, tuid.value);
         verificationData.value = verifications;
-        
+
         // 각 schedule item에 인증 정보 매핑
         tripDays.value.forEach(day => {
           day.items.forEach(item => {
@@ -3343,7 +3369,7 @@ export default {
             }
           });
         });
-        
+
         console.log('인증 데이터 매핑 완료:', verificationData.value);
       } catch (error) {
         console.error('인증 데이터 로드 실패:', error);
@@ -3390,6 +3416,36 @@ export default {
     const cancelExpenseDelete = () => {
       showExpenseDeleteModal.value = false;
       expenseToDelete.value = null;
+    };
+
+    // 여행 삭제 모달 관련 상태
+    const showDeleteTravelModal = ref(false);
+
+    // 여행 삭제 모달 열기
+    const openDeleteTravelModal = () => {
+      showDeleteTravelModal.value = true;
+    };
+
+    // 여행 삭제 모달 닫기
+    const closeDeleteTravelModal = () => {
+      showDeleteTravelModal.value = false;
+    };
+
+    // 여행 삭제 확인
+    const confirmDeleteTravel = async () => {
+      try {
+        await apiDelete(`/travels/${tuid.value}`);
+        displayToast('여행이 성공적으로 삭제되었습니다.', 'success');
+        showDeleteTravelModal.value = false;
+
+        // 여행 목록 페이지로 이동
+        setTimeout(() => {
+          window.location.href = '/mytravel';
+        }, 1000);
+      } catch (error) {
+        console.error('여행 삭제 실패:', error);
+        displayToast('여행 삭제에 실패했습니다.', 'error');
+      }
     };
 
     return {
@@ -3541,7 +3597,11 @@ export default {
       showExpenseDeleteModal,
       expenseToDelete,
       confirmExpenseDelete,
-      cancelExpenseDelete
+      cancelExpenseDelete,
+      showDeleteTravelModal,
+      openDeleteTravelModal,
+      closeDeleteTravelModal,
+      confirmDeleteTravel
     };
   }
 };
@@ -5946,4 +6006,260 @@ textarea {
   box-shadow: 0 4px 12px rgba(66, 153, 225, 0.4);
   background: linear-gradient(135deg, #3182ce 0%, #2c5282 100%);
 }
+
+/* 여행 삭제 버튼 스타일 */
+.delete-travel-btn {
+  background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 12px rgba(229, 62, 62, 0.3);
+}
+
+.delete-travel-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(229, 62, 62, 0.4);
+  background: linear-gradient(135deg, #c53030 0%, #9c2626 100%);
+}
+
+.delete-travel-btn svg {
+  transition: transform 0.3s ease;
+}
+
+.delete-travel-btn:hover svg {
+  transform: scale(1.1);
+}
+
+/* 여행 삭제 모달 스타일 */
+.delete-travel-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 0;
+  min-width: 400px;
+  max-width: 500px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+.delete-travel-modal .modal-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.delete-travel-modal .modal-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.delete-travel-modal .modal-body {
+  padding: 20px 24px;
+}
+
+.delete-travel-modal .travel-info {
+  background: linear-gradient(145deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.delete-travel-modal .travel-detail {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.delete-travel-modal .travel-title {
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 1.1rem;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  display: block;
+}
+
+.delete-travel-modal .travel-period {
+  font-size: 0.9rem;
+  color: #718096;
+  text-align: center;
+}
+
+.delete-travel-modal .warning-text {
+  font-size: 0.9rem;
+  color: #e53e3e;
+  margin: 0;
+  text-align: center;
+  font-weight: 500;
+}
+
+.delete-travel-modal .modal-footer {
+  padding: 16px 24px 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.delete-travel-modal .cancel-btn {
+  padding: 10px 20px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  color: #4a5568;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  font-size: 0.95rem;
+}
+
+.delete-travel-modal .cancel-btn:hover {
+  background: #f7fafc;
+  border-color: #cbd5e0;
+  transform: translateY(-1px);
+}
+
+.delete-travel-modal .delete-btn {
+  padding: 10px 20px;
+  border: none;
+  background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  font-size: 0.95rem;
+}
+
+.delete-travel-modal .delete-btn:hover {
+  background: linear-gradient(135deg, #c53030 0%, #9c2626 100%);
+  transform: translateY(-1px);
+}
+
+/* 여행 기본 정보 그리드 스타일 */
+.info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.info-item.info-memo-wide {
+  grid-column: span 2;
+}
+
+.info-label {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #2b6cb0;
+}
+
+.info-value {
+  font-size: 1rem;
+  color: #2d3748;
+  font-weight: 500;
+}
+
+.memo-text {
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+/* 섹션 헤더 스타일 */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.section-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* 정보 수정 버튼 스타일 (파란색) */
+.section-actions .edit-info-btn {
+  position: static !important;
+  background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(66, 153, 225, 0.3);
+}
+
+.section-actions .edit-info-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(66, 153, 225, 0.4);
+  background: linear-gradient(135deg, #3182ce 0%, #2c5282 100%);
+}
+
+.section-actions .edit-info-btn svg {
+  transition: transform 0.3s ease;
+}
+
+.section-actions .edit-info-btn:hover svg {
+  transform: scale(1.1);
+}
+
+/* 여행 삭제 버튼 스타일 */
+.section-actions .delete-travel-btn {
+  background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(229, 62, 62, 0.3);
+}
+
+.section-actions .delete-travel-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(229, 62, 62, 0.4);
+  background: linear-gradient(135deg, #c53030 0%, #9c2626 100%);
+}
+
+.section-actions .delete-travel-btn svg {
+  transition: transform 0.3s ease;
+}
+
+.section-actions .delete-travel-btn:hover svg {
+  transform: scale(1.1);
+}
+
 </style>
