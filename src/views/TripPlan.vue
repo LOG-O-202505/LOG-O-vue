@@ -3078,7 +3078,7 @@ export default {
           locationInfo,
           locationText,
           // ElasticSearch 저장에 필요한 추가 데이터
-          p_id: testDataInputs.value.p_id,
+          p_id: item.place?.puid || item.puid || testDataInputs.value.p_id, // 실제 인증 대상 장소의 puid 사용
           u_id: testDataInputs.value.u_id,
           u_age: testDataInputs.value.u_age,
           u_gender: testDataInputs.value.u_gender,
@@ -3166,7 +3166,36 @@ export default {
         distanceFromTarget.value = 0; // 거리를 0으로 설정하여 항상 통과하도록 함
       }
 
+      // 관리자 인증용 tempVerificationData 설정
+      const item = verifyingItem.value;
+      tempVerificationData.value = {
+        item,
+        imageId: `admin-verification-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`,
+        verifiedAt: new Date().toISOString(),
+        engDescription: '관리자 권한으로 인증됨',
+        analysisResult: { confidence: 1.0, isValid: true },
+        featuresVector: new Array(10).fill(0.5), // 더미 벡터
+        koreanDescription: '관리자 권한으로 인증된 방문',
+        extractedKeywords: ['관리자', '인증'],
+        placeNameTokens: [item.activity],
+        uniqueTags: ['관리자', '인증', item.activity],
+        description: '관리자 권한으로 인증된 방문',
+        locationInfo: {
+          latitude: item.latitude || item.coords?.lat,
+          longitude: item.longitude || item.coords?.lng,
+          address: item.address || item.location
+        },
+        locationText: item.location || item.address || item.activity,
+        // ElasticSearch 저장에 필요한 추가 데이터
+        p_id: item.place?.puid || item.puid || testDataInputs.value.p_id, // 실제 인증 대상 장소의 puid 사용
+        u_id: testDataInputs.value.u_id,
+        u_age: testDataInputs.value.u_age,
+        u_gender: testDataInputs.value.u_gender,
+        addressName: item.location || item.address || item.activity
+      };
+
       console.log('관리자 권한으로 인증 성공 처리됨');
+      console.log('tempVerificationData 설정 완료:', tempVerificationData.value);
       console.log('===== 관리자 인증 완료 =====');
 
       // 로딩 상태 해제
@@ -3184,6 +3213,12 @@ export default {
         const data = tempVerificationData.value;
 
         console.log('ElasticSearch에 최종 저장 시작...');
+        console.log('=== p_id 확인 ===');
+        console.log('data.item.place:', data.item.place);
+        console.log('data.item.place?.puid:', data.item.place?.puid);
+        console.log('data.item.puid:', data.item.puid);
+        console.log('최종 p_id:', data.p_id);
+        console.log('================');
 
         // ElasticSearch에 저장
         const esResponse = await saveToElasticsearch(
