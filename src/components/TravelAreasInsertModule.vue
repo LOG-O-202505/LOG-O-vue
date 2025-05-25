@@ -259,7 +259,7 @@ export default {
         localStorage.setItem('wishlistPlaces', JSON.stringify(wishlistPlaces.value));
         emit('show-toast', '찜 목록에 추가되었습니다.', 'success');
       } else {
-        emit('show-toast', '이미 찜 목록에 있는 장소입니다.', 'info');
+        emit('show-toast', '이미 찜 목록에 있는 장소입니다.', 'success');
       }
     };
 
@@ -344,7 +344,7 @@ export default {
 
       try {
         isAdding.value = true;
-        emit('show-toast', '일정을 추가하는 중...', 'info');
+        emit('show-toast', '일정을 추가하는 중...', 'processing');
 
         // 좌표 추출
         const latitude = parseFloat(selectedPlace.value.y);
