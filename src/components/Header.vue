@@ -27,7 +27,6 @@
         <div class="nav-group">
           <!-- 로그인 모달 컴포넌트로 교체 -->
           <LoginModal />
-          <router-link to="/plan" class="nav-item">PLANNER</router-link>
           <router-link to="/mytravel" class="nav-item">MY JOURNEY</router-link>
         </div>
       </div>

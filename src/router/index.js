@@ -36,9 +36,10 @@ const routes = [
     component: MyTravel
   },
   {
-    path: '/plan',
+    path: '/plan/:tuid',
     name: 'TripPlan',
-    component: TripPlan
+    component: TripPlan,
+    props: true
   },
   {
     path: '/imgsearch',

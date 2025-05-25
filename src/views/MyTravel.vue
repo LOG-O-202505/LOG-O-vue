@@ -333,7 +333,7 @@
             <div v-for="yearGroup in groupedTravelTimeline" :key="yearGroup.year" class="timeline-year">
               <div class="year-label">{{ yearGroup.year }}년</div>
               <div class="trips-wrapper">
-                <div v-for="(travel, index) in yearGroup.trips" :key="index" class="trip-item" @click="navigateToPlan()">
+                <div v-for="(travel, index) in yearGroup.trips" :key="index" class="trip-item" @click="navigateToPlan(travel.tuid)">
                   <div class="trip-date">{{ formatTravelDate(travel.startDate, travel.endDate) }}</div>
                   <div class="trip-image-preview">
                     <!-- 여행 이미지가 없으면 기본 이미지 사용 -->
@@ -1322,8 +1322,8 @@ export default {
     };
 
     // 여행 계획 페이지로 이동하는 함수
-    const navigateToPlan = () => {
-      router.push('/plan');
+    const navigateToPlan = (tuid) => {
+      router.push({ name: 'TripPlan', params: { tuid } });
     };
 
     // 시군구 지도 렌더링 함수
