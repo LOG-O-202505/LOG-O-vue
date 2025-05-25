@@ -271,7 +271,16 @@
 
         <!-- 예산 계획 -->
         <div class="plan-section">
-          <h1 class="section-title">지출 관리</h1>
+          <div class="section-header">
+            <h1 class="section-title">지출 관리</h1>
+            <button class="add-expense-btn-small" @click="openPaymentModal">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              지출 추가
+            </button>
+          </div>
           <div class="budget-container">
             <div class="budget-summary">
               <div class="budget-card">
@@ -350,17 +359,6 @@
                   </div>
                 </div>
               </div>
-
-              <!-- 지출 추가 버튼 -->
-              <div class="add-expense-buttons">
-                <button class="add-expense-btn" @click="openPaymentModal">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                  </svg>
-                  지출 내역 추가
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -369,7 +367,7 @@
       <!-- PaymentModal -->
       <PaymentModal 
         :show="showPaymentModal" 
-        :travel-id="1"
+        :travel-id="tuid"
         :travel-roots="travelRoots"
         @close="closePaymentModal" 
         @add-expense="handleAddExpense"
@@ -493,7 +491,7 @@
         :isOpen="isPlaceSearchModalOpen"
         :selectedDay="selectedDay"
         :tripStartDate="tripData.startDate"
-        :travelId="1"
+        :travelId="tuid"
         @close="closePlaceSearch"
         @place-added="handlePlaceAdded"
         @show-toast="handleToast"
@@ -652,7 +650,7 @@ export default {
         loadingError.value = null;
 
         // 새로운 API 엔드포인트 사용
-        const response = await apiGet(`/travels/1/detail`);
+        const response = await apiGet(`/travels/${tuid.value}/detail`);
 
         if (response.status === 'success' && response.data) {
           const backendData = response.data;
@@ -1695,7 +1693,7 @@ export default {
 
         // API 요청 데이터 구성
         const requestData = {
-          travel_id: 1, // 현재 여행 ID (실제로는 props나 현재 데이터에서 가져와야 함)
+          travel_id: tuid.value, // 현재 여행 ID (실제로는 props나 현재 데이터에서 가져와야 함)
           travel_day_id: selectedDay.value + 1, // 1-based index
           region: locationCodes.province_code,
           sig: locationCodes.city_code,
@@ -3199,10 +3197,42 @@ export default {
       displayToast('지출 내역이 추가되었습니다.', 'success');
     };
 
+    // 지출 데이터만 부분적으로 로드하는 함수
+    const fetchExpensesOnly = async () => {
+      try {
+        console.log('지출 데이터만 다시 로드 중...');
+        
+        // API에서 전체 데이터를 가져와서 지출 부분만 업데이트
+        const response = await apiGet(`/travels/${tuid.value}/detail`);
+        
+        if (response.status === 'success' && response.data) {
+          const backendData = response.data;
+          
+          // travelPayments 데이터만 업데이트
+          if (backendData.travelPayments && Array.isArray(backendData.travelPayments)) {
+            tripData.value.expenses = backendData.travelPayments.map(payment => ({
+              id: payment.tpuid,
+              description: payment.history,
+              amount: payment.cost,
+              date: formatDateFromArray(payment.paymentTime),
+              time: formatTimeFromPaymentArray(payment.paymentTime)
+            }));
+
+            console.log('지출 데이터 업데이트 완료:', tripData.value.expenses);
+          }
+        }
+      } catch (error) {
+        console.error('지출 데이터 로드 실패:', error);
+        // 실패 시 전체 데이터 로드로 폴백
+        console.log('전체 데이터 로드로 폴백...');
+        await fetchTravelData();
+      }
+    };
+
     const handlePaymentAdded = async () => {
-      console.log("지출 데이터가 서버에 추가됨, 여행 데이터를 다시 로드합니다.");
-      // 여행 데이터를 다시 로드하여 최신 지출 내역을 가져옴
-      await fetchTravelData();
+      console.log("지출 데이터가 서버에 추가됨, 지출 데이터만 다시 로드합니다.");
+      // 지출 데이터만 다시 로드하여 스크롤 위치 유지
+      await fetchExpensesOnly();
       displayToast('지출 내역이 성공적으로 추가되었습니다!', 'success');
     };
 
@@ -3276,6 +3306,7 @@ export default {
       isLoading,
       loadingError,
       fetchTravelData,
+      fetchExpensesOnly,
       travelRoots,
 
       tripData,
@@ -3803,7 +3834,7 @@ textarea {
   align-items: center;
   gap: 0.5rem;
   transition: all 0.3s ease;
-  margin-top: 0.5rem;
+  margin: 0;
 }
 
 .add-schedule-btn:hover,
@@ -4537,12 +4568,14 @@ textarea {
 
 .add-expense-buttons {
   display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  align-items: center;
 }
 
+.add-schedule-btn,
 .add-expense-btn {
-  width: 48%;
+  width: 100%;
   padding: 0.75rem;
   background-color: #ebf8ff;
   border: 1px dashed #4299e1;
@@ -4553,9 +4586,12 @@ textarea {
   display: flex;
   justify-content: center;
   align-items: center;
+  gap: 0.5rem;
   transition: all 0.3s ease;
+  margin: 0;
 }
 
+.add-schedule-btn:hover,
 .add-expense-btn:hover {
   background-color: #bee3f8;
 }
@@ -5785,5 +5821,34 @@ textarea {
 .delete-btn.disabled:hover {
   background-color: #e5e7eb;
   transform: none;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.add-expense-btn-small {
+  background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 8px rgba(66, 153, 225, 0.3);
+}
+
+.add-expense-btn-small:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(66, 153, 225, 0.4);
+  background: linear-gradient(135deg, #3182ce 0%, #2c5282 100%);
 }
 </style>
