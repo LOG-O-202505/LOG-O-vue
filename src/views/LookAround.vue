@@ -113,7 +113,7 @@
   import { regionSpecialtyData, sigSpecialtyData } from '@/data/tmpData.js';
   import config from '@/config.js';
   import regionMapping from '@/data/regionMapping.js';
-  import { getUserLikes, addUserLike, removeUserLike } from '@/services/api.js';
+  import { getUserLikes, addUserLike, removeUserLikeByAddress, getPlaceDetails, reverseGeocode, getLocationCodes } from '@/services/api.js';
   
   export default {
     name: 'LookAroundAll',
@@ -476,8 +476,10 @@
           console.log('사용자 관심 장소 로드 중... (LookAround)');
           const response = await getUserLikes();
           
-          if (response && response.userLikes) {
-            userLikes.value = response.userLikes;
+          console.log('getUserLikes API 응답 (LookAround):', response);
+          
+          if (response && response.status === 'success' && response.data) {
+            userLikes.value = response.data;
             console.log('관심 장소 로드 완료 (LookAround):', userLikes.value.length, '개');
           } else {
             console.log('관심 장소가 없거나 응답 형식이 올바르지 않습니다 (LookAround):', response);
@@ -526,44 +528,114 @@
           
           if (isInWishlist(item.id)) {
             // 선호 장소에서 제거 - address 기반 삭제 API 사용
-            console.log('선호 장소에서 제거 중... (LookAround)');
-            await removeUserLike(address);
-            console.log('선호 장소에서 제거 완료 (LookAround)');
-          } else {
-            // 선호 장소에 추가
-            console.log('선호 장소에 추가 중... (LookAround)');
+            console.log('선호 장소 삭제 요청 (LookAround):', address);
             
-            // TripPlan.vue와 동일한 구조로 데이터 준비
-            const placeData = {
-              address: address,
-              region: item.region || item._source?.p_region || 1,
-              sig: item.sig || item._source?.p_sig || 1,
-              name: itemName,
-              latitude: 37.5665, // 기본값
-              longitude: 126.9780
-            };
+            const response = await removeUserLikeByAddress(address);
             
-            // 좌표 정보 추출
-            if (item.location_data) {
-              placeData.latitude = item.location_data.latitude || placeData.latitude;
-              placeData.longitude = item.location_data.longitude || placeData.longitude;
-            } else if (item._source && item._source.location_data) {
-              placeData.latitude = item._source.location_data.latitude || placeData.latitude;
-              placeData.longitude = item._source.location_data.longitude || placeData.longitude;
+            if (response.status === 'success') {
+              // 로컬 데이터 업데이트
+              userLikes.value = response.data || [];
+              console.log(`${itemName}이(가) 선호 장소에서 제거되었습니다. (LookAround)`);
+            } else {
+              throw new Error('선호 장소 삭제에 실패했습니다.');
             }
             
-            console.log('API에 전송할 데이터 (LookAround):', placeData);
+          } else {
+            // 선호 장소에 추가 - TripPlan.vue 패턴 적용
+            console.log('선호 장소 추가 요청 시작 (LookAround)');
             
-            await addUserLike(placeData);
-            console.log('선호 장소에 추가 완료 (LookAround)');
+            // 좌표 추출 - location_data를 우선적으로 사용
+            let latitude, longitude;
+            
+            // 1. _source.location_data에서 시도 (가장 안정적)
+            if (item._source?.location_data?.latitude && item._source?.location_data?.longitude) {
+              latitude = parseFloat(item._source.location_data.latitude);
+              longitude = parseFloat(item._source.location_data.longitude);
+              console.log('좌표 소스: _source.location_data (LookAround)');
+            }
+            // 2. item.location_data에서 시도
+            else if (item.location_data?.latitude && item.location_data?.longitude) {
+              latitude = parseFloat(item.location_data.latitude);
+              longitude = parseFloat(item.location_data.longitude);
+              console.log('좌표 소스: item.location_data (LookAround)');
+            }
+            // 3. getPlaceDetails API를 사용하여 정확한 좌표 가져오기
+            else if (item._source?.p_id || item.p_id || item.id) {
+              try {
+                console.log('getPlaceDetails API 호출로 좌표 조회... (LookAround)');
+                const puid = item._source?.p_id || item.p_id || item.id;
+                const response = await getPlaceDetails(puid, address);
+                
+                if (response.status === 'success' && response.data && response.data.latitude && response.data.longitude) {
+                  latitude = parseFloat(response.data.latitude);
+                  longitude = parseFloat(response.data.longitude);
+                  console.log('좌표 소스: getPlaceDetails API (LookAround)');
+                } else {
+                  console.warn('getPlaceDetails API에서 좌표를 가져올 수 없음 (LookAround):', response);
+                }
+              } catch (detailError) {
+                console.warn('getPlaceDetails 호출 실패 (LookAround):', detailError);
+              }
+            }
+            
+            // 좌표 검증
+            if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+              console.error('좌표 검증 실패 (LookAround):', { latitude, longitude });
+              throw new Error('위치 정보를 찾을 수 없습니다. 정확한 좌표가 필요합니다.');
+            }
+            
+            console.log('추출된 좌표 (LookAround):', { latitude, longitude });
+            
+            // reverse geocoding을 통해 region과 sig 추출 (TripPlan.vue와 동일한 방식)
+            console.log('역지오코딩 시작... (LookAround)', { latitude, longitude });
+            const geoData = await reverseGeocode(latitude, longitude);
+            console.log('역지오코딩 결과 (LookAround):', geoData);
+
+            if (!geoData) {
+              throw new Error('위치 정보를 가져올 수 없습니다.');
+            }
+
+            const locationCodes = getLocationCodes(geoData);
+            console.log('추출된 지역 코드 (LookAround):', locationCodes);
+
+            if (!locationCodes.province_code || !locationCodes.city_code) {
+              throw new Error('지역 코드를 추출할 수 없습니다.');
+            }
+
+            // API 요청 데이터 구성 (TripPlan.vue와 동일한 형식)
+            const placeData = {
+              address: address,
+              region: parseInt(locationCodes.province_code, 10),
+              sig: parseInt(locationCodes.city_code, 10),
+              name: itemName,
+              latitude: latitude,
+              longitude: longitude
+            };
+
+            console.log('=== API 요청 데이터 (LookAround) ===');
+            console.log(JSON.stringify(placeData, null, 2));
+
+            // API 호출
+            console.log('addUserLike API 호출 시작... (LookAround)');
+            const response = await addUserLike(placeData);
+            console.log('addUserLike API 응답 (LookAround):', response);
+            
+            if (response.status === 'success' && response.data) {
+              // 로컬 데이터 업데이트
+              userLikes.value = response.data;
+              console.log(`${itemName}이(가) 선호 장소에 추가되었습니다. (LookAround)`);
+              console.log('관심 장소 추가 완료, 목록 업데이트 (LookAround):', userLikes.value);
+            } else {
+              console.error('API 응답 상태 오류 (LookAround):', response);
+              throw new Error('선호 장소 추가에 실패했습니다.');
+            }
           }
           
-          // 성공 후 관심 장소 목록 새로고침
-          await loadUserLikes();
-          
         } catch (error) {
-          console.error('선호 장소 토글 오류 (LookAround):', error);
-          alert(`관심 장소 ${isInWishlist(item.id) ? '제거' : '추가'} 중 오류가 발생했습니다: ${error.message}`);
+          console.error('=== 선호 장소 토글 오류 (LookAround) ===');
+          console.error('오류 상세:', error);
+          console.error('오류 스택:', error.stack);
+          alert(`오류가 발생했습니다: ${error.message}`);
         }
       };
       
