@@ -810,6 +810,15 @@ export default {
 </script>
 
 <style scoped>
+/* 전체 모달에 Noto Sans KR 폰트 적용 */
+.place-detail-modal {
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.place-detail-modal * {
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
 /* 모달 오버레이 및 공통 모달 스타일 */
 .modal-overlay {
   position: fixed;
@@ -886,6 +895,7 @@ export default {
 .modal-location {
   color: #7f8c8d; /* Softer grey */
   font-size: 0.9rem; /* Adjusted size */
+  font-family: 'Noto Sans KR', sans-serif;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -973,6 +983,7 @@ export default {
   text-align: center;
   padding: 20px;
   font-size: 0.9rem;
+  font-family: 'Noto Sans KR', sans-serif;
 }
 
 /* 이미지 플레이스홀더 스타일 */
@@ -985,6 +996,7 @@ export default {
   background-color: #f0f2f5;
   color: #95a5a6;
   font-size: 1rem;
+  font-family: 'Noto Sans KR', sans-serif;
   font-weight: 500;
 }
 
@@ -1017,6 +1029,7 @@ export default {
   background-color: #eaf6ff; /* Lighter blue */
   color: #2979ff; /* Brighter blue text */
   font-size: 0.85rem; /* Adjusted size */
+  font-family: 'Noto Sans KR', sans-serif;
   padding: 0.4rem 0.9rem; /* Adjusted padding */
   border-radius: 16px; /* Pill shape */
   cursor: pointer;
@@ -1033,6 +1046,7 @@ export default {
 /* 설명 텍스트 */
 .detail-description {
   font-size: 0.95rem; /* Adjusted size */
+  font-family: 'Noto Sans KR', sans-serif;
   line-height: 1.75; /* Improved readability */
   color: #52616B; /* Softer black */
   margin: 0;
@@ -1054,6 +1068,7 @@ export default {
 .dimension-name {
   width: 130px; /* Adjusted width */
   font-size: 0.9rem;
+  font-family: 'Noto Sans KR', sans-serif;
   color: #52616B;
   font-weight: 500;
 }
@@ -1076,6 +1091,7 @@ export default {
 .dimension-value {
   width: 35px; /* Adjusted width */
   font-size: 0.85rem;
+  font-family: 'Noto Sans KR', sans-serif;
   font-weight: 500;
   color: #52616B;
   text-align: right;
@@ -1115,6 +1131,7 @@ export default {
 
 .reviewer-name {
   font-weight: 600;
+  font-family: 'Noto Sans KR', sans-serif;
   color: #2c3e50;
   font-size: 0.9rem;
 }
@@ -1122,12 +1139,14 @@ export default {
 .review-date {
   color: #6c757d;
   font-size: 0.8rem;
+  font-family: 'Noto Sans KR', sans-serif;
   margin-top: 2px;
 }
 
 .reviewer-details {
   color: #6c757d;
   font-size: 0.75rem;
+  font-family: 'Noto Sans KR', sans-serif;
   margin-top: 2px;
   font-style: italic;
 }
@@ -1151,6 +1170,7 @@ export default {
   color: #495057;
   line-height: 1.5;
   font-size: 0.9rem;
+  font-family: 'Noto Sans KR', sans-serif;
   margin-top: 0.5rem;
 }
 
@@ -1160,6 +1180,7 @@ export default {
   text-align: center;
   padding: 2rem;
   color: #6c757d;
+  font-family: 'Noto Sans KR', sans-serif;
 }
 
 .reviews-loading .spinner {
@@ -1187,6 +1208,7 @@ export default {
   padding: 0.75rem 1.5rem;
   border-radius: 25px;
   font-size: 0.9rem;
+  font-family: 'Noto Sans KR', sans-serif;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -1227,6 +1249,7 @@ export default {
   padding: 0.6rem 1.25rem; /* Adjusted padding */
   border-radius: 20px; /* Pill shape */
   font-size: 0.9rem;
+  font-family: 'Noto Sans KR', sans-serif;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -1286,6 +1309,7 @@ export default {
 .chart-container h5 {
   font-size: 0.95rem; /* Adjusted size */
   font-weight: 500;
+  font-family: 'Noto Sans KR', sans-serif;
   color: #495057;
   margin-bottom: 1rem; /* Adjusted margin */
   text-align: center;
@@ -1311,6 +1335,7 @@ export default {
   width: 100%;
   color: #7f8c8d; /* Softer grey */
   font-size: 0.85rem;
+  font-family: 'Noto Sans KR', sans-serif;
   background-color: #f0f2f5; /* Lighter background */
   border-radius: 6px;
   padding: 1rem;
@@ -1365,6 +1390,7 @@ export default {
 .gender-label-percent {
   font-size: 0.85rem; /* Adjusted size */
   font-weight: 500;
+  font-family: 'Noto Sans KR', sans-serif;
   color: #343a40;
 }
 
@@ -1401,6 +1427,7 @@ export default {
   justify-content: center;
   padding: 2rem;
   color: #6c757d;
+  font-family: 'Noto Sans KR', sans-serif;
 }
 
 /* Responsive styles */

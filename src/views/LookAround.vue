@@ -86,7 +86,7 @@
     <PlaceDetailModal
       :show="showDetailModal"
       :detail="selectedDetail"
-      :isInWishlist="selectedDetail.id ? isInWishlist(selectedDetail.id) : false"
+      :isInWishlist="selectedDetail._source ? isInWishlist(selectedDetail._source.p_id) : false"
       :ageStats="ageStats"
       :genderStats="genderStats"
       :totalStatsVisits="totalStatsVisits"
@@ -160,28 +160,6 @@
       
       // 위시리스트 관련 상태
       const wishlistItems = ref([]);
-      
-      // 더미 리뷰 데이터
-      const dummyReviews = [
-        {
-          userName: "여행자김",
-          rating: 5,
-          date: "2025-03-15T09:30:00",
-          comment: "정말 아름다운 장소였습니다. 사진으로 보는 것보다 실제로 보면 훨씬 더 멋있어요. 특히 일몰 때 분위기가 환상적이었습니다."
-        },
-        {
-          userName: "배낭여행러",
-          rating: 4,
-          date: "2025-02-20T14:45:00",
-          comment: "전체적으로 좋은 경험이었습니다. 다만 주변에 음식점이 많지 않아서 식사 계획은 미리 세우는 것이 좋을 것 같아요."
-        },
-        {
-          userName: "사진작가이준",
-          rating: 5,
-          date: "2025-01-05T10:15:00",
-          comment: "사진 찍기에 최고의 장소입니다. 맑은 날 방문하시면 환상적인 풍경 사진을 얻을 수 있어요. 개인적으로는 아침 일찍 방문하는 것을 추천합니다."
-        }
-      ];
       
       // 통계 데이터 관련 변수
       const ageStats = ref([]);
@@ -1834,24 +1812,39 @@
       const openDetailModal = (destination) => {
         console.log('상세 모달 열기:', destination);
         
-        selectedDetail.value = {
-          ...destination,
-          name: destination.name,
-          address: destination.address,
-          reviews: dummyReviews
-        };
+        // SearchResultPanel에서 넘어온 데이터인 경우 (id, name 등의 형태) vs 직접 result에서 열 경우 (_id, _score 등의 형태)
+        let detailData;
         
+        if (destination.id !== undefined) {
+          // SearchResultPanel에서 넘어온 데이터 처리
+          detailData = {
+            _id: destination.id,
+            _score: destination._score || 1.0,
+            _source: destination._source || {
+              p_id: destination.id,
+              p_name: destination.name,
+              p_address: destination.address,
+              p_description: destination.description,
+              p_tags: destination.tags || [],
+              p_image: destination.p_image,
+              location_data: destination.location_data
+            }
+          };
+        } else {
+          // 직접 검색 결과에서 온 데이터 처리
+          detailData = destination;
+        }
+        
+        selectedDetail.value = detailData;
         showDetailModal.value = true;
         
-        loadDestinationStats(destination.id);
+        // 통계 데이터 로드
+        const placeId = detailData._source ? detailData._source.p_id : detailData.p_id;
+        loadDestinationStats(placeId);
         
         nextTick(() => {
           // Render charts after modal is visible and data is likely loading/loaded
           renderAgeChart(); 
-          // Initialize map after a short delay for modal animations
-          setTimeout(() => {
-            initDetailMap();
-          }, 100); // Reduced delay slightly, ensure it's enough for modal to be ready
         });
       };
       
@@ -1989,89 +1982,6 @@
         }
       };
       
-      // 상세 모달의 지도 초기화
-      const initDetailMap = async () => {
-        console.log('지도 초기화 함수 호출됨');
-    
-        // Use ref for map container
-        if (!detailMapModalContainerRef.value) {
-          console.error('상세 모달 지도 컨테이너를 찾을 수 없습니다 (ref)');
-          return;
-        }
-        
-        // Clear previous map if any by emptying container
-        detailMapModalContainerRef.value.innerHTML = '';
-
-        try {
-          if (!window.kakao || !window.kakao.maps || !window.kakao.maps.services) {
-            console.log('카카오 맵 API 또는 services 라이브러리 로드 필요');
-            await loadKakaoMapsScript(); // Ensure services are loaded
-            if (!window.kakao || !window.kakao.maps || !window.kakao.maps.services) {
-                console.error('카카오 맵 services 라이브러리 로드 실패 후에도 사용 불가.');
-                return;
-            }
-          }
-          
-          let lat = 37.5665; 
-          let lng = 126.9780;
-          
-          if (selectedDetail.value && selectedDetail.value.location_data) {
-            const locationData = selectedDetail.value.location_data;
-            lat = locationData.latitude || lat;
-            lng = locationData.longitude || lng;
-          } else if (selectedDetail.value && selectedDetail.value.address) {
-            // 주소로 좌표 검색 (Geocoder 사용)
-            const geocoder = new window.kakao.maps.services.Geocoder();
-            const result = await new Promise((resolve, reject) => {
-              geocoder.addressSearch(selectedDetail.value.address, (res, status) => {
-                if (status === window.kakao.maps.services.Status.OK && res.length > 0) {
-                  resolve(res);
-                } else {
-                  reject(status);
-                }
-              });
-            });
-            if (result && result.length > 0) {
-              lat = parseFloat(result[0].y);
-              lng = parseFloat(result[0].x);
-            }
-          }
-          
-          const mapOption = {
-            center: new window.kakao.maps.LatLng(lat, lng),
-            level: 3 
-          };
-          
-          // kakaoMap 변수를 사용하여 모달 내 지도 인스턴스 저장
-          kakaoMap = new window.kakao.maps.Map(detailMapModalContainerRef.value, mapOption);
-          
-          const markerPosition = new window.kakao.maps.LatLng(lat, lng);
-          const marker = new window.kakao.maps.Marker({
-            position: markerPosition
-          });
-          
-          marker.setMap(kakaoMap);
-          
-          const infoContent = `
-            <div style="padding: 5px; text-align: center;">
-              ${selectedDetail.value.name}<br>
-              <a href="https://map.kakao.com/link/map/${selectedDetail.value.name},${lat},${lng}" style="color:blue" target="_blank">큰지도보기</a> 
-              <a href="https://map.kakao.com/link/to/${selectedDetail.value.name},${lat},${lng}" style="color:blue" target="_blank">길찾기</a>
-            </div>`;
-          const infowindow = new window.kakao.maps.InfoWindow({
-            content: infoContent,
-            removable: true
-          });
-          window.kakao.maps.event.addListener(marker, 'click', function() {
-            infowindow.open(kakaoMap, marker);
-          });
-          
-          console.log('카카오 지도 초기화 완료');
-
-        } catch (error) {
-          console.error('상세 모달 지도 초기화 중 오류:', error);
-        }
-      };
 
       return {
         activeRegion,
