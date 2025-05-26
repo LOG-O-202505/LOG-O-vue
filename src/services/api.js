@@ -3094,3 +3094,52 @@ export async function verifyPlaceWithImage(verificationData, imageFile) {
     throw error;
   }
 }
+
+/**
+ * 사용자의 관심 장소 목록을 가져오는 함수
+ * @returns {Promise<object>} - 사용자 관심 장소 목록
+ */
+export const getUserLikes = async () => {
+  try {
+    // auth.js의 apiGet 함수를 import해서 사용
+    const { apiGet } = await import('./auth.js');
+    
+    console.log('사용자 관심 장소 목록 요청');
+    
+    const result = await apiGet('/user-likes/my-likes');
+    
+    console.log('사용자 관심 장소 목록 응답:', result);
+    return result;
+  } catch (error) {
+    console.error('사용자 관심 장소 목록 가져오기 오류:', error);
+    throw error;
+  }
+};
+
+/**
+ * 새로운 관심 장소를 추가하는 함수
+ * @param {Object} placeData - 장소 데이터
+ * @param {string} placeData.address - 장소 주소
+ * @param {number} placeData.region - 지역 코드
+ * @param {number} placeData.sig - 시군구 코드
+ * @param {string} placeData.name - 장소 이름
+ * @param {number} placeData.latitude - 위도
+ * @param {number} placeData.longitude - 경도
+ * @returns {Promise<object>} - 업데이트된 관심 장소 목록
+ */
+export const addUserLike = async (placeData) => {
+  try {
+    // auth.js의 apiPost 함수를 import해서 사용
+    const { apiPost } = await import('./auth.js');
+    
+    console.log('관심 장소 추가 요청:', placeData);
+    
+    const result = await apiPost('/user-likes', placeData);
+    
+    console.log('관심 장소 추가 응답:', result);
+    return result;
+  } catch (error) {
+    console.error('관심 장소 추가 오류:', error);
+    throw error;
+  }
+};

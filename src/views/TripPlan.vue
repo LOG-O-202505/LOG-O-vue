@@ -597,7 +597,9 @@ import {
   analyzeTextWithElasticsearch, // 새로 추가된 함수
   getUserTravelVerifications,
   deleteTravelPayment,
-  updateTravelPayment
+  updateTravelPayment,
+  getUserLikes,
+  addUserLike
 } from '@/services/api';
 import { apiGet, apiPost, apiDelete, apiPut } from '@/services/auth'; // API 호출 함수를 auth.js에서 가져옴
 import PaymentModal from '@/components/PaymentModal.vue'; // Added import
@@ -1494,13 +1496,39 @@ export default {
     };
 
     // 장소 검색 모달 열기
-    const openPlaceSearch = () => {
+    const openPlaceSearch = async () => {
       console.log('openPlaceSearch 함수 호출됨');
       console.log('현재 activeDay:', activeDay.value);
 
       selectedDay.value = activeDay.value;
+      
+      // API에서 관심 장소 목록 불러오기
+      try {
+        console.log('API에서 관심 장소 목록 불러오는 중...');
+        const response = await getUserLikes();
+        
+        if (response.status === 'success' && response.data) {
+          // API 응답 데이터를 wishlistPlaces 형식으로 변환
+          wishlistPlaces.value = response.data.map(item => ({
+            id: item.place.puid, // puid를 id로 사용
+            place_name: item.place.name,
+            address_name: item.place.address,
+            x: item.place.longitude.toString(),
+            y: item.place.latitude.toString(),
+            uluid: item.uluid // 삭제 시 필요할 수 있음
+          }));
+          
+          console.log('관심 장소 목록 로드 완료:', wishlistPlaces.value);
+        } else {
+          console.warn('관심 장소 목록을 불러올 수 없습니다.');
+          wishlistPlaces.value = [];
+        }
+      } catch (error) {
+        console.error('관심 장소 목록 로드 실패:', error);
+        wishlistPlaces.value = [];
+      }
+      
       isPlaceSearchModalOpen.value = true;
-
       console.log('isPlaceSearchModalOpen 값 변경:', isPlaceSearchModalOpen.value);
     };
 
@@ -1665,31 +1693,89 @@ export default {
     };
 
     // 위시리스트에 장소 추가
-    const addToWishlist = (place) => {
-      // 이미 위시리스트에 있는지 확인
-      const existingIndex = wishlistPlaces.value.findIndex(p => p.id === place.id);
+    const addToWishlist = async (place) => {
+      try {
+        // 이미 위시리스트에 있는지 확인
+        const existingIndex = wishlistPlaces.value.findIndex(p => p.address_name === place.address_name);
 
-      if (existingIndex >= 0) {
-        // 이미 있으면 제거 (토글)
-        wishlistPlaces.value.splice(existingIndex, 1);
-      } else {
-        // 없으면 추가
-        wishlistPlaces.value.push(place);
+        if (existingIndex >= 0) {
+          // 이미 있으면 제거 (토글) - 현재는 로컬에서만 제거
+          wishlistPlaces.value.splice(existingIndex, 1);
+          displayToast('관심 장소에서 제거되었습니다.', 'info');
+          return;
+        }
+
+        // 새로운 장소 추가 - API 호출
+        console.log('관심 장소 추가 API 호출 시작:', place);
+        
+        // 위도, 경도 추출
+        const latitude = parseFloat(place.y);
+        const longitude = parseFloat(place.x);
+        
+        // reverse geocoding을 통해 region과 sig 추출
+        console.log('역지오코딩 시작...', { latitude, longitude });
+        const geoData = await reverseGeocode(latitude, longitude);
+        console.log('역지오코딩 결과:', geoData);
+
+        if (!geoData) {
+          throw new Error('위치 정보를 가져올 수 없습니다.');
+        }
+
+        const locationCodes = getLocationCodes(geoData);
+        console.log('추출된 지역 코드:', locationCodes);
+
+        if (!locationCodes.province_code || !locationCodes.city_code) {
+          throw new Error('지역 코드를 추출할 수 없습니다.');
+        }
+
+        // API 요청 데이터 구성
+        const placeData = {
+          address: place.address_name || place.road_address_name || '',
+          region: parseInt(locationCodes.province_code, 10),
+          sig: parseInt(locationCodes.city_code, 10),
+          name: place.place_name,
+          latitude: latitude,
+          longitude: longitude
+        };
+
+        console.log('API 요청 데이터:', placeData);
+
+        // API 호출
+        const response = await addUserLike(placeData);
+        
+        if (response.status === 'success' && response.data) {
+          // API 응답 데이터를 wishlistPlaces 형식으로 변환하여 업데이트
+          wishlistPlaces.value = response.data.map(item => ({
+            id: item.place.puid, // puid를 id로 사용
+            place_name: item.place.name,
+            address_name: item.place.address,
+            x: item.place.longitude.toString(),
+            y: item.place.latitude.toString(),
+            uluid: item.uluid // 삭제 시 필요할 수 있음
+          }));
+          
+          console.log('관심 장소 추가 완료, 목록 업데이트:', wishlistPlaces.value);
+          displayToast('관심 장소에 추가되었습니다.', 'success');
+        } else {
+          throw new Error('관심 장소 추가에 실패했습니다.');
+        }
+        
+      } catch (error) {
+        console.error('관심 장소 추가 오류:', error);
+        displayToast(`관심 장소 추가 중 오류가 발생했습니다: ${error.message}`, 'error');
       }
-
-      // 로컬 스토리지에 저장
-      localStorage.setItem('wishlistPlaces', JSON.stringify(wishlistPlaces.value));
     };
 
     // 위시리스트에서 장소 제거
     const removeFromWishlist = (index) => {
       wishlistPlaces.value.splice(index, 1);
-      localStorage.setItem('wishlistPlaces', JSON.stringify(wishlistPlaces.value));
+      // 로컬 스토리지 사용 제거 - API 기반으로 변경됨
     };
 
     // 위시리스트에 있는지 확인
     const isInWishlist = (place) => {
-      return wishlistPlaces.value.some(p => p.id === place.id);
+      // address_name을 기준으로 비교 (API 응답 데이터와 카카오 검색 결과 매칭)
+      return wishlistPlaces.value.some(p => p.address_name === (place.address_name || place.road_address_name));
     };
 
     // 선택한 장소 일정에 추가
