@@ -660,7 +660,34 @@ export const saveToElasticsearch = async (
       throw new Error(`Elasticsearch 저장 실패: ${response.status} ${response.statusText}`);
     }
     
-    return await response.json();
+    const elasticsearchResult = await response.json();
+    
+    // ElasticSearch 저장 성공 후 장소 인증 API 호출
+    try {
+      console.log('ElasticSearch 저장 성공, 장소 인증 API 호출 시작...');
+      
+      // 인증 데이터 구성
+      const verificationData = {
+        pid: p_id,
+        address: p_address_to_save,
+        review: p_review,
+        star: p_stars
+      };
+      
+      // 압축된 이미지를 File 객체로 변환
+      const blob = await fetch(`data:image/jpeg;base64,${base64Data}`).then(res => res.blob());
+      const imageFile = new File([blob], `verification_${imageId}.jpg`, { type: 'image/jpeg' });
+      
+      // 장소 인증 API 호출
+      await verifyPlaceWithImage(verificationData, imageFile);
+      console.log('장소 인증 API 호출 성공');
+      
+    } catch (verificationError) {
+      console.error('장소 인증 API 호출 실패 (ElasticSearch 저장은 성공):', verificationError);
+      // 인증 API 실패해도 ElasticSearch 저장은 성공했으므로 에러를 throw하지 않음
+    }
+    
+    return elasticsearchResult;
     
   } catch (error) {
     console.error('Elasticsearch 저장 오류 타입:', error.name);
@@ -3002,3 +3029,68 @@ export const getUserInfo = async (userId) => {
     throw error;
   }
 };
+
+/**
+ * 장소 인증 API에 JSON 데이터와 이미지 파일을 함께 전송하는 함수
+ * @param {Object} verificationData - 인증 데이터
+ * @param {number} verificationData.pid - 장소 ID (p_id와 동일)
+ * @param {string} verificationData.address - 장소 주소 (p_address와 동일)
+ * @param {string} verificationData.review - 후기 (p_review와 동일)
+ * @param {number} verificationData.star - 별점 (p_stars와 동일)
+ * @param {File} imageFile - 이미지 파일
+ * @returns {Promise<Object>} API 응답 결과
+ */
+export async function verifyPlaceWithImage(verificationData, imageFile) {
+  try {
+    console.log('장소 인증 API 요청 시작:', verificationData);
+    
+    // auth.js에서 인증 토큰과 API_BASE_URL 가져오기
+    const { getAuthToken } = await import('./auth.js');
+    const authToken = getAuthToken();
+    
+    // FormData 객체 생성
+    const formData = new FormData();
+    
+    // JSON 데이터를 Blob으로 만들어서 Content-Type 지정
+    const verificationJson = JSON.stringify({
+      pid: verificationData.pid,
+      address: verificationData.address,
+      review: verificationData.review,
+      star: verificationData.star
+    });
+    
+    const jsonBlob = new Blob([verificationJson], {
+      type: 'application/json'
+    });
+    
+    // FormData에 추가
+    formData.append('verification', jsonBlob);
+    formData.append('image', imageFile);
+    
+    // API 요청 헤더 구성
+    const headers = {};
+    if (authToken) {
+      headers['Authorization'] = authToken;
+    }
+    // Content-Type은 설정하지 않음 (브라우저가 자동으로 boundary 포함해서 설정)
+    
+    // fetch 요청
+    const response = await fetch('http://localhost:8080/api/verifications/verify', {
+      method: 'POST',
+      headers: headers,
+      body: formData
+    });
+    
+    if (!response.ok) {
+      throw new Error(`장소 인증 API 오류: ${response.status} ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    console.log('장소 인증 API 성공:', result);
+    return result;
+    
+  } catch (error) {
+    console.error('장소 인증 API 실패:', error);
+    throw error;
+  }
+}
