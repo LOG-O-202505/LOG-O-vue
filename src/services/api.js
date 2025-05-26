@@ -2703,9 +2703,9 @@ export async function deleteTravelPayment(tpuid) {
 }
 
 /**
- * Travel payment 수정 함수
- * @param {number} tpuid - Travel Payment 고유 ID
- * @param {Object} updateData - 수정할 지출 데이터
+ * 여행 지출 정보를 수정하는 함수
+ * @param {number} tpuid - 여행 지출 고유 ID
+ * @param {Object} updateData - 수정할 데이터
  * @param {string} updateData.history - 지출 내역
  * @param {number} updateData.cost - 비용
  * @param {string} updateData.payment_time - 지불 시간 (ISO 8601 형식)
@@ -2713,22 +2713,17 @@ export async function deleteTravelPayment(tpuid) {
  */
 export async function updateTravelPayment(tpuid, updateData) {
   try {
-    const response = await fetch(`${config.API_BASE_URL}/travels/payments/${tpuid}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
-      body: JSON.stringify(updateData)
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return await response.json();
+    // auth.js의 apiPut 함수를 import해서 사용
+    const { apiPut } = await import('./auth.js');
+    
+    console.log(`영수증 수정 요청: tpuid=${tpuid}`, updateData);
+    
+    const result = await apiPut(`/travel-payments/${tpuid}`, updateData);
+    
+    console.log('영수증 수정 성공:', result);
+    return result;
   } catch (error) {
-    console.error('지출 수정 실패:', error);
+    console.error('영수증 수정 실패:', error);
     throw error;
   }
 }

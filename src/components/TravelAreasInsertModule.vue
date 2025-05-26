@@ -169,6 +169,10 @@ export default {
     travelId: {
       type: Number,
       default: 1
+    },
+    travelRoots: {
+      type: Array,
+      default: () => []
     }
   },
   emits: ['close', 'place-added', 'show-toast'],
@@ -375,12 +379,22 @@ export default {
         const [hours, minutes] = visitTime.value.split(':');
         travelDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
+        // 선택된 날짜에 해당하는 travelRoot의 truid 찾기
+        const selectedTravelRoot = props.travelRoots.find(root => root.day === props.selectedDay + 1);
+        const travelDayId = selectedTravelRoot ? selectedTravelRoot.truid : props.selectedDay + 1;
+        
+        console.log('TravelRoots 데이터:', props.travelRoots);
+        console.log('선택된 날짜 (0-based):', props.selectedDay);
+        console.log('찾는 day (1-based):', props.selectedDay + 1);
+        console.log('선택된 TravelRoot:', selectedTravelRoot);
+        console.log('사용할 travel_day_id:', travelDayId);
+
         // API 요청 데이터 구성
         const requestData = {
           travel_id: props.travelId,
-          travel_day_id: props.selectedDay + 1, // 1-based index
-          region: locationCodes.province_code,
-          sig: locationCodes.city_code,
+          travel_day_id: travelDayId, // travelRoot의 truid 사용
+          region: parseInt(locationCodes.province_code),
+          sig: parseInt(locationCodes.city_code),
           start: travelDate.toISOString(),
           memo: placeMemo.value || '',
           address: selectedPlace.value.address_name || selectedPlace.value.road_address_name || '',
