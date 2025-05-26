@@ -360,6 +360,7 @@ export default {
           p_image: result._source.p_image,
           location_data: result._source.location_data,
           visitCount: result._source.visitCount || 0,
+          avgRating: result._source.avgRating || 0,
           displayRank: index + 1,
           _score: result._score, // 유사도 점수 보존
           _source: result._source // 원본 데이터 보존

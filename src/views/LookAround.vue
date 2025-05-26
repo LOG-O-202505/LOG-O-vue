@@ -653,7 +653,7 @@
             filterQuery = { term: { p_region: activeRegion.value } };
           }
           
-                     // ES 쿼리 구성 - 개선된 중복 제거 및 정렬 방식
+                     // ES 쿼리 구성 - 개선된 중복 제거 및 정렬 방식 (빈도 + 평점 기준)
            const query = {
              size: size,
              query: filterQuery.term ? {
@@ -676,13 +676,20 @@
                  ]
                     }
              },
-             // p_id 별 전체 문서 수 집계 (방문 횟수로 사용)
+             // p_id 별 전체 문서 수 집계 및 평균 평점 계산
              aggs: {
                "popular_places": {
                  terms: {
                    field: "p_id",
                    size: size * 2, // 충분한 후보군 확보
-                   order: { "_count": "desc" } // 방문 횟수 기준 내림차순 정렬
+                   order: { "_count": "desc" } // 1차: 방문 횟수 기준 내림차순 정렬
+                 },
+                 aggs: {
+                   "avg_rating": {
+                     avg: {
+                       field: "p_stars"
+                     }
+                   }
                  }
                }
              },
@@ -709,20 +716,55 @@
           const data = await response.json();
           console.log('ES 검색 결과:', data);
           
-          // 방문 횟수 집계 맵 생성 (p_id를 키로, 방문 횟수를 값으로)
+          // 방문 횟수 및 평균 평점 집계 맵 생성
           const visitCountsMap = new Map();
+          const avgRatingsMap = new Map();
+          
           if (data.aggregations && data.aggregations.popular_places && data.aggregations.popular_places.buckets) {
             data.aggregations.popular_places.buckets.forEach(bucket => {
-              visitCountsMap.set(bucket.key, bucket.doc_count);
+              const placeId = bucket.key;
+              const visitCount = bucket.doc_count;
+              const avgRating = bucket.avg_rating.value || 0; // null인 경우 0으로 처리
+              
+              visitCountsMap.set(placeId, visitCount);
+              avgRatingsMap.set(placeId, avgRating);
             });
           }
           
-          // p_id 기준으로 정렬된 배열 생성 (방문 횟수 내림차순)
+          // p_id 기준으로 정렬된 배열 생성 (1차: 방문 횟수, 2차: 평균 평점, 3차: 등수 가중치)
           const sortedIds = Array.from(visitCountsMap.entries())
-            .sort((a, b) => b[1] - a[1])
-            .map(entry => entry[0]);
+            .map(([placeId, visitCount]) => ({
+              placeId,
+              visitCount,
+              avgRating: avgRatingsMap.get(placeId) || 0
+            }))
+            .sort((a, b) => {
+              // 1차 정렬: 방문 횟수 내림차순
+              if (a.visitCount !== b.visitCount) {
+                return b.visitCount - a.visitCount;
+              }
+              // 2차 정렬: 평균 평점 내림차순
+              return b.avgRating - a.avgRating;
+            })
+            .map((item, index) => {
+              // 등수별 가중치 적용 (상위 10위까지 가중치 부여)
+              const rank = index + 1;
+              const rankWeight = rank <= 10 ? (11 - rank) * 0.1 : 0; // 1위: 1.0, 2위: 0.9, ..., 10위: 0.1
+              
+              return {
+                ...item,
+                rank,
+                rankWeight,
+                // 최종 점수 = 방문횟수 + (평점 * 2) + 등수가중치
+                finalScore: item.visitCount + (item.avgRating * 2) + rankWeight
+              };
+            })
+            .sort((a, b) => b.finalScore - a.finalScore) // 최종 점수로 재정렬
+            .map(item => item.placeId);
             
           console.log('정렬된 장소 ID 배열 (상위 10개):', sortedIds.slice(0, 10));
+          console.log('방문 횟수 맵:', Object.fromEntries(visitCountsMap));
+          console.log('평균 평점 맵:', Object.fromEntries(avgRatingsMap));
           
           // 결과 처리
           if (data && data.hits && data.hits.hits && data.hits.hits.length > 0) {
@@ -758,8 +800,9 @@
                 tags: placeDetails.p_tags || [],
                 p_image: placeDetails.p_image,
                   location_data: placeDetails.location_data,
-                  // 집계된 방문 횟수 사용
+                  // 집계된 방문 횟수 및 평균 평점 사용
                   visitCount: visitCountsMap.get(p_id) || 0,
+                  avgRating: avgRatingsMap.get(p_id) || 0,
                 displayRank: index + 1
               };
               } catch (err) {

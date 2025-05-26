@@ -53,8 +53,13 @@
             </span>
             {{ destination.address }}
           </div>
-          <div class="result-visit-count">
-            인증: {{ destination.visitCount }}회
+          <div class="result-stats">
+            <div class="result-visit-count">
+              인증: {{ destination.visitCount }}회
+            </div>
+            <div v-if="destination.avgRating && destination.avgRating > 0" class="result-rating">
+              평점: {{ destination.avgRating.toFixed(1) }}★
+            </div>
           </div>
           <div v-if="destination._score" class="result-similarity">
             <span class="similarity-label">유사도:</span>
@@ -424,15 +429,33 @@ export default {
   color: #48b0e4;
 }
 
+.result-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
 .result-visit-count {
   font-size: 0.8rem;
   color: #27ae60;
   font-weight: 500;
-  margin-bottom: 0.5rem;
   background-color: #eafaf1;
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
   display: inline-block;
+  border: 1px solid #d4edda;
+}
+
+.result-rating {
+  font-size: 0.8rem;
+  color: #f39c12;
+  font-weight: 500;
+  background-color: #fff3cd;
+  padding: 4px 8px;
+  border-radius: 6px;
+  display: inline-block;
+  border: 1px solid #ffeaa7;
 }
 
 /* 유사도 표시 */

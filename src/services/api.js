@@ -753,11 +753,18 @@ export const searchSimilarImages = async (featuresVector, limit = 30, regionFilt
           ]
         }
       },
-      aggs: { // p_id별 전체 문서 수 집계 (visitCount)
+      aggs: { // p_id별 전체 문서 수 집계 (visitCount) 및 평균 평점
         "visits_per_pid": {
           "terms": {
             "field": "p_id",
             "size": limit * 2 // 충분한 크기로 설정
+          },
+          "aggs": {
+            "avg_rating": {
+              "avg": {
+                "field": "p_stars"
+              }
+            }
           }
         }
       },
@@ -863,20 +870,25 @@ export const searchSimilarImages = async (featuresVector, limit = 30, regionFilt
     
     console.log('ES 검색 결과 수:', hits.length);
     
-    // p_id별 방문 횟수(visitCount)를 위한 맵 생성
+    // p_id별 방문 횟수(visitCount) 및 평균 평점을 위한 맵 생성
     const visitCountsMap = new Map();
+    const avgRatingsMap = new Map();
     if (result.aggregations && result.aggregations.visits_per_pid && result.aggregations.visits_per_pid.buckets) {
       result.aggregations.visits_per_pid.buckets.forEach(bucket => {
         visitCountsMap.set(bucket.key, bucket.doc_count);
+        avgRatingsMap.set(bucket.key, bucket.avg_rating.value || 0);
       });
     }
     console.log('Aggregation-based visit counts map:', visitCountsMap);
+    console.log('Aggregation-based average ratings map:', avgRatingsMap);
 
-    // 각 hit에 visitCount 속성 추가 및 점수 정규화
+    // 각 hit에 visitCount 및 avgRating 속성 추가 및 점수 정규화
     hits.forEach(hit => {
       const p_id = hit._source.p_id;
       // aggregations에서 가져온 실제 전체 방문 횟수로 설정
       hit._source.visitCount = visitCountsMap.get(p_id) || 0;
+      // aggregations에서 가져온 평균 평점 설정
+      hit._source.avgRating = avgRatingsMap.get(p_id) || 0;
       
       // 점수 정규화 (KNN 검색에서는 이미 0-1 범위이므로 추가 정규화는 선택적)
       if (result.hits.max_score > 0 && hit._score > 1) {
@@ -892,13 +904,15 @@ export const searchSimilarImages = async (featuresVector, limit = 30, regionFilt
         id: hits[0]._source.p_id,
         name: hits[0]._source.p_name,
         score: hits[0]._score,
-        visitCount: hits[0]._source.visitCount
+        visitCount: hits[0]._source.visitCount,
+        avgRating: hits[0]._source.avgRating
       } : null,
       results: hits.slice(0, 3).map(hit => ({
         id: hit._source.p_id,
         score: hit._score,
         name: hit._source.p_name,
         visitCount: hit._source.visitCount,
+        avgRating: hit._source.avgRating,
         hasImage: !!hit._source.p_image,
         region: hit._source.p_region,
         sig: hit._source.p_sig
@@ -955,11 +969,18 @@ export const searchImagesByKeyword = async (keyword, size = 10, from = 0) => {
           size: 0        // inner_hits의 실제 내용은 필요 없고 count만 필요 (하지만 이 count는 메인 쿼리 필터링됨)
         }
       },
-      aggs: {            // p_id 별 전체 문서 수 집계 (이것이 진짜 visitCount가 됨)
+      aggs: {            // p_id 별 전체 문서 수 집계 (이것이 진짜 visitCount가 됨) 및 평균 평점
         "p_id_count": {
           "terms": {
             "field": "p_id",
             "size": 10000 // 충분히 큰 값으로 설정하여 모든 p_id 커버
+          },
+          "aggs": {
+            "avg_rating": {
+              "avg": {
+                "field": "p_stars"
+              }
+            }
           }
         }
       },
@@ -1007,18 +1028,23 @@ export const searchImagesByKeyword = async (keyword, size = 10, from = 0) => {
     
     // p_id별 전체 방문 횟수(visitCount)를 위한 맵 생성 (aggregations 사용)
     const visitCountsMap = new Map();
+    const avgRatingsMap = new Map();
     if (result.aggregations && result.aggregations.p_id_count && result.aggregations.p_id_count.buckets) {
       result.aggregations.p_id_count.buckets.forEach(bucket => {
         visitCountsMap.set(bucket.key, bucket.doc_count); // bucket.key는 p_id, bucket.doc_count는 해당 p_id의 전체 문서 수
+        avgRatingsMap.set(bucket.key, bucket.avg_rating.value || 0);
       });
     }
     console.log('Aggregation-based visit counts map:', visitCountsMap);
+    console.log('Aggregation-based average ratings map:', avgRatingsMap);
 
     // 각 hit에 실제 visitCount 속성 추가 및 점수 정규화
     hits.forEach(hit => {
       const p_id = hit._source.p_id;
       // aggregations에서 가져온 실제 전체 방문 횟수로 설정
       hit._source.visitCount = visitCountsMap.get(p_id) || 0; 
+      // aggregations에서 가져온 평균 평점 설정
+      hit._source.avgRating = avgRatingsMap.get(p_id) || 0;
       
       // 점수 정규화 (0-1 범위로)
       if (result.hits.max_score > 0) {
