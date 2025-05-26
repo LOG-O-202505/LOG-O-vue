@@ -149,7 +149,7 @@
 <script>
 import { ref, onMounted, nextTick, watch } from 'vue';
 import { apiPost } from '@/services/auth';
-import { reverseGeocode, getLocationCodes, getUserLikes, addUserLike } from '@/services/api';
+import { reverseGeocode, getLocationCodes, getUserLikes, addUserLike, removeUserLike } from '@/services/api';
 
 export default {
   name: 'TravelAreasInsertModule',
@@ -342,10 +342,41 @@ export default {
     };
 
     // 위시리스트에서 제거
-    const removeFromWishlist = (index) => {
-      wishlistPlaces.value.splice(index, 1);
-      // 로컬 스토리지 사용 제거 - API 기반으로 변경됨
-      emit('show-toast', '관심 장소에서 제거되었습니다.', 'success');
+    const removeFromWishlist = async (index) => {
+      try {
+        const placeToRemove = wishlistPlaces.value[index];
+        
+        if (!placeToRemove || !placeToRemove.uluid) {
+          emit('show-toast', '삭제할 수 없는 장소입니다.', 'error');
+          return;
+        }
+
+        console.log('관심 장소 삭제 API 호출:', placeToRemove);
+
+        // API 호출
+        const response = await removeUserLike(placeToRemove.uluid);
+        
+        if (response.status === 'success' && response.data) {
+          // API 응답 데이터를 wishlistPlaces 형식으로 변환하여 업데이트
+          wishlistPlaces.value = response.data.map(item => ({
+            id: item.place.puid, // puid를 id로 사용
+            place_name: item.place.name,
+            address_name: item.place.address,
+            x: item.place.longitude.toString(),
+            y: item.place.latitude.toString(),
+            uluid: item.uluid // 삭제 시 필요할 수 있음
+          }));
+          
+          console.log('관심 장소 삭제 완료, 목록 업데이트:', wishlistPlaces.value);
+          emit('show-toast', '관심 장소에서 제거되었습니다.', 'success');
+        } else {
+          throw new Error('관심 장소 삭제에 실패했습니다.');
+        }
+        
+      } catch (error) {
+        console.error('관심 장소 삭제 오류:', error);
+        emit('show-toast', `관심 장소 삭제 중 오류가 발생했습니다: ${error.message}`, 'error');
+      }
     };
 
     // 위시리스트에 있는지 확인

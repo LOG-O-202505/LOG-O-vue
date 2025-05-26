@@ -3143,3 +3143,25 @@ export const addUserLike = async (placeData) => {
     throw error;
   }
 };
+
+/**
+ * 관심 장소를 삭제하는 함수
+ * @param {number} uluid - 삭제할 관심 장소의 고유 ID
+ * @returns {Promise<object>} - 업데이트된 관심 장소 목록
+ */
+export const removeUserLike = async (uluid) => {
+  try {
+    // auth.js의 apiDelete 함수를 import해서 사용
+    const { apiDelete } = await import('./auth.js');
+    
+    console.log('관심 장소 삭제 요청:', uluid);
+    
+    const result = await apiDelete(`/user-likes/${uluid}`);
+    
+    console.log('관심 장소 삭제 응답:', result);
+    return result;
+  } catch (error) {
+    console.error('관심 장소 삭제 오류:', error);
+    throw error;
+  }
+};
