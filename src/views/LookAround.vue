@@ -91,6 +91,7 @@
       :genderStats="genderStats"
       :totalStatsVisits="totalStatsVisits"
       :isLoadingStats="isLoadingStats"
+      :userLikes="userLikes"
       @close="closeDetailModal"
       @toggle-wishlist="toggleWishlist"
       @apply-keyword="applyKeyword"
@@ -112,6 +113,7 @@
   import { regionSpecialtyData, sigSpecialtyData } from '@/data/tmpData.js';
   import config from '@/config.js';
   import regionMapping from '@/data/regionMapping.js';
+  import { getUserLikes, addUserLike, removeUserLike } from '@/services/api.js';
   
   export default {
     name: 'LookAroundAll',
@@ -159,7 +161,7 @@
       const isLoadingStats = ref(false);
       
       // 위시리스트 관련 상태
-      const wishlistItems = ref([]);
+      const userLikes = ref([]); // API 기반 관심 장소 데이터로 변경
       
       // 통계 데이터 관련 변수
       const ageStats = ref([]);
@@ -468,30 +470,101 @@
         };
       };
       
-      // 위시리스트 관리 함수
-      const isInWishlist = (id) => {
-        return wishlistItems.value.some(item => item.id === id);
+      // API에서 관심 장소 데이터 로드
+      const loadUserLikes = async () => {
+        try {
+          console.log('사용자 관심 장소 로드 중... (LookAround)');
+          const response = await getUserLikes();
+          
+          if (response && response.userLikes) {
+            userLikes.value = response.userLikes;
+            console.log('관심 장소 로드 완료 (LookAround):', userLikes.value.length, '개');
+          } else {
+            console.log('관심 장소가 없거나 응답 형식이 올바르지 않습니다 (LookAround):', response);
+            userLikes.value = [];
+          }
+        } catch (error) {
+          console.error('관심 장소 로드 오류 (LookAround):', error);
+          userLikes.value = [];
+        }
       };
 
-      const toggleWishlist = (item) => {
-        // 이벤트 전파 중지 (모달 닫힘 방지)
-        event.stopPropagation();
+      // 위시리스트 관리 함수 (API 기반)
+      const isInWishlist = (id) => {
+        // 검색 결과에서 해당 id를 가진 아이템 찾기
+        const foundItem = popularDestinations.value.find(result => result.id === id || result._source?.p_id === id);
+        if (!foundItem) return false;
         
-        // 아이템 이름 가져오기
-        const itemName = item.name;
-        
-        if (isInWishlist(item.id)) {
-          // 위시리스트에서 제거
-          wishlistItems.value = wishlistItems.value.filter(i => i.id !== item.id);
-          console.log(`${itemName}이(가) 위시리스트에서 제거되었습니다.`);
-        } else {
-          // 위시리스트에 추가
-          wishlistItems.value.push(item);
-          console.log(`${itemName}이(가) 위시리스트에 추가되었습니다.`);
-        }
+        const address = foundItem.address || foundItem._source?.p_address;
+        return userLikes.value.some(like => like.place && like.place.address === address);
+      };
 
-        // 로컬 스토리지에 저장
-        localStorage.setItem('logo_wishlist', JSON.stringify(wishlistItems.value.map(i => i.id)));
+      const toggleWishlist = async (item) => {
+        try {
+          console.log('=== toggleWishlist 함수 시작 (LookAround) ===');
+          console.log('입력된 item:', JSON.stringify(item, null, 2));
+          
+          // 이벤트 전파 중지 (모달 닫힘 방지)
+          if (event) {
+            event.stopPropagation();
+          }
+          
+          // 아이템 이름과 주소 추출
+          const itemName = item.name || item._source?.p_name;
+          const address = item.address || item._source?.p_address;
+          
+          console.log('추출된 데이터 (LookAround):', { itemName, address });
+          
+          // 기본 데이터 검증
+          if (!itemName) {
+            throw new Error('장소 이름이 없습니다.');
+          }
+          
+          if (!address) {
+            throw new Error('장소 주소가 없습니다.');
+          }
+          
+          if (isInWishlist(item.id)) {
+            // 선호 장소에서 제거 - address 기반 삭제 API 사용
+            console.log('선호 장소에서 제거 중... (LookAround)');
+            await removeUserLike(address);
+            console.log('선호 장소에서 제거 완료 (LookAround)');
+          } else {
+            // 선호 장소에 추가
+            console.log('선호 장소에 추가 중... (LookAround)');
+            
+            // TripPlan.vue와 동일한 구조로 데이터 준비
+            const placeData = {
+              address: address,
+              region: item.region || item._source?.p_region || 1,
+              sig: item.sig || item._source?.p_sig || 1,
+              name: itemName,
+              latitude: 37.5665, // 기본값
+              longitude: 126.9780
+            };
+            
+            // 좌표 정보 추출
+            if (item.location_data) {
+              placeData.latitude = item.location_data.latitude || placeData.latitude;
+              placeData.longitude = item.location_data.longitude || placeData.longitude;
+            } else if (item._source && item._source.location_data) {
+              placeData.latitude = item._source.location_data.latitude || placeData.latitude;
+              placeData.longitude = item._source.location_data.longitude || placeData.longitude;
+            }
+            
+            console.log('API에 전송할 데이터 (LookAround):', placeData);
+            
+            await addUserLike(placeData);
+            console.log('선호 장소에 추가 완료 (LookAround)');
+          }
+          
+          // 성공 후 관심 장소 목록 새로고침
+          await loadUserLikes();
+          
+        } catch (error) {
+          console.error('선호 장소 토글 오류 (LookAround):', error);
+          alert(`관심 장소 ${isInWishlist(item.id) ? '제거' : '추가'} 중 오류가 발생했습니다: ${error.message}`);
+        }
       };
       
       // PlaceDetailModal 컴포넌트 호환성을 위한 함수
@@ -1763,7 +1836,7 @@
       };
   
       // 컴포넌트 마운트 시 처리
-      onMounted(() => {
+      onMounted(async () => {
         // 마우스 이벤트 리스너 등록
         window.addEventListener('mousemove', updateMousePosition);
   
@@ -1778,21 +1851,8 @@
           renderAgeChart();
         });
         
-        // 위시리스트 복원
-        const savedWishlist = localStorage.getItem('logo_wishlist');
-        if (savedWishlist) {
-          try {
-            const wishlistIds = JSON.parse(savedWishlist);
-            console.log('저장된 위시리스트 ID:', wishlistIds);
-            
-            // 위시리스트 ID만 있는 경우 기본 객체로 변환하여 wishlistItems에 저장
-            wishlistItems.value = wishlistIds.map(id => ({
-              id: id
-            }));
-          } catch (error) {
-            console.error('위시리스트 데이터 로드 오류:', error);
-          }
-        }
+        // API에서 관심 장소 데이터 로드
+        await loadUserLikes();
         
         // 인기 여행지 로드 (전국 기준) - 로드 후 인기도 자동 계산됨
         loadPopularDestinations();
@@ -2087,6 +2147,7 @@
         malePercentage,
         femalePercentage,
         // 위시리스트 관련
+        userLikes,
         isInWishlist,
         toggleWishlist,
         // 리뷰 관련
