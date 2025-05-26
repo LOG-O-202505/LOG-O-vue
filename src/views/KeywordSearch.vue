@@ -114,11 +114,12 @@
     <PlaceDetailModal
       :show="showDetailModal"
       :detail="selectedDetail"
-      :isInWishlist="selectedDetail._id ? isInWishlist(selectedDetail._id) : false"
+      :isInWishlist="selectedDetail._id ? isInWishlist(selectedDetail) : false"
       :ageStats="ageStats"
       :genderStats="genderStats"
       :totalStatsVisits="totalStatsVisits"
       :isLoadingStats="isLoadingStats"
+      :userLikes="userLikes"
       @close="closeDetailModal"
       @toggle-wishlist="toggleWishlist"
       @apply-keyword="applyKeyword"
@@ -131,7 +132,15 @@ import { ref, computed, onMounted } from "vue";
 import Header from "@/components/Header.vue";
 import PlaceDetailModal from "@/components/PlaceDetailModal.vue";
 import SearchResultPanel from "@/components/SearchResultPanel.vue";
-import { searchImagesByKeyword } from "@/services/api";
+import { 
+  searchImagesByKeyword, 
+  getUserLikes, 
+  addUserLike, 
+  removeUserLikeByAddress,
+  reverseGeocode,
+  getLocationCodes,
+  getPlaceDetails
+} from "@/services/api";
 import config from "@/config.js";
 
 export default {
@@ -157,6 +166,7 @@ export default {
     const showDetailModal = ref(false);
     const selectedDetail = ref({});
     const wishlistItems = ref([]);
+    const userLikes = ref([]);
 
     // Stats related reactive variables (copied from LookAround.vue)
     const ageStats = ref([]);
@@ -207,7 +217,24 @@ export default {
     onMounted(async () => {
       console.log("KeywordSearch 컴포넌트 마운트");
       
-      // 위시리스트 복원
+      // 선호 장소 데이터 로드
+      try {
+        console.log('선호 장소 데이터 로드 시작...');
+        const response = await getUserLikes();
+        
+        if (response.status === 'success' && response.data) {
+          userLikes.value = response.data;
+          console.log('선호 장소 데이터 로드 완료:', userLikes.value);
+        } else {
+          console.warn('선호 장소 데이터를 불러올 수 없습니다.');
+          userLikes.value = [];
+        }
+      } catch (error) {
+        console.error('선호 장소 데이터 로드 실패:', error);
+        userLikes.value = [];
+      }
+      
+      // 위시리스트 복원 (기존 로직 유지 - 호환성)
       const savedWishlist = localStorage.getItem('logo_wishlist');
       if (savedWishlist) {
         try {
@@ -226,26 +253,150 @@ export default {
     });
     
     // 위시리스트 관리 함수
-    const isInWishlist = (id) => {
-      return wishlistItems.value.some(item => item._id === id);
+    const isInWishlist = (searchResultItem) => {
+      // id만 전달된 경우 (SearchResultPanel에서 호출)
+      if (typeof searchResultItem === 'number' || typeof searchResultItem === 'string') {
+        const id = searchResultItem;
+        // 검색 결과에서 해당 id를 가진 아이템 찾기
+        const foundItem = searchResults.value.find(result => result._id === id || result._source?.p_id === id);
+        if (!foundItem) return false;
+        
+        const address = foundItem._source?.p_address;
+        return userLikes.value.some(like => like.place.address === address);
+      }
+      
+      // 객체가 전달된 경우 (PlaceDetailModal에서 호출)
+      const address = searchResultItem._source ? searchResultItem._source.p_address : searchResultItem.address;
+      
+      // address를 기준으로 선호 장소에 있는지 확인 (TripPlan.vue와 동일한 방식)
+      return userLikes.value.some(like => like.place.address === address);
     };
 
-    const toggleWishlist = (item) => {
-      // Get the name safely from either _source or directly
-      const itemName = item._source ? item._source.p_name : item.p_name;
-      
-      if (isInWishlist(item._id)) {
-        // 위시리스트에서 제거
-        wishlistItems.value = wishlistItems.value.filter(i => i._id !== item._id);
-        showActionStatus(`${itemName}이(가) 위시리스트에서 제거되었습니다.`, "success");
-      } else {
-        // 위시리스트에 추가
-        wishlistItems.value.push(item);
-        showActionStatus(`${itemName}이(가) 위시리스트에 추가되었습니다.`, "success");
-      }
+    const toggleWishlist = async (item) => {
+      try {
+        console.log('=== toggleWishlist 함수 시작 ===');
+        console.log('입력된 item:', JSON.stringify(item, null, 2));
+        
+        // 아이템 이름과 주소 추출
+        const itemName = item._source ? item._source.p_name : item.p_name;
+        const address = item._source ? item._source.p_address : item.address;
+        
+        console.log('추출된 데이터:', { itemName, address });
+        
+        // 기본 데이터 검증
+        if (!itemName) {
+          throw new Error('장소 이름이 없습니다.');
+        }
+        
+        if (!address) {
+          throw new Error('장소 주소가 없습니다.');
+        }
+        
+        if (isInWishlist(item)) {
+          // 선호 장소에서 제거 - address 기반 삭제 API 사용
+          console.log('선호 장소 삭제 요청:', address);
+          
+          const response = await removeUserLikeByAddress(address);
+          
+          if (response.status === 'success') {
+            // 로컬 데이터 업데이트
+            userLikes.value = response.data || [];
+            showActionStatus(`${itemName}이(가) 선호 장소에서 제거되었습니다.`, "success");
+          } else {
+            throw new Error('선호 장소 삭제에 실패했습니다.');
+          }
+          
+        } else {
+          // 선호 장소에 추가 - TripPlan.vue 패턴 적용
+          console.log('선호 장소 추가 요청 시작');
+          
+          // 좌표 추출 - location_data를 우선적으로 사용
+          let latitude, longitude;
+          
+          // 1. _source.location_data에서 시도 (가장 안정적)
+          if (item._source?.location_data?.latitude && item._source?.location_data?.longitude) {
+            latitude = parseFloat(item._source.location_data.latitude);
+            longitude = parseFloat(item._source.location_data.longitude);
+            console.log('좌표 소스: _source.location_data');
+          }
+          // 2. getPlaceDetails API를 사용하여 정확한 좌표 가져오기
+          else if (item._source?.p_id || item.p_id) {
+            try {
+              console.log('getPlaceDetails API 호출로 좌표 조회...');
+              const puid = item._source?.p_id || item.p_id;
+              const response = await getPlaceDetails(puid, address);
+              
+              if (response.status === 'success' && response.data && response.data.latitude && response.data.longitude) {
+                latitude = parseFloat(response.data.latitude);
+                longitude = parseFloat(response.data.longitude);
+                console.log('좌표 소스: getPlaceDetails API');
+              } else {
+                console.warn('getPlaceDetails API에서 좌표를 가져올 수 없음:', response);
+              }
+            } catch (detailError) {
+              console.warn('getPlaceDetails 호출 실패:', detailError);
+            }
+          }
+          
+          // 좌표 검증
+          if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+            console.error('좌표 검증 실패:', { latitude, longitude });
+            throw new Error('위치 정보를 찾을 수 없습니다. 정확한 좌표가 필요합니다.');
+          }
+          
+          console.log('추출된 좌표:', { latitude, longitude });
+          
+          // reverse geocoding을 통해 region과 sig 추출 (TripPlan.vue와 동일한 방식)
+          console.log('역지오코딩 시작...', { latitude, longitude });
+          const geoData = await reverseGeocode(latitude, longitude);
+          console.log('역지오코딩 결과:', geoData);
 
-      // 로컬 스토리지에 저장
-      localStorage.setItem('logo_wishlist', JSON.stringify(wishlistItems.value.map(i => i._id)));
+          if (!geoData) {
+            throw new Error('위치 정보를 가져올 수 없습니다.');
+          }
+
+          const locationCodes = getLocationCodes(geoData);
+          console.log('추출된 지역 코드:', locationCodes);
+
+          if (!locationCodes.province_code || !locationCodes.city_code) {
+            throw new Error('지역 코드를 추출할 수 없습니다.');
+          }
+
+          // API 요청 데이터 구성 (TripPlan.vue와 동일한 형식)
+          const placeData = {
+            address: address,
+            region: parseInt(locationCodes.province_code, 10),
+            sig: parseInt(locationCodes.city_code, 10),
+            name: itemName,
+            latitude: latitude,
+            longitude: longitude
+          };
+
+          console.log('=== API 요청 데이터 ===');
+          console.log(JSON.stringify(placeData, null, 2));
+
+          // API 호출
+          console.log('addUserLike API 호출 시작...');
+          const response = await addUserLike(placeData);
+          console.log('addUserLike API 응답:', response);
+          
+          if (response.status === 'success' && response.data) {
+            // 로컬 데이터 업데이트
+            userLikes.value = response.data;
+            showActionStatus(`${itemName}이(가) 선호 장소에 추가되었습니다.`, "success");
+            console.log('관심 장소 추가 완료, 목록 업데이트:', userLikes.value);
+          } else {
+            console.error('API 응답 상태 오류:', response);
+            throw new Error('선호 장소 추가에 실패했습니다.');
+          }
+        }
+        
+      } catch (error) {
+        console.error('=== 선호 장소 토글 오류 ===');
+        console.error('오류 상세:', error);
+        console.error('오류 스택:', error.stack);
+        showActionStatus(`오류가 발생했습니다: ${error.message}`, "error");
+      }
     };
     
     // 키워드 검색 실행
@@ -474,6 +625,7 @@ export default {
       isInWishlist,
       toggleWishlist,
       wishlistItems,
+      userLikes,
       showDetailModal,
       selectedDetail,
       sortedSearchResults,

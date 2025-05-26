@@ -7,8 +7,8 @@
           <div class="modal-location">{{ getPlaceAddress }}</div>
         </div>
         <div class="modal-actions">
-          <button class="heart-btn" :class="{ 'active': isInWishlist }"
-            @click="$emit('toggle-wishlist', detail)" title="여행 계획에 추가">
+          <button class="heart-btn" :class="{ 'active': isCurrentPlaceInWishlist }"
+            @click="handleHeartClick" title="여행 계획에 추가">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path
@@ -234,7 +234,8 @@ export default {
     ageStats: Array,
     genderStats: Array,
     totalStatsVisits: Number,
-    isLoadingStats: Boolean
+    isLoadingStats: Boolean,
+    userLikes: Array
   },
   
   setup(props, { emit }) {
@@ -450,15 +451,22 @@ export default {
         } else {
           // _source가 추출된 경우
           puid = props.detail.p_id;
-          address = props.detail.address || props.detail.p_address;
+          // 다양한 address 필드 확인 (우선순위: p_address > address)
+          address = props.detail.p_address || props.detail.address;
         }
+        
+        // getPlaceAddress computed 값도 fallback으로 사용
+        if (!address) {
+          address = getPlaceAddress.value;
+        }
+        
+        console.log(`장소 상세 정보 API 호출: puid=${puid}, address=${address}`);
+        console.log('detail 객체 전체:', props.detail);
         
         if (!puid || !address) {
           console.warn('puid 또는 address가 없어 API 호출을 건너뜁니다:', { puid, address });
           return;
         }
-        
-        console.log(`장소 상세 정보 API 호출: puid=${puid}, address=${address}`);
         
         const response = await getPlaceDetails(puid, address);
         
@@ -777,6 +785,67 @@ export default {
       return 'place' + Math.floor(Math.random() * 1000000); // 안전한 랜덤 ID
     });
     
+    // 현재 장소가 관심 장소에 있는지 확인하는 computed 속성
+    const isCurrentPlaceInWishlist = computed(() => {
+      console.log('=== isCurrentPlaceInWishlist 체크 시작 ===');
+      console.log('props.detail:', props.detail);
+      console.log('props.userLikes:', props.userLikes);
+      
+      if (!props.detail || !props.userLikes || props.userLikes.length === 0) {
+        console.log('조건 실패: detail이나 userLikes가 없음');
+        return false;
+      }
+      
+      // getPlaceAddress computed 속성에서 가져온 주소 사용
+      const currentAddress = getPlaceAddress.value;
+      console.log('현재 주소:', currentAddress);
+      
+      if (!currentAddress) {
+        console.log('현재 주소가 없음');
+        return false;
+      }
+      
+      // userLikes 배열에서 address가 일치하는 항목이 있는지 확인
+      const isInLikes = props.userLikes.some(like => {
+        const likeAddress = like.place && like.place.address;
+        console.log('비교 중:', { currentAddress, likeAddress, match: likeAddress === currentAddress });
+        return likeAddress === currentAddress;
+      });
+      
+      console.log('최종 결과:', isInLikes);
+      return isInLikes;
+    });
+    
+    const handleHeartClick = () => {
+      // address 정보를 다양한 소스에서 추출
+      let address = '';
+      
+      if (props.detail._source) {
+        // ElasticSearch _source에서 추출
+        address = props.detail._source.p_address || '';
+      } else {
+        // 직접 속성에서 추출
+        address = props.detail.address || props.detail.p_address || '';
+      }
+      
+      // PlaceDetails API 응답에서도 확인
+      if (!address && placeDetailsData.value && placeDetailsData.value.address) {
+        address = placeDetailsData.value.address;
+      }
+      
+      console.log('하트 클릭 - 추출된 address:', address);
+      console.log('하트 클릭 - detail 객체:', props.detail);
+      
+      // address 정보가 포함된 객체를 emit
+      const itemWithAddress = {
+        ...props.detail,
+        address: address,
+        p_address: address // 백업용
+      };
+      
+      emit('toggle-wishlist', itemWithAddress);
+    };
+    
     return {
       closeModal,
       formatReviewDate,
@@ -803,7 +872,9 @@ export default {
       isLoadingReviews,
       hasMoreReviews,
       loadReviews,
-      loadMoreReviews
+      loadMoreReviews,
+      handleHeartClick,
+      isCurrentPlaceInWishlist
     };
   }
 };
@@ -929,6 +1000,8 @@ export default {
 .heart-btn svg {
   width: 22px; /* Consistent icon size */
   height: 22px;
+  fill: none; /* Keep fill as none to show only outline */
+  transition: all 0.3s ease; /* Smooth transition */
 }
 .close-btn svg {
   width: 20px; /* Consistent icon size */
@@ -936,10 +1009,29 @@ export default {
 }
 
 .heart-btn.active {
-  color: var(--logo-coral, #ff715e); /* Brighter coral */
+  color: #ff8e7f; /* Same color as heart-indicator.active */
+  animation: heartbeat 0.8s ease-in-out; /* Same animation as heart-indicator */
 }
+
+.heart-btn.active svg {
+  stroke: #ff8e7f; /* Only change stroke color to pink */
+  fill: none; /* Keep fill transparent - only outline shows */
+}
+
+.heart-btn:hover {
+  color: rgba(255, 142, 127, 0.8); /* Hover effect like heart-indicator */
+  transform: scale(1.1); /* Scale effect like heart-indicator */
+}
+
 .heart-btn.active:hover {
-  background-color: #fff0ee; /* Light coral background on hover when active */
+  background-color: rgba(255, 142, 127, 0.1); /* Light background on hover when active */
+}
+
+/* Add heartbeat animation like heart-indicator */
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  30% { transform: scale(1.25); }
+  60% { transform: scale(1.1); }
 }
 
 /* 모달 콘텐츠 영역 */

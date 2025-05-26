@@ -3165,3 +3165,26 @@ export const removeUserLike = async (uluid) => {
     throw error;
   }
 };
+
+/**
+ * 주소 기반으로 관심 장소를 삭제하는 함수
+ * @param {string} address - 삭제할 장소의 주소
+ * @returns {Promise<object>} - 업데이트된 관심 장소 목록
+ */
+export const removeUserLikeByAddress = async (address) => {
+  try {
+    // auth.js의 apiDelete 함수를 import해서 사용
+    const { apiDelete } = await import('./auth.js');
+    
+    console.log('주소 기반 관심 장소 삭제 요청:', address);
+    
+    // 쿼리 파라미터로 address 전달
+    const result = await apiDelete(`/user-likes/by-address?address=${encodeURIComponent(address)}`);
+    
+    console.log('주소 기반 관심 장소 삭제 응답:', result);
+    return result;
+  } catch (error) {
+    console.error('주소 기반 관심 장소 삭제 오류:', error);
+    throw error;
+  }
+};

@@ -25,8 +25,9 @@
     <div v-else class="results-grid">
       <div v-for="destination in displayDestinations" :key="destination.id" class="result-card"
         @click="$emit('open-detail', destination)">
-        <div class="result-rank" :class="{ 'with-heart': isInWishlist(destination.id) }">
-          <span v-if="isInWishlist(destination.id)" class="heart-indicator active">
+        <div class="result-rank" :class="{ 'with-heart': true }">
+          <span class="heart-indicator" :class="{ 'active': isInWishlist(destination.id) }"
+            @click.stop="toggleWishlist(destination)">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path
@@ -146,6 +147,13 @@ export default {
         }
       }
       return potentialTags; // Returns 1, 2, or 3 tags based on checks and availability
+    },
+
+    toggleWishlist(destination) {
+      // parent의 toggleWishlist 함수 호출
+      if (this.$parent.toggleWishlist) {
+        this.$parent.toggleWishlist(destination);
+      }
     }
   }
 }
@@ -358,8 +366,14 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.5);
   transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.heart-indicator:hover {
+  color: rgba(255, 255, 255, 0.8);
+  transform: scale(1.1);
 }
 
 .heart-indicator.active {
