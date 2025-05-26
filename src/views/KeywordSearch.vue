@@ -171,28 +171,6 @@ export default {
     const heroSubtitle = ref('원하는 여행지 키워드로 이미지를 검색해보세요');
     const heroHeight = ref('320px');
     
-    // 더미 리뷰 데이터
-    const dummyReviews = [
-      {
-        userName: "여행자김",
-        rating: 5,
-        date: "2025-03-15T09:30:00",
-        comment: "정말 아름다운 장소였습니다. 사진으로 보는 것보다 실제로 보면 훨씬 더 멋있어요. 특히 일몰 때 분위기가 환상적이었습니다."
-      },
-      {
-        userName: "배낭여행러",
-        rating: 4,
-        date: "2025-02-20T14:45:00",
-        comment: "전체적으로 좋은 경험이었습니다. 다만 주변에 음식점이 많지 않아서 식사 계획은 미리 세우는 것이 좋을 것 같아요."
-      },
-      {
-        userName: "사진작가이준",
-        rating: 5,
-        date: "2025-01-05T10:15:00",
-        comment: "사진 찍기에 최고의 장소입니다. 맑은 날 방문하시면 환상적인 풍경 사진을 얻을 수 있어요. 개인적으로는 아침 일찍 방문하는 것을 추천합니다."
-      }
-    ];
-    
     // 검색 결과를 유사도 순으로 정렬
     const sortedSearchResults = computed(() => {
       return [...searchResults.value].sort((a, b) => b._score - a._score);
@@ -371,15 +349,13 @@ export default {
           _id: destination.id,
           _score: destination._score,
           ...destination._source, // SearchResultPanel에서 원본 _source를 전달
-        reviews: dummyReviews
-      };
+        };
       } else {
         // 직접 result에서 열 경우 (이전 방식)
         detailData = {
           _id: destination._id,
           _score: destination._score,
           ...destination._source,
-          reviews: dummyReviews
         };
       }
       

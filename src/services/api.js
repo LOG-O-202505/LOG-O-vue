@@ -603,6 +603,21 @@ export const saveToElasticsearch = async (
       console.log('영어 설명(p_description_en):', englishDescription);
     }
 
+    // 사용자 정보 조회하여 u_name 가져오기
+    let u_name = '';
+    try {
+      console.log('사용자 정보 조회 시작:', u_id);
+      const userInfo = await getUserInfo(u_id);
+      if (userInfo && userInfo.data && userInfo.data.name) {
+        u_name = userInfo.data.name;
+        console.log('사용자 이름 조회 성공:', u_name);
+      } else {
+        console.warn('사용자 이름을 찾을 수 없습니다. 기본값 사용');
+      }
+    } catch (error) {
+      console.warn('사용자 정보 조회 실패, 기본값 사용:', error.message);
+    }
+
     // 새로운 형식으로 문서 구조 생성
     const document = {
       p_id: p_id, // 사용자 입력 p_id 사용
@@ -620,6 +635,7 @@ export const saveToElasticsearch = async (
       p_tuid: p_tuid, // 해당 여행 고유번호
       p_tauid: p_tauid, // 해당 travelArea 고유번호
       u_id: u_id, // 사용자 ID - 매개변수에서 가져옴
+      u_name: u_name, // 사용자 이름 - API에서 조회한 값
       u_age: u_age, // 사용자 나이 - 매개변수에서 가져옴
       u_gender: u_gender, // 사용자 성별 - 매개변수에서 가져옴
       upload_date: new Date().toISOString()
@@ -2799,6 +2815,169 @@ export const getPlaceDetails = async (puid, address) => {
     return result;
   } catch (error) {
     console.error('장소 상세 정보 가져오기 오류:', error);
+    throw error;
+  }
+};
+
+/**
+ * 특정 장소의 후기 데이터를 ElasticSearch에서 가져오는 함수
+ * @param {number} placeId - 장소 ID (p_id)
+ * @param {number} size - 가져올 후기 수 (기본값: 5)
+ * @param {number} from - 시작 위치 (페이지네이션용, 기본값: 0)
+ * @returns {Promise<Object>} - 후기 데이터와 총 개수
+ */
+export const getPlaceReviews = async (placeId, size = 5, from = 0) => {
+  try {
+    console.log(`장소 ID ${placeId}의 후기 데이터 조회 시작 (size: ${size}, from: ${from})`);
+
+    // ElasticSearch 쿼리 구성
+    const query = {
+      size: size,
+      from: from,
+      query: {
+        bool: {
+          must: [
+            {
+              term: {
+                p_id: parseInt(placeId)
+              }
+            },
+            {
+              exists: {
+                field: "p_review"
+              }
+            },
+            {
+              bool: {
+                should: [
+                  {
+                    bool: {
+                      must_not: {
+                        term: {
+                          "p_review.keyword": ""
+                        }
+                      }
+                    }
+                  },
+                  {
+                    bool: {
+                      must_not: {
+                        term: {
+                          "p_review.keyword": " "
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      sort: [
+        {
+          "upload_date": {
+            "order": "desc"
+          }
+        }
+      ],
+      _source: [
+        "p_stars",
+        "p_review", 
+        "upload_date",
+        "u_id",
+        "u_name",
+        "u_age",
+        "u_gender"
+      ]
+    };
+
+    console.log('후기 조회 ElasticSearch 쿼리:', JSON.stringify(query, null, 2));
+
+    // config에서 Elasticsearch API URL 사용
+    const response = await fetch(`${config.ES_API}/travel_places/_search`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(query)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('후기 조회 API 응답 오류:', errorData);
+      throw new Error('후기 조회 실패: ' + JSON.stringify(errorData));
+    }
+
+    const result = await response.json();
+    console.log('후기 조회 ElasticSearch 응답:', result);
+    
+    // 결과 처리
+    const hits = result.hits.hits || [];
+    const totalReviews = result.hits.total.value || 0;
+    
+    // 후기 데이터 변환
+    const reviews = hits.map(hit => {
+      const source = hit._source;
+      return {
+        userName: source.u_name || `사용자${source.u_id}`, // u_name이 있으면 사용, 없으면 기존 방식
+        rating: source.p_stars || 0,
+        date: source.upload_date,
+        comment: source.p_review || '',
+        userAge: source.u_age,
+        userGender: source.u_gender
+      };
+    });
+    
+    console.log(`후기 조회 완료: ${reviews.length}개 조회, 총 ${totalReviews}개`);
+    
+    return {
+      reviews: reviews,
+      total: totalReviews,
+      hasMore: (from + size) < totalReviews
+    };
+    
+  } catch (error) {
+    console.error('후기 조회 오류:', error);
+    // 에러 발생 시 빈 결과 반환
+    return {
+      reviews: [],
+      total: 0,
+      hasMore: false
+    };
+  }
+};
+
+/**
+ * 사용자 정보를 가져오는 함수
+ * @param {number} userId - 사용자 ID
+ * @returns {Promise<object>} - 사용자 정보 (name 포함)
+ */
+export const getUserInfo = async (userId) => {
+  try {
+    // auth.js의 getAuthHeaders 함수를 import해서 사용
+    const { getAuthHeaders } = await import('./auth.js');
+    const authHeaders = getAuthHeaders();
+    
+    const endpoint = `/users/uuid/${userId}`;
+    
+    console.log(`사용자 정보 요청: ${endpoint}`);
+    
+    const response = await fetch(`http://localhost:8080/api${endpoint}`, {
+      method: 'GET',
+      headers: authHeaders
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log('사용자 정보 응답:', result);
+    
+    return result;
+  } catch (error) {
+    console.error('사용자 정보 가져오기 오류:', error);
     throw error;
   }
 };

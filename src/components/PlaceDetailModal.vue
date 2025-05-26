@@ -158,15 +158,31 @@
           </div>
         </div>
         
-        <!-- 리뷰 섹션 (더미 데이터) -->
-        <div v-if="detail.reviews && detail.reviews.length > 0" class="detail-section">
-          <h4>방문자 리뷰 ({{ detail.reviews.length }})</h4>
-          <div class="reviews-container">
-            <div v-for="(review, index) in detail.reviews" :key="index" class="review-item">
+        <!-- 리뷰 섹션 -->
+        <div class="detail-section">
+          <h4>방문자 리뷰 ({{ totalReviews }})</h4>
+          
+          <!-- 로딩 중 -->
+          <div v-if="isLoadingReviews && reviews.length === 0" class="reviews-loading">
+            <div class="spinner"></div>
+            <p>후기를 불러오는 중...</p>
+          </div>
+          
+          <!-- 후기가 없는 경우 -->
+          <div v-else-if="!isLoadingReviews && reviews.length === 0" class="no-reviews">
+            <p>아직 등록된 후기가 없습니다.</p>
+          </div>
+          
+          <!-- 후기 목록 -->
+          <div v-else class="reviews-container">
+            <div v-for="(review, index) in reviews" :key="index" class="review-item">
               <div class="review-header">
                 <div class="reviewer-info">
                   <div class="reviewer-name">{{ review.userName }}</div>
                   <div class="review-date">{{ formatReviewDate(review.date) }}</div>
+                  <div class="reviewer-details">
+                    {{ review.userAge }}세 {{ review.userGender === 'M' ? '남성' : '여성' }}
+                  </div>
                 </div>
                 <div class="review-rating">
                   <span v-for="star in 5" :key="star" 
@@ -178,6 +194,18 @@
               <div class="review-content">
                 {{ review.comment }}
               </div>
+            </div>
+            
+            <!-- 더보기 버튼 -->
+            <div v-if="hasMoreReviews" class="load-more-container">
+              <button 
+                @click="loadMoreReviews" 
+                :disabled="isLoadingReviews"
+                class="load-more-btn"
+              >
+                <span v-if="isLoadingReviews">로딩 중...</span>
+                <span v-else>더보기 ({{ totalReviews - reviews.length }}개 더)</span>
+              </button>
             </div>
           </div>
         </div>
@@ -194,7 +222,7 @@
 import { ref, computed, onMounted, watch, nextTick } from "vue";
 import Chart from 'chart.js/auto';
 import config from "@/config.js";
-import { getPlaceDetails } from "@/services/api.js";
+import { getPlaceDetails, getPlaceReviews } from "@/services/api.js";
 
 export default {
   name: "PlaceDetailModal",
@@ -218,6 +246,14 @@ export default {
     // API 응답 데이터를 저장할 상태 변수들
     const placeDetailsData = ref(null);
     const isLoadingPlaceDetails = ref(false);
+    
+    // 후기 관련 상태 변수들
+    const reviews = ref([]);
+    const totalReviews = ref(0);
+    const isLoadingReviews = ref(false);
+    const hasMoreReviews = ref(false);
+    const reviewsPage = ref(0);
+    const reviewsPerPage = 5;
     
     const displayImageUrl = computed(() => {
       if (!props.detail) {
@@ -441,6 +477,70 @@ export default {
       }
     };
     
+    // 후기 데이터를 로드하는 함수
+    const loadReviews = async (reset = false) => {
+      if (!props.detail) return;
+      
+      try {
+        isLoadingReviews.value = true;
+        
+        // ElasticSearch 결과에서 p_id 추출
+        let placeId;
+        
+        if (props.detail._source) {
+          // Elasticsearch _source 직접 포함된 경우
+          placeId = props.detail._source.p_id;
+        } else {
+          // _source가 추출된 경우
+          placeId = props.detail.p_id;
+        }
+        
+        if (!placeId) {
+          console.warn('placeId가 없어 후기 로드를 건너뜁니다:', placeId);
+          return;
+        }
+        
+        // 리셋인 경우 페이지를 0으로 초기화
+        if (reset) {
+          reviewsPage.value = 0;
+          reviews.value = [];
+        }
+        
+        const from = reviewsPage.value * reviewsPerPage;
+        console.log(`후기 로드: placeId=${placeId}, from=${from}, size=${reviewsPerPage}`);
+        
+        const response = await getPlaceReviews(placeId, reviewsPerPage, from);
+        
+        if (response) {
+          if (reset) {
+            // 새로 로드하는 경우
+            reviews.value = response.reviews;
+          } else {
+            // 더보기인 경우 기존 후기에 추가
+            reviews.value = [...reviews.value, ...response.reviews];
+          }
+          
+          totalReviews.value = response.total;
+          hasMoreReviews.value = response.hasMore;
+          
+          console.log(`후기 로드 완료: ${response.reviews.length}개 로드, 총 ${response.total}개, 더보기 가능: ${response.hasMore}`);
+        }
+        
+      } catch (error) {
+        console.error('후기 로드 오류:', error);
+      } finally {
+        isLoadingReviews.value = false;
+      }
+    };
+    
+    // 더 많은 후기 로드
+    const loadMoreReviews = async () => {
+      if (!hasMoreReviews.value || isLoadingReviews.value) return;
+      
+      reviewsPage.value += 1;
+      await loadReviews(false);
+    };
+    
     // 카카오맵 초기화
     const initDetailMap = async () => {
       console.log('지도 초기화 함수 호출됨');
@@ -582,6 +682,9 @@ export default {
           // 모달이 열릴 때 먼저 API에서 장소 상세 정보를 가져옴
           await fetchPlaceDetails();
           
+          // 후기 데이터도 함께 로드
+          await loadReviews(true);
+          
           // 약간의 지연 추가로 모달 애니메이션 완료 후 지도 초기화
           setTimeout(() => {
             console.log("모달 표시 후 지도 초기화 시작");
@@ -590,8 +693,12 @@ export default {
           }, 300);
         });
       } else {
-        // 모달이 닫힐 때 API 데이터 초기화
+        // 모달이 닫힐 때 데이터 초기화
         placeDetailsData.value = null;
+        reviews.value = [];
+        totalReviews.value = 0;
+        hasMoreReviews.value = false;
+        reviewsPage.value = 0;
       }
     });
     
@@ -606,6 +713,9 @@ export default {
         nextTick(async () => {
           // 초기 마운트 시에도 API 호출 후 지도 초기화
           await fetchPlaceDetails();
+          
+          // 후기 데이터도 함께 로드
+          await loadReviews(true);
           
           setTimeout(() => {
             console.log("초기 마운트 시 지도 초기화 시작");
@@ -687,7 +797,13 @@ export default {
       getMaskId,
       placeDetailsData,
       isLoadingPlaceDetails,
-      fetchPlaceDetails
+      fetchPlaceDetails,
+      reviews,
+      totalReviews,
+      isLoadingReviews,
+      hasMoreReviews,
+      loadReviews,
+      loadMoreReviews
     };
   }
 };
@@ -967,59 +1083,132 @@ export default {
 
 /* 리뷰 섹션 */
 .reviews-container {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem; /* Adjusted gap */
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 8px;
 }
 
 .review-item {
-  padding: 1.25rem;
-  background-color: #ffffff; /* White background for reviews */
-  border-radius: 8px; /* Softer radius */
-  border: 1px solid #eef2f7; /* Subtle border */
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  border-left: 3px solid #007bff;
+  transition: all 0.2s ease;
+}
+
+.review-item:hover {
+  background-color: #e9ecef;
+  transform: translateY(-1px);
 }
 
 .review-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start; /* Align items to top for multi-line names */
-  margin-bottom: 0.6rem; /* Reduced margin */
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
 }
 
 .reviewer-info {
-  display: flex;
-  flex-direction: column;
+  flex: 1;
 }
 
 .reviewer-name {
   font-weight: 600;
-  color: #34495e; /* Dark blue-grey */
-  font-size: 0.95rem; /* Adjusted size */
-  margin-bottom: 0.1rem;
+  color: #2c3e50;
+  font-size: 0.9rem;
 }
 
 .review-date {
-  font-size: 0.8rem; /* Adjusted size */
-  color: #95a5a6; /* Muted grey */
+  color: #6c757d;
+  font-size: 0.8rem;
+  margin-top: 2px;
+}
+
+.reviewer-details {
+  color: #6c757d;
+  font-size: 0.75rem;
+  margin-top: 2px;
+  font-style: italic;
 }
 
 .review-rating {
-  font-size: 1.1rem; /* Adjusted star size */
-  line-height: 1; /* Ensure stars align well */
+  display: flex;
+  gap: 2px;
 }
 
 .star-filled {
-  color: var(--logo-yellow, #fbc02d); /* Brighter yellow */
+  color: #ffc107;
+  font-size: 1rem;
 }
 
 .star-empty {
-  color: #e0e0e0; /* Lighter empty star */
+  color: #e9ecef;
+  font-size: 1rem;
 }
 
 .review-content {
-  font-size: 0.9rem; /* Adjusted size */
-  line-height: 1.65; /* Improved readability */
-  color: #52616B; /* Softer black */
+  color: #495057;
+  line-height: 1.5;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+/* 후기 로딩 및 빈 상태 스타일 */
+.reviews-loading,
+.no-reviews {
+  text-align: center;
+  padding: 2rem;
+  color: #6c757d;
+}
+
+.reviews-loading .spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+/* 더보기 버튼 스타일 */
+.load-more-container {
+  text-align: center;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.load-more-btn {
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 25px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+.load-more-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0056b3, #004085);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
+}
+
+.load-more-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .modal-footer {
