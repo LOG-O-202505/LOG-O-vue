@@ -443,24 +443,31 @@
                       </button>
                     </div>
                     <div class="test-data-inputs" :class="{ 'expanded': isTestDataExpanded }">
+                      <!-- 관리자 데이터 사용 여부 체크박스 추가 -->
+                      <div class="test-data-checkbox-row">
+                        <label class="checkbox-label">
+                          <input type="checkbox" v-model="useTestData" />
+                          <span class="checkbox-text">관리자 지정 데이터 사용 (체크 해제 시 실제 장소 ID와 사용자 정보 사용)</span>
+                        </label>
+                      </div>
                       <div class="test-data-input-row">
                         <div class="test-data-field">
                           <label for="p_id">장소 ID (p_id):</label>
-                          <input type="number" id="p_id" v-model="testDataInputs.p_id" min="1" placeholder="장소 ID">
+                          <input type="number" id="p_id" v-model="testDataInputs.p_id" min="1" placeholder="장소 ID" :disabled="!useTestData">
                         </div>
                         <div class="test-data-field">
                           <label for="u_id">사용자 ID (u_id):</label>
-                          <input type="number" id="u_id" v-model="testDataInputs.u_id" min="1" placeholder="사용자 ID">
+                          <input type="number" id="u_id" v-model="testDataInputs.u_id" min="1" placeholder="사용자 ID" :disabled="!useTestData">
                         </div>
                       </div>
                       <div class="test-data-input-row">
                         <div class="test-data-field">
                           <label for="u_age">나이 (u_age):</label>
-                          <input type="number" id="u_age" v-model="testDataInputs.u_age" min="1" placeholder="나이">
+                          <input type="number" id="u_age" v-model="testDataInputs.u_age" min="1" placeholder="나이" :disabled="!useTestData">
                         </div>
                         <div class="test-data-field">
                           <label for="u_gender">성별 (u_gender):</label>
-                          <select id="u_gender" v-model="testDataInputs.u_gender">
+                          <select id="u_gender" v-model="testDataInputs.u_gender" :disabled="!useTestData">
                             <option value="M">남성</option>
                             <option value="F">여성</option>
                           </select>
@@ -1937,24 +1944,28 @@ export default {
       }
     };
 
-    // 컴포넌트 마운트 시 지도 초기화
+    // 컴포넌트가 마운트될 때 실행
     onMounted(async () => {
-      console.log("Component mounted");
-
-      // 여행 데이터 로드
-      await fetchTravelData();
-
-      // DOM이 완전히 렌더링될 때까지 대기
-      await nextTick();
-
-      // 약간의 지연 후 초기화 (더 안정적인 DOM 렌더링을 위해)
-      setTimeout(async () => {
-        try {
+      console.log("TripPlan Component mounted. TUID:", tuid.value);
+      
+      // 사용자 정보 로드
+      await fetchCurrentUserInfo();
+      
+      try {
+        await fetchTravelData();
+        
+        // Kakao 지도 SDK 로드 확인 및 초기화
+        if (await isKakaoMapsLoaded()) {
+          console.log("카카오 지도 SDK가 이미 로드되어 있습니다.");
           await initializeMap();
-        } catch (error) {
-          console.error("Map initialization error:", error);
+        } else {
+          console.log("카카오 지도 SDK를 기다리는 중...");
+          await waitForKakaoMapsSDK();
+          await initializeMap();
         }
-      }, 300);
+      } catch (error) {
+        console.error("TripPlan Component 초기화 오류:", error);
+      }
     });
 
     // 활성 날짜가 변경될 때 지도 업데이트
@@ -3011,7 +3022,7 @@ export default {
     const testDataInputs = ref({
       p_id: 1,
       u_id: 1,
-      u_age: 20,
+      u_age: 25,
       u_gender: 'M'
     });
 
@@ -3166,39 +3177,21 @@ export default {
 
         // 중복 제거
         const uniqueTags = [...new Set(tags)];
+        console.log("최종 통합 태그:", uniqueTags);
 
-        const description = koreanDescription || reviewText.value || '방문 인증 사진';
+        // description은 koreanDescription과 동일하게 설정
+        const description = koreanDescription;
 
-        console.log('4. 형태소 분석 완료 - 최종 데이터:');
-        console.log('- 이미지 ID:', imageId);
-        console.log('- 위치:', locationText);
-        console.log('- 영어 위치:', englishLocationName);
-        console.log('- ko_3 모델 키워드:', extractedKeywords);
-        console.log('- 장소명 토큰화 결과:', placeNameTokens);
-        console.log('- 최종 태그 (중복 제거):', uniqueTags);
-        console.log('- 설명:', description);
-        console.log('- 10차원 벡터:', featuresVector);
-
-        if (locationInfo && englishLocationName) {
-          locationInfo.englishLocationName = englishLocationName;
-        }
-
-        // 5단계: 최종 처리 시간 계산
-        loadingPhase.value = 'processingResults';
-        console.log('5. 최종 처리 시간 계산 중...');
-        const processingStartTime = performance.now();
-
-        // 결과 처리 시뮬레이션 (1-2초)
-        await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
-
-        const processingEndTime = performance.now();
-        processingResultsDuration.value = Number(((processingEndTime - processingStartTime) / 1000).toFixed(1));
-        console.log('5. 최종 처리 완료');
-
-        loadingPhase.value = 'completed';
-        console.log('모든 처리가 완료되었습니다. 저장 버튼을 클릭하여 최종 저장하세요.');
-
-        // 임시 저장 데이터 (실제 ElasticSearch 저장은 saveVerificationResult에서 수행)
+        // p_id 디버깅 로그 추가
+        console.log('=== p_id 설정 디버깅 ===');
+        console.log('useTestData.value:', useTestData.value);
+        console.log('testDataInputs.value.p_id:', testDataInputs.value.p_id);
+        console.log('item:', item);
+        console.log('item.place:', item.place);
+        console.log('item.place?.puid:', item.place?.puid);
+        console.log('계산된 p_id:', useTestData.value ? testDataInputs.value.p_id : (item.place?.puid || testDataInputs.value.p_id));
+        console.log('=========================');
+        
         tempVerificationData.value = {
           item,
           imageId,
@@ -3214,12 +3207,16 @@ export default {
           locationInfo,
           locationText,
           // ElasticSearch 저장에 필요한 추가 데이터
-          p_id: item.place?.puid || item.puid || testDataInputs.value.p_id, // 실제 인증 대상 장소의 puid 사용
-          u_id: testDataInputs.value.u_id,
-          u_age: testDataInputs.value.u_age,
-          u_gender: testDataInputs.value.u_gender,
+          p_id: useTestData.value ? testDataInputs.value.p_id : (item.place?.puid || testDataInputs.value.p_id), // 체크박스 해제 시 travelAreas의 place.puid 우선 사용
+          u_id: useTestData.value ? testDataInputs.value.u_id : currentUserInfo.value.uuid,
+          u_age: useTestData.value ? testDataInputs.value.u_age : currentUserInfo.value.age,
+          u_gender: useTestData.value ? testDataInputs.value.u_gender : currentUserInfo.value.gender,
           addressName: verifyingItemInfo.value.location || verifyingItemInfo.value.place_name || verifyingItemInfo.value.address_name || ''
         };
+
+        // 성공적으로 완료되었으므로 로딩 상태 업데이트
+        loadingPhase.value = 'completed';
+        isVerifying.value = false;
 
         displayToast('인증 처리가 완료되었습니다. 저장 버튼을 클릭하여 최종 저장하세요.', 'success');
 
@@ -3256,7 +3253,7 @@ export default {
         loadingPhase.value = 'error';
       } finally {
         // 에러가 발생했을 때만 isVerifying을 false로 설정
-        // 성공적으로 완료된 경우는 저장 버튼을 통해 수동으로 완료
+        // 성공적으로 완료된 경우는 이미 위에서 처리됨
         if (loadingPhase.value === 'error') {
           isVerifying.value = false;
         }
@@ -3304,6 +3301,17 @@ export default {
 
       // 관리자 인증용 tempVerificationData 설정
       const item = verifyingItem.value;
+      
+      // p_id 디버깅 로그 추가
+      console.log('=== 관리자 인증 p_id 설정 디버깅 ===');
+      console.log('useTestData.value:', useTestData.value);
+      console.log('testDataInputs.value.p_id:', testDataInputs.value.p_id);
+      console.log('item:', item);
+      console.log('item.place:', item.place);
+      console.log('item.place?.puid:', item.place?.puid);
+      console.log('계산된 p_id:', useTestData.value ? testDataInputs.value.p_id : (item.place?.puid || testDataInputs.value.p_id));
+      console.log('===================================');
+      
       tempVerificationData.value = {
         item,
         imageId: `admin-verification-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`,
@@ -3323,10 +3331,10 @@ export default {
         },
         locationText: item.location || item.address || item.activity,
         // ElasticSearch 저장에 필요한 추가 데이터
-        p_id: item.place?.puid || item.puid || testDataInputs.value.p_id, // 실제 인증 대상 장소의 puid 사용
-        u_id: testDataInputs.value.u_id,
-        u_age: testDataInputs.value.u_age,
-        u_gender: testDataInputs.value.u_gender,
+        p_id: useTestData.value ? testDataInputs.value.p_id : (item.place?.puid || testDataInputs.value.p_id), // 체크박스 해제 시 travelAreas의 place.puid 우선 사용
+        u_id: useTestData.value ? testDataInputs.value.u_id : currentUserInfo.value.uuid,
+        u_age: useTestData.value ? testDataInputs.value.u_age : currentUserInfo.value.age,
+        u_gender: useTestData.value ? testDataInputs.value.u_gender : currentUserInfo.value.gender,
         addressName: item.location || item.address || item.activity
       };
 
@@ -3349,12 +3357,14 @@ export default {
         const data = tempVerificationData.value;
 
         console.log('ElasticSearch에 최종 저장 시작...');
-        console.log('=== p_id 확인 ===');
+        console.log('=== 최종 p_id 확인 ===');
+        console.log('useTestData.value:', useTestData.value);
+        console.log('data.item:', data.item);
         console.log('data.item.place:', data.item.place);
         console.log('data.item.place?.puid:', data.item.place?.puid);
-        console.log('data.item.puid:', data.item.puid);
-        console.log('최종 p_id:', data.p_id);
-        console.log('================');
+        console.log('testDataInputs.value.p_id:', testDataInputs.value.p_id);
+        console.log('최종 사용될 p_id:', data.p_id);
+        console.log('=======================');
 
         // ElasticSearch에 저장
         const esResponse = await saveToElasticsearch(
@@ -3619,6 +3629,50 @@ export default {
       }
     };
 
+    // 관리자 데이터 사용 여부 (기본값: false로 실제 데이터 사용)
+    const useTestData = ref(false);
+
+    // 현재 사용자 정보
+    const currentUserInfo = ref({
+      uuid: null,
+      name: '',
+      gender: 'M',
+      age: 20
+    });
+
+    // 현재 사용자 정보 조회 함수
+    const fetchCurrentUserInfo = async () => {
+      try {
+        console.log('현재 사용자 정보 조회 시작');
+        
+        const response = await apiGet('/users/profile');
+        
+        if (response && response.data) {
+          const userData = response.data;
+          
+          // 나이 계산 (birthday 배열에서)
+          let calculatedAge = 20; // 기본값
+          if (userData.birthday && Array.isArray(userData.birthday) && userData.birthday.length >= 3) {
+            const [birthYear] = userData.birthday;
+            const currentYear = new Date().getFullYear();
+            calculatedAge = currentYear - birthYear;
+          }
+          
+          currentUserInfo.value = {
+            uuid: userData.uuid,
+            name: userData.name || userData.nickname || '',
+            gender: userData.gender || 'M',
+            age: calculatedAge
+          };
+          
+          console.log('사용자 정보 조회 성공:', currentUserInfo.value);
+        }
+      } catch (error) {
+        console.error('사용자 정보 조회 실패:', error);
+        // 실패 시 기본값 유지
+      }
+    };
+
     return {
       // 로딩 및 에러 상태
       isLoading,
@@ -3772,7 +3826,10 @@ export default {
       showDeleteTravelModal,
       openDeleteTravelModal,
       closeDeleteTravelModal,
-      confirmDeleteTravel
+      confirmDeleteTravel,
+      useTestData,
+      currentUserInfo,
+      fetchCurrentUserInfo
     };
   }
 };
@@ -5850,45 +5907,42 @@ textarea {
 
 /* 테스트 데이터 입력 필드 스타일 */
 .test-data-container {
-  margin-top: 24px;
-  background-color: #f8f9fa;
-  border: 1px dashed #adb5bd;
-  border-radius: 6px;
+  background-color: #fffbeb;
+  border: 2px solid #fed7aa;
+  border-radius: 8px;
+  margin-bottom: 1rem;
   overflow: hidden;
 }
 
 .test-data-header {
+  background-color: #fed7aa;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s;
 }
 
 .test-data-header:hover {
-  background-color: #e9ecef;
+  background-color: #fdba74;
 }
 
 .test-data-title {
   margin: 0;
-  font-size: 15px;
-  color: #6c757d;
-  font-weight: 500;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #9a3412;
 }
 
 .test-data-toggle-btn {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  color: #6c757d;
-}
-
-.test-data-toggle-btn:hover {
-  background-color: rgba(108, 117, 125, 0.1);
+  color: #9a3412;
+  display: flex;
+  align-items: center;
+  transition: transform 0.2s;
 }
 
 .test-data-toggle-btn.expanded {
@@ -5896,23 +5950,48 @@ textarea {
 }
 
 .test-data-inputs {
-  padding: 0 16px;
   max-height: 0;
   overflow: hidden;
-  transition: all 0.3s ease;
-  opacity: 0;
+  transition: max-height 0.3s ease-out;
 }
 
 .test-data-inputs.expanded {
-  max-height: 200px;
-  padding: 0 16px 16px 16px;
-  opacity: 1;
+  max-height: 300px;
+  padding: 1rem;
+}
+
+/* 체크박스 행 스타일 */
+.test-data-checkbox-row {
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #fed7aa;
+  padding-bottom: 1rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #ea580c;
+  cursor: pointer;
+}
+
+.checkbox-text {
+  font-size: 0.85rem;
+  color: #9a3412;
+  font-weight: 500;
 }
 
 .test-data-input-row {
   display: flex;
-  gap: 16px;
-  margin-bottom: 12px;
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
 .test-data-input-row:last-child {
@@ -5921,29 +6000,39 @@ textarea {
 
 .test-data-field {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
 }
 
 .test-data-field label {
-  font-size: 13px;
-  color: #495057;
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #9a3412;
+  margin-bottom: 0.25rem;
 }
 
 .test-data-field input,
 .test-data-field select {
-  padding: 8px 12px;
-  border: 1px solid #ced4da;
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #fed7aa;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 0.85rem;
+  background-color: white;
+  transition: border-color 0.2s, opacity 0.2s;
 }
 
 .test-data-field input:focus,
 .test-data-field select:focus {
-  border-color: #4dabf7;
   outline: none;
-  box-shadow: 0 0 0 2px rgba(77, 171, 247, 0.25);
+  border-color: #ea580c;
+  box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.1);
+}
+
+.test-data-field input:disabled,
+.test-data-field select:disabled {
+  background-color: #f3f4f6;
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .review-form-section {
