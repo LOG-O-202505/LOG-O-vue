@@ -254,6 +254,9 @@
                 ★
               </span>
             </div>
+            <div v-if="currentImageInfo.verification && currentImageInfo.verification.review" class="viewer-review">
+              "{{ currentImageInfo.verification.review }}"
+            </div>
           </div>
         </div>
       </div>
@@ -2130,5 +2133,22 @@ export default {
   .image-counter {
     font-size: 0.8rem;
   }
+}
+
+.viewer-rating .star-empty {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 1rem;
+}
+
+.viewer-review {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  font-style: italic;
+  opacity: 0.9;
+  font-family: 'Noto Sans KR', sans-serif;
+  color: white;
+  max-width: 400px;
+  text-align: center;
 }
 </style> 
