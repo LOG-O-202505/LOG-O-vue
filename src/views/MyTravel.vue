@@ -152,29 +152,34 @@
         </div>
         <div class="profile-content">
           <div class="radar-chart-section">
-            <div v-if="hasValidChartData" class="radar-chart-container" ref="radarChartContainer">
+            <div class="radar-chart-container" ref="radarChartContainer">
               <!-- 레이더 차트가 렌더링 될 컨테이너 -->
-            </div>
-            <div v-else class="chart-loading">
-              <div class="loading-spinner">
-                <svg width="40" height="40" viewBox="0 0 40 40">
-                  <circle cx="20" cy="20" r="18" fill="none" stroke="#4299e1" stroke-width="4" stroke-linecap="round" stroke-dasharray="28 28" stroke-dashoffset="0">
-                    <animateTransform attributeName="transform" type="rotate" values="0 20 20;360 20 20" dur="1s" repeatCount="indefinite"/>
-                  </circle>
-                </svg>
-              </div>
-              <p>여행 취향 데이터를 불러오는 중...</p>
             </div>
           </div>
           <div class="profile-insight">
-            <p>{{ userInsight }}</p>
-            <div class="top-categories">
-              <div v-for="(category, index) in topCategories" :key="index" class="category-item">
-                <div class="category-name">{{ getCategoryName(category.dimension) }}</div>
-                <div class="category-bar-container">
-                  <div class="category-bar" :style="{ width: `${category.score * 100}%` }"></div>
+            <div v-if="hasValidChartData">
+              <p>{{ userInsight }}</p>
+              <div class="top-categories">
+                <div v-for="(category, index) in topCategories" :key="index" class="category-item">
+                  <div class="category-name">{{ getCategoryName(category.dimension) }}</div>
+                  <div class="category-bar-container">
+                    <div class="category-bar" :style="{ width: `${category.score * 100}%` }"></div>
+                  </div>
+                  <div class="category-score">{{ Math.round(category.score * 100) }}%</div>
                 </div>
-                <div class="category-score">{{ Math.round(category.score * 100) }}%</div>
+              </div>
+            </div>
+            <div v-else class="no-data-insight">
+              <p class="no-data-message">인증 데이터가 없습니다</p>
+              <p class="no-data-submessage">여행지 방문을 인증하고 나만의 여행 프로필을 완성해보세요!!</p>
+              <div class="default-categories">
+                <div v-for="(score, dimension) in dimensionScores" :key="dimension" class="category-item">
+                  <div class="category-name">{{ getCategoryName(dimension) }}</div>
+                  <div class="category-bar-container">
+                    <div class="category-bar" style="width: 100%"></div>
+                  </div>
+                  <div class="category-score">100%</div>
+                </div>
               </div>
             </div>
           </div>
@@ -329,18 +334,45 @@
         </div>
         <div class="timeline-container">
           <div v-if="travelTimeline.length === 0" class="no-trips">
-            <p>여행 기록이 없습니다.</p>
-            <!-- 새 여행 계획 버튼 -->
-            <div class="trip-item new-trip-item" @click="showNewTripForm = true">
-              <div class="new-trip-content">
-                <div class="plus-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="8" x2="12" y2="16"></line>
-                    <line x1="8" y1="12" x2="16" y2="12"></line>
-                  </svg>
+            <!-- 현재 연도와 같은 형식으로 표시 -->
+            <div class="timeline-year">
+              <div class="year-label">{{ currentYear }}년</div>
+              <div class="trips-wrapper">
+                <!-- 여행 기록이 없음을 알리는 카드 -->
+                <div class="trip-item no-trips-card">
+                  <div class="trip-date">{{ currentYear }}.01.01 - {{ currentYear }}.12.31</div>
+                  <div class="trip-image-preview">
+                    <div class="default-image">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                        <polyline points="14,2 14,8 20,8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10,9 9,9 8,9"/>
+                      </svg>
+                    </div>
+                  </div>
+                  <div class="trip-details">
+                    <div class="trip-location">여행 기록</div>
+                    <div class="trip-title">아직 기록이 없습니다</div>
+                    <div class="trip-budget">첫 번째 여행을 계획해보세요!</div>
+                    <div class="trip-people">✨ 새로운 시작</div>
+                  </div>
                 </div>
-                <div class="new-trip-text">새 여행 계획하기</div>
+                
+                <!-- 새 여행 계획 버튼 -->
+                <div class="trip-item new-trip-item" @click="showNewTripForm = true">
+                  <div class="new-trip-content">
+                    <div class="plus-icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="16"></line>
+                        <line x1="8" y1="12" x2="16" y2="12"></line>
+                      </svg>
+                    </div>
+                    <div class="new-trip-text">새 여행 계획하기</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -398,6 +430,14 @@
     <footer class="footer">
       <p>© 2025 LOG:O - 당신의 여행을 기록하다</p>
     </footer>
+
+    <!-- 토스트 메시지 -->
+    <ToastMessage 
+      :message="toastMessage" 
+      :type="toastType" 
+      :show="showToast" 
+      @update:show="showToast = $event" 
+    />
   </div>
 </template>
 
@@ -405,6 +445,7 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import * as d3 from 'd3';
 import Header from '@/components/Header.vue';
+import ToastMessage from '@/components/ToastMessage.vue';
 import ctprvnGeoJson from '@/assets/ctprvn.json';
 import propertiesData from '@/assets/extracted_ctprvn.json';
 import sigGeoJson from '@/assets/sig.json';
@@ -417,7 +458,8 @@ export default {
   name: 'MyTravel',
 
   components: {
-    Header
+    Header,
+    ToastMessage
   },
 
   setup() {
@@ -437,6 +479,11 @@ export default {
       peoples: 1,
       notes: ''
     });
+    
+    // 토스트 메시지 상태
+    const showToast = ref(false);
+    const toastMessage = ref('');
+    const toastType = ref('success');
     
     // 여행 기간 계산
     const tripDuration = computed(() => {
@@ -550,6 +597,8 @@ export default {
           await nextTick();
           if (hasValidChartData.value) {
             renderRadarChart();
+          } else {
+            renderDefaultRadarChart();
           }
         }
         
@@ -602,7 +651,9 @@ export default {
     const createNewTrip = async () => {
       // 입력 데이터 검증
       if (!newTrip.title || !newTrip.destination || !newTrip.startDate || !newTrip.endDate || !newTrip.budget) {
-        alert("필수 정보를 모두 입력해주세요.");
+        toastMessage.value = "필수 정보를 모두 입력해주세요.";
+        toastType.value = "error";
+        showToast.value = true;
         return;
       }
       
@@ -611,13 +662,17 @@ export default {
       const endDate = new Date(newTrip.endDate);
       
       if (endDate < startDate) {
-        alert("도착일은 출발일보다 빠를 수 없습니다.");
+        toastMessage.value = "도착일은 출발일보다 빠를 수 없습니다.";
+        toastType.value = "error";
+        showToast.value = true;
         return;
       }
       
       // 예산 검증
       if (parseInt(newTrip.budget) <= 0) {
-        alert("예산은 0보다 커야 합니다.");
+        toastMessage.value = "예산은 0보다 커야 합니다.";
+        toastType.value = "error";
+        showToast.value = true;
         return;
       }
 
@@ -641,7 +696,9 @@ export default {
         console.log('여행 계획 생성 성공:', response);
         
         // 성공 메시지
-        alert('새 여행 계획이 성공적으로 생성되었습니다!');
+        toastMessage.value = '새 여행 계획이 성공적으로 생성되었습니다!';
+        toastType.value = "success";
+        showToast.value = true;
         
         // 폼 초기화
         Object.assign(newTrip, {
@@ -662,7 +719,9 @@ export default {
         
       } catch (error) {
         console.error('여행 계획 생성 오류:', error);
-        alert('여행 계획 생성 중 오류가 발생했습니다. 다시 시도해주세요.');
+        toastMessage.value = '여행 계획 생성 중 오류가 발생했습니다. 다시 시도해주세요.';
+        toastType.value = "error";
+        showToast.value = true;
       }
     };
 
@@ -2008,6 +2067,163 @@ export default {
       return region ? region.CTP_KOR_NM : '대한민국';
     };
 
+    // 기본 원형 차트 렌더링 함수 (인증 데이터가 없을 때)
+    const renderDefaultRadarChart = () => {
+      if (!radarChartContainer.value) return;
+
+      console.log('기본 레이더 차트 렌더링 시작');
+
+      // 기존 차트 정리
+      if (radarSvg) {
+        radarSvg.selectAll("*").remove();
+        radarSvg = null;
+      }
+
+      // 컨테이너 정리
+      radarChartContainer.value.innerHTML = '';
+      
+      // 차트 설정
+      const width = 400;
+      const height = 400;
+      const margin = 60;
+      const radius = Math.min(width, height) / 2 - margin;
+
+      // SVG 생성
+      radarSvg = d3.select(radarChartContainer.value)
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height)
+        .style('width', '100%')
+        .style('height', '100%');
+
+      // 중앙 그룹 생성
+      const g = radarSvg.append('g')
+        .attr('transform', `translate(${width/2}, ${height/2})`);
+
+      // 기본 데이터 준비 (모든 값 0.5)
+      const defaultLabels = Object.keys(dimensionScores).map(dim => dimensionTranslations[dim] || dim);
+      const defaultDataPoints = defaultLabels.map((label, i) => ({
+        label: label,
+        value: 0.5, // 모든 값을 0.5로 설정
+        angle: (i * 2 * Math.PI) / defaultLabels.length
+      }));
+
+      console.log('기본 차트 데이터:', defaultDataPoints);
+
+      try {
+        // 레벨 수 (동심원)
+        const levels = 5;
+
+        // 배경 동심원 그리기
+        for (let level = 1; level <= levels; level++) {
+          g.append('circle')
+            .attr('r', (radius * level) / levels)
+            .attr('fill', 'none')
+            .attr('stroke', 'rgba(156, 163, 175, 0.3)') // 더 연한 색상
+            .attr('stroke-width', 1);
+        }
+
+        // 축선 그리기
+        g.selectAll('.axis-line')
+          .data(defaultDataPoints)
+          .enter()
+          .append('line')
+          .attr('class', 'axis-line')
+          .attr('x1', 0)
+          .attr('y1', 0)
+          .attr('x2', d => radius * Math.cos(d.angle - Math.PI / 2))
+          .attr('y2', d => radius * Math.sin(d.angle - Math.PI / 2))
+          .attr('stroke', 'rgba(156, 163, 175, 0.3)')
+          .attr('stroke-width', 1);
+
+        // 라벨 그리기
+        const labelRadius = radius + 20;
+        g.selectAll('.label')
+          .data(defaultDataPoints)
+          .enter()
+          .append('text')
+          .attr('class', 'label')
+          .attr('x', d => labelRadius * Math.cos(d.angle - Math.PI / 2))
+          .attr('y', d => labelRadius * Math.sin(d.angle - Math.PI / 2))
+          .attr('text-anchor', 'middle')
+          .attr('dominant-baseline', 'middle')
+          .style('font-size', '12px')
+          .style('font-family', "'Noto Sans KR', sans-serif")
+          .style('fill', '#9ca3af') // 더 연한 색상
+          .style('font-weight', '500')
+          .text(d => d.label);
+
+        // 기본 원형 데이터 영역 그리기
+        const pathData = defaultDataPoints.map(d => {
+          const x = (radius * d.value) * Math.cos(d.angle - Math.PI / 2);
+          const y = (radius * d.value) * Math.sin(d.angle - Math.PI / 2);
+          return [x, y];
+        });
+
+        const line = d3.line()
+          .x(d => d[0])
+          .y(d => d[1])
+          .curve(d3.curveLinearClosed);
+
+        // 배경 영역 (연한 회색톤)
+        g.append('path')
+          .datum(pathData)
+          .attr('d', line)
+          .attr('fill', 'rgba(156, 163, 175, 0.1)')
+          .attr('stroke', 'rgba(156, 163, 175, 0.5)')
+          .attr('stroke-width', 2)
+          .attr('stroke-dasharray', '5,5'); // 점선으로 표시
+
+        // 데이터 포인트 그리기 (연한 색상)
+        g.selectAll('.data-point')
+          .data(defaultDataPoints)
+          .enter()
+          .append('circle')
+          .attr('class', 'data-point')
+          .attr('cx', d => (radius * d.value) * Math.cos(d.angle - Math.PI / 2))
+          .attr('cy', d => (radius * d.value) * Math.sin(d.angle - Math.PI / 2))
+          .attr('r', 4)
+          .attr('fill', 'rgba(156, 163, 175, 0.7)')
+          .attr('stroke', '#ffffff')
+          .attr('stroke-width', 2);
+
+        // 중앙에 안내 텍스트 추가
+        g.append('text')
+          .attr('x', 0)
+          .attr('y', -10)
+          .attr('text-anchor', 'middle')
+          .attr('dominant-baseline', 'middle')
+          .style('font-size', '14px')
+          .style('font-family', "'Noto Sans KR', sans-serif")
+          .style('fill', '#9ca3af')
+          .style('font-weight', '600')
+          .text('기본 프로필');
+
+        g.append('text')
+          .attr('x', 0)
+          .attr('y', 10)
+          .attr('text-anchor', 'middle')
+          .attr('dominant-baseline', 'middle')
+          .style('font-size', '12px')
+          .style('font-family', "'Noto Sans KR', sans-serif")
+          .style('fill', '#9ca3af')
+          .style('font-weight', '400')
+          .text('인증 후 개인화됩니다');
+        
+        console.log('기본 레이더 차트 생성 완료');
+        
+      } catch (error) {
+        console.error('기본 차트 렌더링 오류:', error);
+        
+        // 오류 발생 시 간단한 텍스트로 대체
+        radarChartContainer.value.innerHTML = `
+          <div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #666;">
+            차트를 불러올 수 없습니다.
+          </div>
+        `;
+      }
+    };
+
     return {
       // 사용자 프로필 관련
       userProfile,
@@ -2034,6 +2250,11 @@ export default {
       newTrip,
       tripDuration,
       createNewTrip,
+      
+      // 토스트 메시지 관련
+      showToast,
+      toastMessage,
+      toastType,
       
       // 상태 변수
       mapContainer,
@@ -2081,7 +2302,8 @@ export default {
       getSigColor,
       logRegionVisitData,
       updateDetailMapSelection,
-      getSelectedRegionName
+      getSelectedRegionName,
+      renderDefaultRadarChart
     };
   }
 };
@@ -2557,7 +2779,7 @@ export default {
   justify-content: center;
 }
 
-.chart-loading {
+.chart-empty-state {
   height: 400px;
   display: flex;
   flex-direction: column;
@@ -2566,14 +2788,24 @@ export default {
   color: #6b7280;
 }
 
-.loading-spinner {
+.empty-chart-placeholder {
   margin-bottom: 1rem;
 }
 
-.chart-loading p {
-  font-size: 0.9rem;
-  margin: 0;
-  font-style: italic;
+.empty-chart-icon {
+  font-size: 2rem;
+  color: #6b7280;
+}
+
+.empty-chart-grid {
+  width: 200px;
+  height: 200px;
+}
+
+.empty-radar-chart {
+  fill: none;
+  stroke: #e2e8f0;
+  stroke-width: 1;
 }
 
 .profile-insight {
@@ -2752,10 +2984,77 @@ export default {
 
 /* No-trip message styling */
 .no-trips {
+  /* 기존 스타일 제거하고 빈 컨테이너로 만듦 */
+}
+
+.no-trips .timeline-year {
+  margin-bottom: 0; /* 기본 margin-bottom 제거 */
+}
+
+.no-trips .trips-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
   margin-left: 2.5rem;
-  color: #718096;
+  position: relative;
+}
+
+/* no-trips의 trips-wrapper에도 세로선 추가 */
+.no-trips .trips-wrapper::before {
+  content: "";
+  position: absolute;
+  left: -20px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: #e2e8f0;
+}
+
+/* 여행 기록 없음 카드 스타일 */
+.no-trips-card {
+  opacity: 0.7;
+  border-top-color: #94a3b8 !important;
+  cursor: default !important;
+}
+
+.no-trips-card:hover {
+  transform: none !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05) !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+}
+
+.no-trips-card .default-image {
+  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+}
+
+.no-trips-message {
+  text-align: center;
+  padding: 2rem;
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  border-radius: 16px;
+  border: 2px dashed #d1d5db;
+  width: 100%;
+  max-width: 400px;
+}
+
+.no-trips-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.7;
+}
+
+.no-trips-text {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 0.5rem 0;
+}
+
+.no-trips-subtitle {
+  font-size: 1rem;
+  color: #6b7280;
+  margin: 0;
   font-style: italic;
-  padding: 1rem 0;
 }
 
 /* 계절별 색상 */
@@ -2899,14 +3198,14 @@ export default {
 }
 
 .new-trip-content {
-  padding: 2rem;
+  padding: 1.5rem;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 100%;
-  min-height: 200px;
+  min-height: 280px; /* trip-date(약 45px) + trip-image-preview(150px) + trip-details(약 85px) = 약 280px */
 }
 
 .plus-icon {
@@ -3506,4 +3805,57 @@ export default {
 }
 
 /* 툴팁 스타일 - 기존 툴팁 제거됨 */
+
+/* 데이터가 없을 때 스타일 */
+.no-data-insight {
+  text-align: center;
+  padding: 2rem;
+}
+
+.no-data-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.6;
+}
+
+.no-data-message {
+  color: #6b7280;
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  border-radius: 12px;
+  border: 2px dashed #d1d5db;
+}
+
+.default-categories {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.default-categories .category-item {
+  opacity: 0.5;
+  background: rgba(243, 244, 246, 0.5);
+}
+
+.default-categories .category-bar {
+  background: #e5e7eb;
+}
+
+.default-categories .category-score {
+  color: #9ca3af;
+}
+
+.no-data-submessage {
+  color: #6b7280;
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+  border-radius: 12px;
+  border: 2px dashed #d1d5db;
+}
 </style>

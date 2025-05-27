@@ -123,8 +123,17 @@
 
           <div class="form-group">
             <label for="visitTime">방문 시간</label>
-            <div class="time-input-wrapper">
-              <input type="time" id="visitTime" v-model="visitTime">
+            <div class="time-select-wrapper">
+              <select v-model="selectedAmPm" class="time-select am-pm-select">
+                <option value="AM">오전</option>
+                <option value="PM">오후</option>
+              </select>
+              <select v-model="selectedHour" class="time-select hour-select">
+                <option v-for="hour in hours" :key="hour" :value="hour">{{ hour }}시</option>
+              </select>
+              <select v-model="selectedMinute" class="time-select minute-select">
+                <option v-for="minute in minutes" :key="minute" :value="minute">{{ minute }}분</option>
+              </select>
             </div>
           </div>
 
@@ -147,7 +156,7 @@
 </template>
 
 <script>
-import { ref, onMounted, nextTick, watch } from 'vue';
+import { ref, onMounted, nextTick, watch, computed } from 'vue';
 import { apiPost } from '@/services/auth';
 import { reverseGeocode, getLocationCodes, getUserLikes, addUserLike, removeUserLike } from '@/services/api';
 
@@ -189,6 +198,42 @@ export default {
     const selectedPlace = ref(null);
     const visitTime = ref('');
     const placeMemo = ref('');
+
+    // 시간 선택 관련 상태
+    const selectedAmPm = ref('AM');
+    const selectedHour = ref('9');
+    const selectedMinute = ref('00');
+
+    // 시간 옵션 생성
+    const hours = computed(() => {
+      const hourList = [];
+      for (let i = 1; i <= 12; i++) {
+        hourList.push(i.toString());
+      }
+      return hourList;
+    });
+
+    const minutes = computed(() => {
+      const minuteList = [];
+      for (let i = 0; i < 60; i += 5) { // 5분 단위
+        minuteList.push(i.toString().padStart(2, '0'));
+      }
+      return minuteList;
+    });
+
+    // 선택된 시간을 HH:MM 형식으로 변환
+    const getFormattedTime = () => {
+      const hour = parseInt(selectedHour.value);
+      let hour24 = hour;
+      
+      if (selectedAmPm.value === 'PM' && hour !== 12) {
+        hour24 = hour + 12;
+      } else if (selectedAmPm.value === 'AM' && hour === 12) {
+        hour24 = 0;
+      }
+      
+      return `${hour24.toString().padStart(2, '0')}:${selectedMinute.value}`;
+    };
 
     // 지도 관련
     const detailMapInstance = ref(null);
@@ -391,6 +436,11 @@ export default {
       visitTime.value = '';
       placeMemo.value = '';
       
+      // 시간 드롭다운 초기화
+      selectedAmPm.value = 'AM';
+      selectedHour.value = '9';
+      selectedMinute.value = '00';
+      
       // 다음 틱에서 지도 초기화
       nextTick(() => {
         initDetailMap();
@@ -402,6 +452,11 @@ export default {
       selectedPlace.value = null;
       visitTime.value = '';
       placeMemo.value = '';
+      
+      // 시간 드롭다운 초기화
+      selectedAmPm.value = 'AM';
+      selectedHour.value = '9';
+      selectedMinute.value = '00';
       
       // 지도 정리
       if (detailMapInstance.value) {
@@ -445,12 +500,9 @@ export default {
     const addSelectedPlace = async () => {
       if (!selectedPlace.value) return;
 
-      // 시간 파싱 및 검증
-      const timeRegex = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
-      if (!timeRegex.test(visitTime.value)) {
-        emit('show-toast', '시간은 HH:MM 형식으로 입력해 주세요.', 'error');
-        return;
-      }
+      // 드롭다운에서 선택된 시간을 HH:MM 형식으로 변환
+      const formattedTime = getFormattedTime();
+      visitTime.value = formattedTime;
 
       try {
         isAdding.value = true;
@@ -482,7 +534,7 @@ export default {
         travelDate.setDate(startDate.getDate() + props.selectedDay);
         
         // 시간 정보 추가
-        const [hours, minutes] = visitTime.value.split(':');
+        const [hours, minutes] = formattedTime.split(':');
         travelDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
         // 선택된 날짜에 해당하는 travelRoot의 truid 찾기
@@ -494,6 +546,14 @@ export default {
         console.log('찾는 day (1-based):', props.selectedDay + 1);
         console.log('선택된 TravelRoot:', selectedTravelRoot);
         console.log('사용할 travel_day_id:', travelDayId);
+
+        // 선택된 TravelRoot의 날짜 확인 및 보정
+        if (selectedTravelRoot && selectedTravelRoot.travelDate) {
+          // TravelRoot의 실제 날짜를 사용
+          const rootDate = new Date(selectedTravelRoot.travelDate);
+          travelDate.setFullYear(rootDate.getFullYear(), rootDate.getMonth(), rootDate.getDate());
+          console.log('TravelRoot 날짜로 보정된 최종 날짜:', travelDate.toISOString());
+        }
 
         // API 요청 데이터 구성
         const requestData = {
@@ -518,7 +578,7 @@ export default {
         // 새 일정 아이템 데이터 구성
         const newItem = {
           id: result.data?.tauid || Date.now(),
-          time: visitTime.value,
+          time: formattedTime,
           activity: selectedPlace.value.place_name,
           location: selectedPlace.value.address_name || selectedPlace.value.road_address_name,
           memo: placeMemo.value,
@@ -536,19 +596,14 @@ export default {
         };
 
         // 부모 컴포넌트에 일정 추가 알림
-        emit('place-added', {
-          dayIndex: props.selectedDay,
-          newItem: newItem
-        });
-
-        // 성공 메시지
-        emit('show-toast', `${newItem.activity}이(가) 일정에 추가되었습니다.`, 'success');
+        emit('place-added', { dayIndex: props.selectedDay, newItem });
+        emit('show-toast', '일정이 성공적으로 추가되었습니다!', 'success');
 
         // 모달 닫기
         closeModal();
 
       } catch (error) {
-        console.error('일정 추가 실패:', error);
+        console.error('일정 추가 오류:', error);
         emit('show-toast', `일정 추가 중 오류가 발생했습니다: ${error.message}`, 'error');
       } finally {
         isAdding.value = false;
@@ -618,7 +673,12 @@ export default {
       placeMemo,
       detailMapContainer,
       memoTextarea,
-      
+
+      // 시간 드롭다운 관련
+      selectedAmPm,
+      selectedHour,
+      selectedMinute,
+
       // 메서드
       searchPlaces,
       addToWishlist,
@@ -629,7 +689,12 @@ export default {
       addSelectedPlace,
       autoResizeTextarea,
       closeModal,
-      handleOverlayClick
+      handleOverlayClick,
+      
+      // 계산된 속성
+      hours,
+      minutes,
+      getFormattedTime
     };
   }
 };
@@ -1016,32 +1081,58 @@ export default {
   font-size: 0.9rem;
 }
 
-.time-input-wrapper input,
-.form-group textarea {
-  padding: 0.75rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  transition: border-color 0.2s;
+.time-select-wrapper {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
 }
 
-.time-input-wrapper input:focus,
-.form-group textarea:focus {
+.time-select {
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.time-select:focus {
   outline: none;
   border-color: #4299e1;
   box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
 }
 
-.form-group textarea {
-  min-height: 80px;
-  max-height: 200px;
-  resize: none;
-  overflow-y: hidden;
-  transition: min-height 0.2s ease;
+.time-select:hover {
+  border-color: #cbd5e0;
 }
 
-.form-group textarea.expanded {
-  overflow-y: auto;
+.am-pm-select {
+  flex: 0 0 80px;
+}
+
+.hour-select {
+  flex: 0 0 80px;
+}
+
+.minute-select {
+  flex: 0 0 80px;
+}
+
+.form-group textarea {
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+.form-group textarea:focus {
+  outline: none;
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
 }
 
 /* 폼 액션 */

@@ -1632,9 +1632,9 @@ export const getUserAverageTravelPreferences = async (userId = 1) => {
     
     if (!userBucket) {
       console.warn(`사용자 ID ${userId}의 데이터를 찾을 수 없습니다.`);
-      // 기본 더미 데이터 반환
+      // 데이터가 없는 경우 전부 0으로 반환
       return {
-        avgVector: [0.7, 0.4, 0.6, 0.8, 0.9, 0.6, 0.5, 0.5, 0.7, 0.2],
+        avgVector: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         userInfo: {
           u_id: userId,
           u_age: 20,
@@ -1655,9 +1655,9 @@ export const getUserAverageTravelPreferences = async (userId = 1) => {
     return userPreferences;
   } catch (error) {
     console.error('사용자 평균 조회 오류:', error);
-    // 에러 발생 시 기본 더미 데이터 반환
+    // 에러 발생 시 전부 0으로 반환
     return {
-      avgVector: [0.7, 0.4, 0.6, 0.8, 0.9, 0.6, 0.5, 0.5, 0.7, 0.2],
+      avgVector: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
       userInfo: {
         u_id: userId,
         u_age: 20,

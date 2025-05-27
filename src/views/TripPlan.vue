@@ -431,50 +431,6 @@
                       rows="6"></textarea>
                   </div>
 
-                  <!-- 테스트용 데이터 입력 필드 추가 -->
-                  <div class="test-data-container">
-                    <div class="test-data-header" @click="isTestDataExpanded = !isTestDataExpanded">
-                      <h4 class="test-data-title">테스트용 데이터 입력 (개발용)</h4>
-                      <button type="button" class="test-data-toggle-btn" :class="{ 'expanded': isTestDataExpanded }">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                      </button>
-                    </div>
-                    <div class="test-data-inputs" :class="{ 'expanded': isTestDataExpanded }">
-                      <!-- 관리자 데이터 사용 여부 체크박스 추가 -->
-                      <div class="test-data-checkbox-row">
-                        <label class="checkbox-label">
-                          <input type="checkbox" v-model="useTestData" />
-                          <span class="checkbox-text">관리자 지정 데이터 사용 (체크 해제 시 실제 장소 ID와 사용자 정보 사용)</span>
-                        </label>
-                      </div>
-                      <div class="test-data-input-row">
-                        <div class="test-data-field">
-                          <label for="p_id">장소 ID (p_id):</label>
-                          <input type="number" id="p_id" v-model="testDataInputs.p_id" min="1" placeholder="장소 ID" :disabled="!useTestData">
-                        </div>
-                        <div class="test-data-field">
-                          <label for="u_id">사용자 ID (u_id):</label>
-                          <input type="number" id="u_id" v-model="testDataInputs.u_id" min="1" placeholder="사용자 ID" :disabled="!useTestData">
-                        </div>
-                      </div>
-                      <div class="test-data-input-row">
-                        <div class="test-data-field">
-                          <label for="u_age">나이 (u_age):</label>
-                          <input type="number" id="u_age" v-model="testDataInputs.u_age" min="1" placeholder="나이" :disabled="!useTestData">
-                        </div>
-                        <div class="test-data-field">
-                          <label for="u_gender">성별 (u_gender):</label>
-                          <select id="u_gender" v-model="testDataInputs.u_gender" :disabled="!useTestData">
-                            <option value="M">남성</option>
-                            <option value="F">여성</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
 
                   <div class="form-actions">
                     <button @click="completeVerification" class="btn-verify">
@@ -714,11 +670,11 @@ export default {
             console.log('여행 루트 데이터:', travelRoots.value);
           }
 
+          // 일정 데이터 초기화 (travelAreas 처리 전에 먼저 초기화)
+          initializeTripDays();
+
           // travelAreas 데이터를 일정으로 변환
           if (backendData.travelAreas && Array.isArray(backendData.travelAreas)) {
-            // 일정 데이터 초기화
-            initializeTripDays();
-
             console.log('=== TravelAreas 매핑 시작 ===');
             console.log('TravelRoots:', travelRoots.value);
             console.log('TravelAreas:', backendData.travelAreas);
@@ -759,11 +715,22 @@ export default {
               }
             });
 
+            // 각 날짜별 일정을 시간순으로 정렬
+            tripDays.value.forEach((day, index) => {
+              if (day.items && day.items.length > 0) {
+                day.items.sort((a, b) => {
+                  // 빈 시간은 가장 뒤로
+                  if (!a.time) return 1;
+                  if (!b.time) return -1;
+                  // 시간 비교 (HH:MM 형식)
+                  return a.time.localeCompare(b.time);
+                });
+                console.log(`Day ${index + 1} 일정 시간순 정렬 완료:`, day.items.map(item => `${item.time} - ${item.activity}`));
+              }
+            });
+
             console.log('=== TravelAreas 매핑 완료 ===');
             console.log('최종 일정 데이터:', tripDays.value);
-          } else {
-            // travelAreas가 없어도 일정 초기화
-            initializeTripDays();
           }
 
           // travelPayments 데이터를 expenses로 변환
@@ -3018,16 +2985,6 @@ export default {
     const reviewRating = ref(0);
     const reviewText = ref('');
 
-    // 테스트 데이터 입력용 상태 추가
-    const testDataInputs = ref({
-      p_id: 1,
-      u_id: 1,
-      u_age: 25,
-      u_gender: 'M'
-    });
-
-    // 테스트 데이터 컨테이너 토글 상태
-    const isTestDataExpanded = ref(false);
 
     // 거리 표시 형식을 미터로 변경하는 함수
     const formatDistance = (distance) => {
@@ -3184,12 +3141,9 @@ export default {
 
         // p_id 디버깅 로그 추가
         console.log('=== p_id 설정 디버깅 ===');
-        console.log('useTestData.value:', useTestData.value);
-        console.log('testDataInputs.value.p_id:', testDataInputs.value.p_id);
         console.log('item:', item);
         console.log('item.place:', item.place);
         console.log('item.place?.puid:', item.place?.puid);
-        console.log('계산된 p_id:', useTestData.value ? testDataInputs.value.p_id : (item.place?.puid || testDataInputs.value.p_id));
         console.log('=========================');
         
         tempVerificationData.value = {
@@ -3207,10 +3161,10 @@ export default {
           locationInfo,
           locationText,
           // ElasticSearch 저장에 필요한 추가 데이터
-          p_id: useTestData.value ? testDataInputs.value.p_id : (item.place?.puid || testDataInputs.value.p_id), // 체크박스 해제 시 travelAreas의 place.puid 우선 사용
-          u_id: useTestData.value ? testDataInputs.value.u_id : currentUserInfo.value.uuid,
-          u_age: useTestData.value ? testDataInputs.value.u_age : currentUserInfo.value.age,
-          u_gender: useTestData.value ? testDataInputs.value.u_gender : currentUserInfo.value.gender,
+          p_id: item.place?.puid,
+          u_id: currentUserInfo.value.uuid,
+          u_age: currentUserInfo.value.age,
+          u_gender: currentUserInfo.value.gender,
           addressName: verifyingItemInfo.value.location || verifyingItemInfo.value.place_name || verifyingItemInfo.value.address_name || ''
         };
 
@@ -3304,12 +3258,9 @@ export default {
       
       // p_id 디버깅 로그 추가
       console.log('=== 관리자 인증 p_id 설정 디버깅 ===');
-      console.log('useTestData.value:', useTestData.value);
-      console.log('testDataInputs.value.p_id:', testDataInputs.value.p_id);
       console.log('item:', item);
       console.log('item.place:', item.place);
       console.log('item.place?.puid:', item.place?.puid);
-      console.log('계산된 p_id:', useTestData.value ? testDataInputs.value.p_id : (item.place?.puid || testDataInputs.value.p_id));
       console.log('===================================');
       
       tempVerificationData.value = {
@@ -3331,10 +3282,10 @@ export default {
         },
         locationText: item.location || item.address || item.activity,
         // ElasticSearch 저장에 필요한 추가 데이터
-        p_id: useTestData.value ? testDataInputs.value.p_id : (item.place?.puid || testDataInputs.value.p_id), // 체크박스 해제 시 travelAreas의 place.puid 우선 사용
-        u_id: useTestData.value ? testDataInputs.value.u_id : currentUserInfo.value.uuid,
-        u_age: useTestData.value ? testDataInputs.value.u_age : currentUserInfo.value.age,
-        u_gender: useTestData.value ? testDataInputs.value.u_gender : currentUserInfo.value.gender,
+        p_id: item.place?.puid,
+        u_id: currentUserInfo.value.uuid,
+        u_age: currentUserInfo.value.age,
+        u_gender: currentUserInfo.value.gender,
         addressName: item.location || item.address || item.activity
       };
 
@@ -3358,11 +3309,9 @@ export default {
 
         console.log('ElasticSearch에 최종 저장 시작...');
         console.log('=== 최종 p_id 확인 ===');
-        console.log('useTestData.value:', useTestData.value);
         console.log('data.item:', data.item);
         console.log('data.item.place:', data.item.place);
         console.log('data.item.place?.puid:', data.item.place?.puid);
-        console.log('testDataInputs.value.p_id:', testDataInputs.value.p_id);
         console.log('최종 사용될 p_id:', data.p_id);
         console.log('=======================');
 
@@ -3510,6 +3459,18 @@ export default {
 
       tripDays.value[dayIndex].items.push(newItem);
 
+      // 해당 날짜의 일정을 시간순으로 자동 정렬
+      if (tripDays.value[dayIndex].items.length > 1) {
+        tripDays.value[dayIndex].items.sort((a, b) => {
+          // 빈 시간은 가장 뒤로
+          if (!a.time) return 1;
+          if (!b.time) return -1;
+          // 시간 비교 (HH:MM 형식)
+          return a.time.localeCompare(b.time);
+        });
+        console.log(`Day ${dayIndex + 1} 일정 자동 정렬 완료:`, tripDays.value[dayIndex].items.map(item => `${item.time} - ${item.activity}`));
+      }
+
       // 활성 날짜를 선택한 날짜로 변경 (다른 날짜에 일정을 추가한 경우)
       if (dayIndex !== activeDay.value) {
         activeDay.value = dayIndex;
@@ -3628,9 +3589,6 @@ export default {
         displayToast('여행 삭제에 실패했습니다.', 'error');
       }
     };
-
-    // 관리자 데이터 사용 여부 (기본값: false로 실제 데이터 사용)
-    const useTestData = ref(false);
 
     // 현재 사용자 정보
     const currentUserInfo = ref({
@@ -3798,8 +3756,6 @@ export default {
       memoTextarea,
       autoResizeTextarea,
       adminVerify,
-      testDataInputs,
-      isTestDataExpanded,
       saveVerificationResult,
       detailMapContainer, // expose to template if not already (it is used by ref="detailMapContainer")
       showPaymentModal,
@@ -3827,7 +3783,6 @@ export default {
       openDeleteTravelModal,
       closeDeleteTravelModal,
       confirmDeleteTravel,
-      useTestData,
       currentUserInfo,
       fetchCurrentUserInfo
     };
@@ -5902,136 +5857,6 @@ textarea {
 
 .admin-btn:disabled {
   background-color: #e57373;
-  cursor: not-allowed;
-}
-
-/* 테스트 데이터 입력 필드 스타일 */
-.test-data-container {
-  background-color: #fffbeb;
-  border: 2px solid #fed7aa;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-  overflow: hidden;
-}
-
-.test-data-header {
-  background-color: #fed7aa;
-  padding: 0.75rem 1rem;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  transition: background-color 0.2s;
-}
-
-.test-data-header:hover {
-  background-color: #fdba74;
-}
-
-.test-data-title {
-  margin: 0;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #9a3412;
-}
-
-.test-data-toggle-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #9a3412;
-  display: flex;
-  align-items: center;
-  transition: transform 0.2s;
-}
-
-.test-data-toggle-btn.expanded {
-  transform: rotate(180deg);
-}
-
-.test-data-inputs {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease-out;
-}
-
-.test-data-inputs.expanded {
-  max-height: 300px;
-  padding: 1rem;
-}
-
-/* 체크박스 행 스타일 */
-.test-data-checkbox-row {
-  margin-bottom: 1rem;
-  border-bottom: 1px solid #fed7aa;
-  padding-bottom: 1rem;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  user-select: none;
-}
-
-.checkbox-label input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: #ea580c;
-  cursor: pointer;
-}
-
-.checkbox-text {
-  font-size: 0.85rem;
-  color: #9a3412;
-  font-weight: 500;
-}
-
-.test-data-input-row {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.test-data-input-row:last-child {
-  margin-bottom: 0;
-}
-
-.test-data-field {
-  flex: 1;
-}
-
-.test-data-field label {
-  display: block;
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: #9a3412;
-  margin-bottom: 0.25rem;
-}
-
-.test-data-field input,
-.test-data-field select {
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid #fed7aa;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  background-color: white;
-  transition: border-color 0.2s, opacity 0.2s;
-}
-
-.test-data-field input:focus,
-.test-data-field select:focus {
-  outline: none;
-  border-color: #ea580c;
-  box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.1);
-}
-
-.test-data-field input:disabled,
-.test-data-field select:disabled {
-  background-color: #f3f4f6;
-  opacity: 0.6;
   cursor: not-allowed;
 }
 
