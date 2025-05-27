@@ -27,22 +27,70 @@
       </div>
               
       <div class="modal-content">
-        <!-- 이미지와 지도 섹션 (수평 레이아웃) -->
-        <div class="visual-section">
-          <div class="detail-image-container">
-            <img v-if="displayImageUrl" :src="displayImageUrl" :alt="getPlaceName || '여행지 이미지'"
-              class="detail-image">
-            <div v-else class="placeholder-image">이미지 없음</div>
-          </div>
-              
-          <!-- 지도 영역 -->
+        <!-- A. 지도 + 요약 섹션 (가로 배치) -->
+        <div class="map-summary-section">
+          <!-- 지도 영역 (왼쪽 - 큰 크기) -->
           <div class="detail-map-container">
             <div id="detailMap" ref="detailMapContainer" class="detail-map"></div>
           </div>
+          
+          <!-- 요약 정보 (오른쪽) -->
+          <div class="summary-container">
+            <div class="summary-stats">
+              <div class="stat-item rating-stat">
+                <div class="stat-icon">⭐</div>
+                <div class="stat-content">
+                  <div class="stat-label">평균 평점</div>
+                  <div class="stat-value">
+                    <span class="rating-score">{{ placeDetailsData?.averageRating?.toFixed(1) || '0.0' }}</span>
+                    <div class="rating-stars">
+                      <span v-for="star in 5" :key="star" 
+                        :class="{'star-filled': star <= Math.round(placeDetailsData?.averageRating || 0), 'star-empty': star > Math.round(placeDetailsData?.averageRating || 0)}">
+                        ★
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="stat-item review-stat">
+                <div class="stat-icon">📝</div>
+                <div class="stat-content">
+                  <div class="stat-label">총 인증 수</div>
+                  <div class="stat-value">
+                    <span class="count-number">{{ placeDetailsData?.totalReviewCount || 0 }}</span>
+                    <span class="count-unit">개</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="stat-item visitors-stat">
+                <div class="stat-icon">👥</div>
+                <div class="stat-content">
+                  <div class="stat-label">방문자 수</div>
+                  <div class="stat-value">
+                    <span class="count-number">{{ totalStatsVisits || 0 }}</span>
+                    <span class="count-unit">명</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="stat-item likes-stat">
+                <div class="stat-icon">❤️</div>
+                <div class="stat-content">
+                  <div class="stat-label">관심 등록</div>
+                  <div class="stat-value">
+                    <span class="count-number">{{ placeDetailsData?.totalLikeCount || 0 }}</span>
+                    <span class="count-unit">명</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         
-        <!-- 태그 섹션 -->
-        <div v-if="getPlaceTags && getPlaceTags.length > 0" class="detail-section">
+        <!-- B. 태그 섹션 -->
+        <div v-if="getPlaceTags && getPlaceTags.length > 0" class="content-section">
           <h4>태그</h4>
           <div class="tag-list">
             <span 
@@ -56,30 +104,52 @@
           </div>
         </div>
 
-        <!-- 설명 섹션 -->
-        <div v-if="getPlaceDescription" class="detail-section">
+        <!-- C. 설명 섹션 -->
+        <div v-if="getPlaceDescription" class="content-section">
           <h4>설명</h4>
-          <p class="detail-description">{{ getPlaceDescription }}</p>
+          <p class="description-text">{{ getPlaceDescription }}</p>
         </div>
         
-        <!-- 특성 분석 섹션 -->
-        <div v-if="dimensionValues.length > 0" class="detail-section">
-          <h4>특성 분석</h4>
-          <div class="detail-dimensions">
-            <div v-for="(value, index) in dimensionValues" :key="index" class="dimension-item">
-              <span class="dimension-name">{{ getDimensionLabel(index) }}</span>
-              <div class="dimension-bar-small">
-                <div class="dimension-fill" :style="{ width: `${value * 100}%` }"></div>
+        <!-- D. 방문자 인증 리뷰 (방문자 사진 갤러리) -->
+        <div v-if="allImages.length > 0" class="content-section">
+          <h4>방문자 인증 리뷰 ({{ allImages.length }}장)</h4>
+          <div class="visitor-photos-container">
+            <div class="visitor-photos-scroll" ref="photosGalleryContainer">
+              <div 
+                v-for="(image, index) in allImages" 
+                :key="index"
+                class="visitor-photo-card"
+                @click="openImageViewer(image.url, index)"
+              >
+                <div class="visitor-photo-image">
+                  <img :src="image.url" :alt="`방문자 사진 ${index + 1}`" class="photo-img">
+                </div>
+                <div class="visitor-photo-overlay">
+                  <div class="visitor-info">
+                    <div class="visitor-name">{{ image.userName }}</div>
+                    <div class="visitor-rating">
+                      <span v-for="star in 5" :key="star" 
+                        :class="{'star-filled': star <= image.rating, 'star-empty': star > image.rating}">
+                        ★
+                      </span>
+                    </div>
+                    <div v-if="image.verification && image.verification.review" class="visitor-review-preview">
+                      "{{ image.verification.review.length > 30 ? image.verification.review.substring(0, 30) + '...' : image.verification.review }}"
+                    </div>
+                  </div>
+                </div>
               </div>
-              <span class="dimension-value">{{ value.toFixed(1) }}</span>
             </div>
+            <!-- 스크롤 버튼 -->
+            <button v-if="canScrollLeft" @click="scrollPhotosGallery('left')" class="gallery-scroll-btn left">‹</button>
+            <button v-if="canScrollRight" @click="scrollPhotosGallery('right')" class="gallery-scroll-btn right">›</button>
           </div>
         </div>
-
-        <!-- 연령대별 방문 통계 섹션 -->
-        <div v-if="!isLoadingStats" class="detail-section stats-section">
-          <h4>연령대별 방문 통계 (총 {{ totalStatsVisits }}건 인증)</h4>
-          <div v-if="ageStats.length > 0 || genderStats.length > 0" class="stats-charts">
+        
+        <!-- E. 방문 통계 2종 - 연령대별 방문 통계 | 성별 방문 비율 -->
+        <div v-if="!isLoadingStats && (ageStats.length > 0 || genderStats.length > 0)" class="content-section stats-section">
+          <h4>방문 통계 (총 {{ totalStatsVisits }}건 인증)</h4>
+          <div class="stats-charts">
             <!-- 연령대별 원형 그래프 -->
             <div class="chart-container">
               <h5>연령대별 방문 비율</h5>
@@ -101,6 +171,12 @@
                     <div class="gender-icon male">
                       <div class="icon-container">
                         <svg viewBox="0 0 158.66 332.54" class="male-icon-svg">
+                          <defs>
+                            <mask :id="`male-mask-${getMaskId}`">
+                              <rect x="0" y="0" width="100%" height="100%" fill="white"/>
+                              <rect x="0" y="0" :height="`calc(100% * (1 - (${malePercentage} / 100)))`" width="100%" fill="black"/>
+                            </mask>
+                          </defs>
                           <g>
                             <path class="icon-background" d="M123.25,82.17H35.42C13.84,82.17-2.72,101.3.37,122.66l11.55,79.69c1.17,8.06,8.07,14.03,16.21,14.03h2.43l14.06,116.16h69.42l14.06-116.16h2.51c8.11,0,14.99-5.96,16.15-13.98l11.56-79.94c2.97-21.29-13.57-40.29-35.07-40.29Z" />
                             <circle class="icon-background" cx="79.33" cy="37.42" r="37.42" transform="translate(-3.23 67.06) rotate(-45)" />
@@ -109,10 +185,6 @@
                             <path d="M123.25,82.17H35.42C13.84,82.17-2.72,101.3.37,122.66l11.55,79.69c1.17,8.06,8.07,14.03,16.21,14.03h2.43l14.06,116.16h69.42l14.06-116.16h2.51c8.11,0,14.99-5.96,16.15-13.98l11.56-79.94c2.97-21.29-13.57-40.29-35.07-40.29Z" fill="#4c7bd8"/>
                             <circle cx="79.33" cy="37.42" r="37.42" transform="translate(-3.23 67.06) rotate(-45)" fill="#4c7bd8"/>
                           </g>
-                          <mask :id="`male-mask-${getMaskId}`">
-                            <rect x="0" y="0" width="100%" height="100%" fill="white"/>
-                            <rect x="0" y="0" :height="`calc(100% * (1 - (${malePercentage} / 100)))`" width="100%" fill="black"/>
-                          </mask>
                         </svg>
                       </div>
                       <div class="gender-label-percent">남성 <span class="percent-value">{{ malePercentage }}%</span></div>
@@ -121,18 +193,20 @@
                     <div class="gender-icon female">
                       <div class="icon-container">
                         <svg viewBox="0 0 157.19 332.54" class="female-icon-svg">
+                          <defs>
+                            <mask :id="`female-mask-${getMaskId}`">
+                              <rect x="0" y="0" width="100%" height="100%" fill="white"/>
+                              <rect x="0" y="0" :height="`calc(100% * (1 - (${femalePercentage} / 100)))`" width="100%" fill="black"/>
+                            </mask>
+                          </defs>
                           <g>
-                            <circle class="icon-background" cx="78.68" cy="37.42" r="37.42" transform="translate(24.18 105.4) rotate(-76.72)" />
-                            <path class="icon-background" d="M156.76,187.25l-24.97-94.01c-.03-.1-.06-.2-.09-.29-2.35-6.46-8.49-10.77-15.37-10.77H41.02c-6.89,0-13.03,4.31-15.37,10.77-.03.1-.06.19-.09.29L.59,187.25s-5.18,20.11,15.14,23.87h.31l-6.41,33.76h24.91l12.45,87.66h63.38l12.45-87.66h24.91l-6.41-33.76h.3c19.58-3.22,15.15-23.87,15.15-23.87Z" />
+                            <circle class="icon-background" cx="78.68" cy="37.42" r="37.42" />
+                            <path class="icon-background" d="M156.76,187.25l-24.97-94.01c-.03-.1-.06-.2-.09-.29-2.35-6.46-8.49-10.77-15.37-10.77H41.02c-6.89,0-13.03,4.31-15.37,10.77-.03.1-.06.19-.09.29L.59,187.25s-5.18,20.11,15.14,23.87h.31l-6.41,33.76h24.91l12.45,87.66h63.38l12.45-87.66h24.91l-6.41-33.76h.30c19.58-3.22,15.15-23.87,15.15-23.87Z" />
                           </g>
                           <g :style="{ mask: 'url(#female-mask-' + getMaskId + ')' }">
-                            <circle cx="78.68" cy="37.42" r="37.42" transform="translate(24.18 105.4) rotate(-76.72)" fill="#e5518d"/>
-                            <path d="M156.76,187.25l-24.97-94.01c-.03-.1-.06-.2-.09-.29-2.35-6.46-8.49-10.77-15.37-10.77H41.02c-6.89,0-13.03,4.31-15.37,10.77-.03.1-.06.19-.09.29L.59,187.25s-5.18,20.11,15.14,23.87h.31l-6.41,33.76h24.91l12.45,87.66h63.38l12.45-87.66h24.91l-6.41-33.76h.3c19.58-3.22,15.15-23.87,15.15-23.87Z" fill="#e5518d"/>
+                            <circle cx="78.68" cy="37.42" r="37.42" fill="#e5518d"/>
+                            <path d="M156.76,187.25l-24.97-94.01c-.03-.1-.06-.2-.09-.29-2.35-6.46-8.49-10.77-15.37-10.77H41.02c-6.89,0-13.03,4.31-15.37,10.77-.03.1-.06.19-.09.29L.59,187.25s-5.18,20.11,15.14,23.87h.31l-6.41,33.76h24.91l12.45,87.66h63.38l12.45-87.66h24.91l-6.41-33.76h.30c19.58-3.22,15.15-23.87,15.15-23.87Z" fill="#e5518d"/>
                           </g>
-                          <mask :id="`female-mask-${getMaskId}`">
-                            <rect x="0" y="0" width="100%" height="100%" fill="white"/>
-                            <rect x="0" y="0" :height="`calc(100% * (1 - (${femalePercentage} / 100)))`" width="100%" fill="black"/>
-                          </mask>
                         </svg>
                       </div>
                       <div class="gender-label-percent">여성 <span class="percent-value">{{ femalePercentage }}%</span></div>
@@ -147,66 +221,14 @@
               <div v-else class="no-gender-data"><p>성별 데이터가 없습니다</p></div>
             </div>
           </div>
-          <div v-else class="no-stats-data"><p>방문 통계 데이터가 없습니다.</p></div>
         </div>
+        
         <!-- 통계 로딩 중 -->
-        <div v-if="isLoadingStats" class="detail-section stats-section">
-          <h4>연령대별 방문 통계</h4>
+        <div v-if="isLoadingStats" class="content-section stats-section">
+          <h4>방문 통계</h4>
           <div class="stats-loading">
             <div class="spinner"></div>
             <p>통계 데이터를 불러오는 중...</p>
-          </div>
-        </div>
-        
-        <!-- 리뷰 섹션 -->
-        <div class="detail-section">
-          <h4>방문자 리뷰 ({{ totalReviews }})</h4>
-          
-          <!-- 로딩 중 -->
-          <div v-if="isLoadingReviews && reviews.length === 0" class="reviews-loading">
-            <div class="spinner"></div>
-            <p>후기를 불러오는 중...</p>
-          </div>
-          
-          <!-- 후기가 없는 경우 -->
-          <div v-else-if="!isLoadingReviews && reviews.length === 0" class="no-reviews">
-            <p>아직 등록된 후기가 없습니다.</p>
-          </div>
-          
-          <!-- 후기 목록 -->
-          <div v-else class="reviews-container">
-            <div v-for="(review, index) in reviews" :key="index" class="review-item">
-              <div class="review-header">
-                <div class="reviewer-info">
-                  <div class="reviewer-name">{{ review.userName }}</div>
-                  <div class="review-date">{{ formatReviewDate(review.date) }}</div>
-                  <div class="reviewer-details">
-                    {{ review.userAge }}세 {{ review.userGender === 'M' ? '남성' : '여성' }}
-                  </div>
-                </div>
-                <div class="review-rating">
-                  <span v-for="star in 5" :key="star" 
-                    :class="{'star-filled': star <= review.rating, 'star-empty': star > review.rating}">
-                    ★
-                  </span>
-                </div>
-              </div>
-              <div class="review-content">
-                {{ review.comment }}
-              </div>
-            </div>
-            
-            <!-- 더보기 버튼 -->
-            <div v-if="hasMoreReviews" class="load-more-container">
-              <button 
-                @click="loadMoreReviews" 
-                :disabled="isLoadingReviews"
-                class="load-more-btn"
-              >
-                <span v-if="isLoadingReviews">로딩 중...</span>
-                <span v-else>더보기 ({{ totalReviews - reviews.length }}개 더)</span>
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -216,13 +238,40 @@
       </div>
     </div>
   </div>
+
+  <!-- 이미지 뷰어 모달 -->
+  <div v-if="showImageViewer" class="image-viewer-overlay" @click="closeImageViewer">
+    <div class="image-viewer-container" @click.stop>
+      <button class="image-viewer-close" @click="closeImageViewer">×</button>
+      <div class="image-viewer-content">
+        <img :src="currentViewerImage" :alt="'확대 이미지'" class="viewer-image">
+        <div v-if="currentImageInfo && !currentImageInfo.isReviewImage" class="image-viewer-info">
+          <div class="viewer-user-info">
+            <strong>{{ currentImageInfo.userName }}</strong>
+            <div class="viewer-rating">
+              <span v-for="star in 5" :key="star" 
+                :class="{'star-filled': star <= currentImageInfo.rating, 'star-empty': star > currentImageInfo.rating}">
+                ★
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- 이미지 네비게이션 (여러 이미지가 있는 경우만) -->
+      <div v-if="allImages.length > 1 && !currentImageInfo?.isReviewImage" class="image-viewer-navigation">
+        <button @click="previousImage" class="nav-btn prev" :disabled="currentImageIndex === 0">‹</button>
+        <span class="image-counter">{{ currentImageIndex + 1 }} / {{ allImages.length }}</span>
+        <button @click="nextImage" class="nav-btn next" :disabled="currentImageIndex === allImages.length - 1">›</button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script>
 import { ref, computed, onMounted, watch, nextTick } from "vue";
 import Chart from 'chart.js/auto';
 import config from "@/config.js";
-import { getPlaceDetails, getPlaceReviews } from "@/services/api.js";
+import { apiGet } from "@/services/auth.js";
 
 export default {
   name: "PlaceDetailModal",
@@ -248,42 +297,16 @@ export default {
     const placeDetailsData = ref(null);
     const isLoadingPlaceDetails = ref(false);
     
-    // 후기 관련 상태 변수들
-    const reviews = ref([]);
-    const totalReviews = ref(0);
-    const isLoadingReviews = ref(false);
-    const hasMoreReviews = ref(false);
-    const reviewsPage = ref(0);
-    const reviewsPerPage = 5;
+    // 이미지 관련 상태 변수들
+    const photosGalleryContainer = ref(null);
+    const canScrollLeft = ref(false);
+    const canScrollRight = ref(false);
     
-    const displayImageUrl = computed(() => {
-      if (!props.detail) {
-        return null;
-      }
-      
-      let imageUrl = null;
-      
-      // LogoSearch(searchSimilarImages)와 KeywordSearch(searchImagesByKeyword) 양쪽 모두 처리
-      if (props.detail._source && props.detail._source.p_image) {
-        // Elasticsearch _source 직접 포함된 경우 (searchSimilarImages 형식)
-        imageUrl = props.detail._source.p_image;
-      } else if (props.detail.p_image) {
-        // _source가 추출된 경우 (일반 형식)
-        imageUrl = props.detail.p_image;
-      }
-      
-      // base64 이미지 처리 (prefix가 없는 경우 추가)
-      if (imageUrl) {
-        // 이미 "data:image/" 접두어가 있는지 확인
-        if (!imageUrl.startsWith('data:image/')) {
-          // base64 문자열만 있는 경우 적절한 접두어 추가
-          imageUrl = `data:image/jpeg;base64,${imageUrl}`;
-        }
-        console.log("이미지 URL 처리 완료:", imageUrl.substring(0, 50) + "...");
-      }
-      
-      return imageUrl;
-    });
+    // 이미지 뷰어 관련 상태 변수들
+    const showImageViewer = ref(false);
+    const currentViewerImage = ref('');
+    const currentImageIndex = ref(0);
+    const currentImageInfo = ref(null);
 
     // 차원 영어-한글 매핑
     const dimensionLabels = [
@@ -304,27 +327,97 @@ export default {
       return dimensionLabels[index] || `차원 ${index + 1}`;
     };
     
-    // p_vector 배열에서 차원 값 가져오기
+    // p_vector 배열에서 차원 값 가져오기 (ElasticSearch 데이터)
     const dimensionValues = computed(() => {
       if (!props.detail) {
         return [];
       }
       
-      // LogoSearch(searchSimilarImages)와 KeywordSearch(searchImagesByKeyword) 양쪽 모두 처리
       if (props.detail._source && props.detail._source.p_vector) {
-        // Elasticsearch _source 직접 포함된 경우 (searchSimilarImages 형식)
         return props.detail._source.p_vector;
       } else if (props.detail.p_vector) {
-        // _source가 추출된 경우 (일반 형식)
         return props.detail.p_vector;
       }
       
       return [];
     });
     
-    // 리뷰 날짜 포맷팅
-    const formatReviewDate = (dateString) => {
-      const date = new Date(dateString);
+    // 메인 이미지 URL (첫 번째 이미지 또는 기존 ElasticSearch 이미지)
+    const mainImageUrl = computed(() => {
+      // 1순위: 새로운 API에서 받은 첫 번째 verification 이미지
+      if (placeDetailsData.value && placeDetailsData.value.verifications && placeDetailsData.value.verifications.length > 0) {
+        const firstVerification = placeDetailsData.value.verifications[0];
+        if (firstVerification.imageUrl) {
+          return firstVerification.imageUrl;
+        }
+      }
+      
+      // 2순위: ElasticSearch 기존 base64 이미지 (fallback)
+      if (!props.detail) {
+        return null;
+      }
+      
+      let imageUrl = null;
+      
+      if (props.detail._source && props.detail._source.p_image) {
+        imageUrl = props.detail._source.p_image;
+      } else if (props.detail.p_image) {
+        imageUrl = props.detail.p_image;
+      }
+      
+      // base64 이미지 처리 (prefix가 없는 경우 추가)
+      if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:image/')) {
+        imageUrl = `data:image/jpeg;base64,${imageUrl}`;
+      }
+      
+      return imageUrl;
+    });
+    
+    // 추가 이미지들 (첫 번째 이미지 제외)
+    const additionalImages = computed(() => {
+      if (!placeDetailsData.value || !placeDetailsData.value.verifications) {
+        return [];
+      }
+      
+      // 첫 번째 이미지를 제외한 나머지 이미지들
+      return placeDetailsData.value.verifications.slice(1).map(verification => ({
+        url: verification.imageUrl,
+        userName: verification.user.nickname || verification.user.name,
+        rating: verification.star,
+        verification: verification // 전체 verification 객체 포함
+      })).filter(image => image.url); // imageUrl이 있는 것만 필터링
+    });
+    
+    // 전체 이미지 배열 (메인 + 추가 이미지들)
+    const allImages = computed(() => {
+      const images = [];
+      
+      // 메인 이미지 추가
+      if (mainImageUrl.value) {
+        const firstVerification = placeDetailsData.value?.verifications?.[0];
+        images.push({
+          url: mainImageUrl.value,
+          userName: firstVerification?.user?.nickname || firstVerification?.user?.name || '알 수 없음',
+          rating: firstVerification?.star || 0,
+          verification: firstVerification, // 전체 verification 객체 포함
+          isMain: true
+        });
+      }
+      
+      // 추가 이미지들 추가
+      images.push(...additionalImages.value);
+      
+      return images;
+    });
+    
+    // 리뷰 날짜 포맷팅 (새로운 API 구조용)
+    const formatReviewDate = (createdArray) => {
+      if (!createdArray || createdArray.length < 3) return '';
+      
+      // [2025, 5, 26, 20, 59, 22, 713589000] 형식
+      const [year, month, day] = createdArray;
+      const date = new Date(year, month - 1, day); // month는 0부터 시작
+      
       return date.toLocaleDateString('ko-KR', {
         year: 'numeric',
         month: 'long',
@@ -332,7 +425,24 @@ export default {
       });
     };
     
-    // 연령대별 방문 통계 관련 computed 속성
+    // 나이 계산 함수
+    const calculateAge = (birthdayArray) => {
+      if (!birthdayArray || birthdayArray.length < 3) return 0;
+      
+      const [year, month, day] = birthdayArray;
+      const birthDate = new Date(year, month - 1, day);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      
+      return age;
+    };
+    
+    // 연령대별 방문 통계 관련 computed 속성 (ElasticSearch 데이터)
     const totalAgeVisits = computed(() => {
       return props.ageStats.reduce((sum, stat) => sum + stat.value, 0);
     });
@@ -408,7 +518,7 @@ export default {
               position: 'right',
               labels: {
                 font: { size: 12 },
-                padding: 25, // Increase space between doughnut and legend
+                padding: 25,
                 generateLabels: (chart) => {
                   const datasets = chart.data.datasets;
                   return chart.data.labels.map((label, i) => ({
@@ -434,119 +544,125 @@ export default {
       });
     };
     
-    // 장소 상세 정보를 API에서 가져오는 함수
+    // 새로운 API를 사용하여 장소 상세 정보를 가져오는 함수
     const fetchPlaceDetails = async () => {
       if (!props.detail) return;
       
       try {
         isLoadingPlaceDetails.value = true;
         
-        // ElasticSearch 결과에서 p_id와 p_address 추출
-        let puid, address;
+        // ElasticSearch 결과에서 p_id 추출
+        let puid;
         
         if (props.detail._source) {
-          // Elasticsearch _source 직접 포함된 경우
           puid = props.detail._source.p_id;
-          address = props.detail._source.p_address;
         } else {
-          // _source가 추출된 경우
           puid = props.detail.p_id;
-          // 다양한 address 필드 확인 (우선순위: p_address > address)
-          address = props.detail.p_address || props.detail.address;
         }
         
-        // getPlaceAddress computed 값도 fallback으로 사용
-        if (!address) {
-          address = getPlaceAddress.value;
-        }
+        console.log(`새로운 장소 상세 정보 API 호출: puid=${puid}`);
         
-        console.log(`장소 상세 정보 API 호출: puid=${puid}, address=${address}`);
-        console.log('detail 객체 전체:', props.detail);
-        
-        if (!puid || !address) {
-          console.warn('puid 또는 address가 없어 API 호출을 건너뜁니다:', { puid, address });
+        if (!puid) {
+          console.warn('puid가 없어 API 호출을 건너뜁니다:', { puid });
           return;
         }
         
-        const response = await getPlaceDetails(puid, address);
+        // auth.js의 apiGet 함수를 사용하여 API 호출
+        const result = await apiGet(`/places/${puid}/detail`);
         
-        if (response && response.status === 'success' && response.data) {
-          placeDetailsData.value = response.data;
-          console.log('장소 상세 정보 로드 완료:', response.data);
+        if (result && result.status === 'success' && result.data) {
+          placeDetailsData.value = result.data;
+          console.log('새로운 장소 상세 정보 로드 완료:', result.data);
+          
+          // 스크롤 상태 업데이트
+          nextTick(() => {
+            updateScrollButtons();
+          });
+          
         } else {
-          console.warn('API 응답이 예상 형식과 다릅니다:', response);
+          console.warn('API 응답이 예상 형식과 다릅니다:', result);
         }
         
       } catch (error) {
         console.error('장소 상세 정보 로드 오류:', error);
-        // API 오류가 발생해도 기존 데이터로 지도를 표시할 수 있도록 함
       } finally {
         isLoadingPlaceDetails.value = false;
       }
     };
     
-    // 후기 데이터를 로드하는 함수
-    const loadReviews = async (reset = false) => {
-      if (!props.detail) return;
+    // 추가 이미지 갤러리 스크롤 관련 함수들
+    const updateScrollButtons = () => {
+      const container = photosGalleryContainer.value;
+      if (!container) return;
       
-      try {
-        isLoadingReviews.value = true;
-        
-        // ElasticSearch 결과에서 p_id 추출
-        let placeId;
-        
-        if (props.detail._source) {
-          // Elasticsearch _source 직접 포함된 경우
-          placeId = props.detail._source.p_id;
-        } else {
-          // _source가 추출된 경우
-          placeId = props.detail.p_id;
-        }
-        
-        if (!placeId) {
-          console.warn('placeId가 없어 후기 로드를 건너뜁니다:', placeId);
-          return;
-        }
-        
-        // 리셋인 경우 페이지를 0으로 초기화
-        if (reset) {
-          reviewsPage.value = 0;
-          reviews.value = [];
-        }
-        
-        const from = reviewsPage.value * reviewsPerPage;
-        console.log(`후기 로드: placeId=${placeId}, from=${from}, size=${reviewsPerPage}`);
-        
-        const response = await getPlaceReviews(placeId, reviewsPerPage, from);
-        
-        if (response) {
-          if (reset) {
-            // 새로 로드하는 경우
-            reviews.value = response.reviews;
-          } else {
-            // 더보기인 경우 기존 후기에 추가
-            reviews.value = [...reviews.value, ...response.reviews];
-          }
-          
-          totalReviews.value = response.total;
-          hasMoreReviews.value = response.hasMore;
-          
-          console.log(`후기 로드 완료: ${response.reviews.length}개 로드, 총 ${response.total}개, 더보기 가능: ${response.hasMore}`);
-        }
-        
-      } catch (error) {
-        console.error('후기 로드 오류:', error);
-      } finally {
-        isLoadingReviews.value = false;
+      canScrollLeft.value = container.scrollLeft > 0;
+      canScrollRight.value = container.scrollLeft < (container.scrollWidth - container.clientWidth);
+    };
+    
+    const scrollPhotosGallery = (direction) => {
+      const container = photosGalleryContainer.value;
+      if (!container) return;
+      
+      const scrollAmount = 200;
+      
+      if (direction === 'left') {
+        container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+      } else {
+        container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      }
+      
+      setTimeout(() => {
+        updateScrollButtons();
+      }, 300);
+    };
+    
+    // 이미지 뷰어 관련 함수들
+    const openImageViewer = (imageUrl, index, isReviewImage = false) => {
+      currentViewerImage.value = imageUrl;
+      currentImageIndex.value = index;
+      
+      if (isReviewImage) {
+        currentImageInfo.value = { isReviewImage: true };
+      } else if (index >= 0 && index < allImages.value.length) {
+        currentImageInfo.value = {
+          ...allImages.value[index],
+          isReviewImage: false
+        };
+      } else {
+        currentImageInfo.value = { isReviewImage: false };
+      }
+      
+      showImageViewer.value = true;
+    };
+    
+    const closeImageViewer = () => {
+      showImageViewer.value = false;
+      currentViewerImage.value = '';
+      currentImageInfo.value = null;
+    };
+    
+    const previousImage = () => {
+      if (currentImageIndex.value > 0) {
+        currentImageIndex.value--;
+        const newImage = allImages.value[currentImageIndex.value];
+        currentViewerImage.value = newImage.url;
+        currentImageInfo.value = {
+          ...newImage,
+          isReviewImage: false
+        };
       }
     };
     
-    // 더 많은 후기 로드
-    const loadMoreReviews = async () => {
-      if (!hasMoreReviews.value || isLoadingReviews.value) return;
-      
-      reviewsPage.value += 1;
-      await loadReviews(false);
+    const nextImage = () => {
+      if (currentImageIndex.value < allImages.value.length - 1) {
+        currentImageIndex.value++;
+        const newImage = allImages.value[currentImageIndex.value];
+        currentViewerImage.value = newImage.url;
+        currentImageInfo.value = {
+          ...newImage,
+          isReviewImage: false
+        };
+      }
     };
     
     // 카카오맵 초기화
@@ -569,28 +685,30 @@ export default {
         // 선택된 장소의 위치 정보 확인
         let lat = 37.5665; // 기본값: 서울시청
         let lng = 126.9780;
+        let placeName = '여행지';
         
-        // 1순위: API에서 받은 위도/경도 사용
+        // 1순위: 새로운 API에서 받은 위도/경도 사용
         if (placeDetailsData.value && placeDetailsData.value.latitude && placeDetailsData.value.longitude) {
           lat = placeDetailsData.value.latitude;
           lng = placeDetailsData.value.longitude;
-          console.log('API에서 받은 좌표 사용:', { lat, lng });
+          placeName = placeDetailsData.value.name || placeName;
+          console.log('새로운 API에서 받은 좌표 사용:', { lat, lng, placeName });
         } else {
           // 2순위: 기존 ElasticSearch location_data 사용
           let locationData = null;
           
           if (props.detail._source && props.detail._source.location_data) {
-            // Elasticsearch _source 직접 포함된 경우 (searchSimilarImages 형식)
             locationData = props.detail._source.location_data;
+            placeName = props.detail._source.p_name || placeName;
           } else if (props.detail.location_data) {
-            // _source가 추출된 경우 (일반 형식)
             locationData = props.detail.location_data;
+            placeName = props.detail.name || props.detail.p_name || placeName;
           }
           
           if (locationData) {
             lat = locationData.latitude || lat;
             lng = locationData.longitude || lng;
-            console.log('ElasticSearch location_data 사용:', { lat, lng });
+            console.log('ElasticSearch location_data 사용:', { lat, lng, placeName });
           } else {
             console.log('기본 좌표 사용 (서울시청):', { lat, lng });
           }
@@ -599,7 +717,7 @@ export default {
         // 지도 옵션
         const mapOption = {
           center: new kakao.maps.LatLng(lat, lng),
-          level: 3 // 확대 레벨
+          level: 3
         };
         
         // 지도 생성
@@ -615,14 +733,6 @@ export default {
         marker.setMap(kakaoMap);
         
         // 인포윈도우 추가
-        // LogoSearch와 KeywordSearch 형식 모두 처리
-        let placeName = '여행지';
-        if (props.detail._source) {
-          placeName = props.detail._source.p_name || placeName;
-        } else {
-          placeName = props.detail.name || props.detail.p_name || placeName;
-        }
-        
         const infoContent = `
           <div style="padding: 5px; text-align: center;">
             <span style="font-weight: bold;">${placeName}</span>
@@ -653,7 +763,6 @@ export default {
     // 카카오 맵 API 로드 함수
     const loadKakaoMapsScript = () => {
       return new Promise((resolve, reject) => {
-        // 이미 로드된 경우
         if (window.kakao && window.kakao.maps) {
           console.log("카카오 맵 API가 이미 로드되어 있습니다");
           resolve();
@@ -687,26 +796,19 @@ export default {
     watch(() => props.show, (newVal) => {
       if (newVal) {
         nextTick(async () => {
-          // 모달이 열릴 때 먼저 API에서 장소 상세 정보를 가져옴
+          // 모달이 열릴 때 먼저 새로운 API에서 장소 상세 정보를 가져옴
           await fetchPlaceDetails();
-          
-          // 후기 데이터도 함께 로드
-          await loadReviews(true);
           
           // 약간의 지연 추가로 모달 애니메이션 완료 후 지도 초기화
           setTimeout(() => {
             console.log("모달 표시 후 지도 초기화 시작");
-            console.log("장소 상세 데이터 형식:", props.detail._source ? "ElasticSearch 직접 포맷" : "추출된 포맷");
             initDetailMap();
           }, 300);
         });
       } else {
         // 모달이 닫힐 때 데이터 초기화
         placeDetailsData.value = null;
-        reviews.value = [];
-        totalReviews.value = 0;
-        hasMoreReviews.value = false;
-        reviewsPage.value = 0;
+        showImageViewer.value = false;
       }
     });
     
@@ -716,18 +818,20 @@ export default {
       });
     }, { deep: true });
     
+    // 추가 이미지 갤러리 스크롤 이벤트 리스너
+    watch(() => photosGalleryContainer.value, (newContainer) => {
+      if (newContainer) {
+        newContainer.addEventListener('scroll', updateScrollButtons);
+      }
+    });
+    
     onMounted(() => {
       if (props.show) {
         nextTick(async () => {
-          // 초기 마운트 시에도 API 호출 후 지도 초기화
           await fetchPlaceDetails();
-          
-          // 후기 데이터도 함께 로드
-          await loadReviews(true);
           
           setTimeout(() => {
             console.log("초기 마운트 시 지도 초기화 시작");
-            console.log("장소 상세 데이터 형식:", props.detail._source ? "ElasticSearch 직접 포맷" : "추출된 포맷");
             initDetailMap();
           }, 300);
         });
@@ -736,6 +840,12 @@ export default {
     
     // 컴포넌트 속성과 데이터 추출을 위한 computed 속성 추가
     const getPlaceName = computed(() => {
+      // 1순위: 새로운 API 데이터
+      if (placeDetailsData.value && placeDetailsData.value.name) {
+        return placeDetailsData.value.name;
+      }
+      
+      // 2순위: ElasticSearch 데이터
       if (!props.detail) return "";
       
       if (props.detail._source) {
@@ -746,6 +856,12 @@ export default {
     });
 
     const getPlaceAddress = computed(() => {
+      // 1순위: 새로운 API 데이터
+      if (placeDetailsData.value && placeDetailsData.value.address) {
+        return placeDetailsData.value.address;
+      }
+      
+      // 2순위: ElasticSearch 데이터
       if (!props.detail) return "";
       
       if (props.detail._source) {
@@ -782,7 +898,7 @@ export default {
       } else if (props.detail && props.detail._source && props.detail._source.p_id) {
         return `p${props.detail._source.p_id}`;
       }
-      return 'place' + Math.floor(Math.random() * 1000000); // 안전한 랜덤 ID
+      return 'place' + Math.floor(Math.random() * 1000000);
     });
     
     // 현재 장소가 관심 장소에 있는지 확인하는 computed 속성
@@ -790,13 +906,20 @@ export default {
       console.log('=== isCurrentPlaceInWishlist 체크 시작 ===');
       console.log('props.detail:', props.detail);
       console.log('props.userLikes:', props.userLikes);
+      console.log('placeDetailsData.value:', placeDetailsData.value);
       
+      // 1순위: 새로운 API 데이터의 likedByCurrentUser 사용
+      if (placeDetailsData.value && typeof placeDetailsData.value.likedByCurrentUser === 'boolean') {
+        console.log('새로운 API 데이터 사용 - likedByCurrentUser:', placeDetailsData.value.likedByCurrentUser);
+        return placeDetailsData.value.likedByCurrentUser;
+      }
+      
+      // 2순위: 기존 방식 (주소 기반 비교)
       if (!props.detail || !props.userLikes || props.userLikes.length === 0) {
         console.log('조건 실패: detail이나 userLikes가 없음');
         return false;
       }
       
-      // getPlaceAddress computed 속성에서 가져온 주소 사용
       const currentAddress = getPlaceAddress.value;
       console.log('현재 주소:', currentAddress);
       
@@ -805,7 +928,6 @@ export default {
         return false;
       }
       
-      // userLikes 배열에서 address가 일치하는 항목이 있는지 확인
       const isInLikes = props.userLikes.some(like => {
         const likeAddress = like.place && like.place.address;
         console.log('비교 중:', { currentAddress, likeAddress, match: likeAddress === currentAddress });
@@ -817,30 +939,27 @@ export default {
     });
     
     const handleHeartClick = () => {
-      // address 정보를 다양한 소스에서 추출
       let address = '';
       
-      if (props.detail._source) {
-        // ElasticSearch _source에서 추출
+      // 1순위: 새로운 API 데이터
+      if (placeDetailsData.value && placeDetailsData.value.address) {
+        address = placeDetailsData.value.address;
+      }
+      // 2순위: ElasticSearch 데이터
+      else if (props.detail._source) {
         address = props.detail._source.p_address || '';
       } else {
-        // 직접 속성에서 추출
         address = props.detail.address || props.detail.p_address || '';
-      }
-      
-      // PlaceDetails API 응답에서도 확인
-      if (!address && placeDetailsData.value && placeDetailsData.value.address) {
-        address = placeDetailsData.value.address;
       }
       
       console.log('하트 클릭 - 추출된 address:', address);
       console.log('하트 클릭 - detail 객체:', props.detail);
+      console.log('하트 클릭 - placeDetailsData:', placeDetailsData.value);
       
-      // address 정보가 포함된 객체를 emit
       const itemWithAddress = {
         ...props.detail,
         address: address,
-        p_address: address // 백업용
+        p_address: address
       };
       
       emit('toggle-wishlist', itemWithAddress);
@@ -849,6 +968,7 @@ export default {
     return {
       closeModal,
       formatReviewDate,
+      calculateAge,
       ageChartCanvas,
       getDimensionLabel,
       dimensionValues,
@@ -858,7 +978,6 @@ export default {
       renderAgeChart,
       getColorForAge,
       detailMapContainer,
-      displayImageUrl,
       getPlaceName,
       getPlaceAddress,
       getPlaceTags,
@@ -867,14 +986,26 @@ export default {
       placeDetailsData,
       isLoadingPlaceDetails,
       fetchPlaceDetails,
-      reviews,
-      totalReviews,
-      isLoadingReviews,
-      hasMoreReviews,
-      loadReviews,
-      loadMoreReviews,
       handleHeartClick,
-      isCurrentPlaceInWishlist
+      isCurrentPlaceInWishlist,
+      // 이미지 관련
+      mainImageUrl,
+      additionalImages,
+      allImages,
+      photosGalleryContainer,
+      canScrollLeft,
+      canScrollRight,
+      scrollPhotosGallery,
+      updateScrollButtons,
+      // 이미지 뷰어 관련
+      showImageViewer,
+      currentViewerImage,
+      currentImageIndex,
+      currentImageInfo,
+      openImageViewer,
+      closeImageViewer,
+      previousImage,
+      nextImage
     };
   }
 };
@@ -897,29 +1028,28 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(30, 40, 50, 0.65); /* Slightly darker overlay */
+  background-color: rgba(30, 40, 50, 0.65);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   overflow-y: auto;
-  padding: 2rem; /* Add padding for smaller screens */
-  backdrop-filter: blur(4px); /* Softer blur */
+  padding: 2rem;
+  backdrop-filter: blur(4px);
 }
 
-/* --- START: place-detail-modal CSS Refactor --- */
 .place-detail-modal {
   background-color: #ffffff;
-  border-radius: 12px; /* Softer radius */
+  border-radius: 12px;
   width: 95%;
-  max-width: 1100px; /* Slightly reduced max-width for better proportions */
-  max-height: calc(100vh - 4rem); /* Ensure padding is respected */
+  max-width: 1100px;
+  max-height: calc(100vh - 4rem);
   overflow-y: auto;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); /* Refined shadow */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
   animation: modalFadeIn 0.3s ease-out;
-  border: none; /* Removed border for a cleaner look */
+  border: none;
 }
 
 @keyframes modalFadeIn {
@@ -935,10 +1065,10 @@ export default {
 
 .modal-header {
   display: flex;
-  justify-content: space-between; /* Ensure actions are to the right */
+  justify-content: space-between;
   align-items: center;
-  padding: 1.25rem 1.75rem; /* Adjusted padding */
-  border-bottom: 1px solid #eef2f7; /* Lighter border */
+  padding: 1.25rem 1.75rem;
+  border-bottom: 1px solid #eef2f7;
   position: sticky;
   top: 0;
   background-color: #ffffff;
@@ -947,87 +1077,87 @@ export default {
 
 .modal-title-location {
   display: flex;
-  flex-direction: row; /* Stack title and location horizontally */
-  align-items: baseline; /* Align to baseline of text */
+  flex-direction: row;
+  align-items: baseline;
   flex: 1;
-  margin-right: 1rem; /* Space before action buttons */
-  gap: 0.75rem; /* Add gap between title and address */
+  margin-right: 1rem;
+  gap: 0.75rem;
 }
 
 .modal-title-location h3 {
   margin: 0;
-  font-size: 1.4rem; /* Slightly larger title */
+  font-size: 1.4rem;
   font-weight: 600;
-  color: #2c3e50; /* Dark blue-grey */
-  font-family: 'Noto Sans KR', sans-serif; /* Consistent font */
+  color: #2c3e50;
+  font-family: 'Noto Sans KR', sans-serif;
   line-height: 1.3;
 }
 
 .modal-location {
-  color: #7f8c8d; /* Softer grey */
-  font-size: 0.9rem; /* Adjusted size */
+  color: #7f8c8d;
+  font-size: 0.9rem;
   font-family: 'Noto Sans KR', sans-serif;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100%; /* Allow full width within its container */
+  max-width: 100%;
 }
 
 .modal-actions {
   display: flex;
   align-items: center;
-  gap: 0.75rem; /* Reduced gap */
+  gap: 0.75rem;
 }
 
-.close-btn, .heart-btn { /* Combined common styles */
+.close-btn, .heart-btn {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0.6rem; /* Uniform padding */
+  padding: 0.6rem;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   transition: all 0.25s ease;
-  color: #95a5a6; /* Muted icon color */
+  color: #95a5a6;
 }
 
 .close-btn:hover, .heart-btn:hover {
-  background-color: #f4f6f8; /* Subtle hover background */
-  color: #52616B; /* Darker icon on hover */
+  background-color: #f4f6f8;
+  color: #52616B;
 }
 
 .heart-btn svg {
-  width: 22px; /* Consistent icon size */
+  width: 22px;
   height: 22px;
-  fill: none; /* Keep fill as none to show only outline */
-  transition: all 0.3s ease; /* Smooth transition */
+  fill: none;
+  transition: all 0.3s ease;
 }
+
 .close-btn svg {
-  width: 20px; /* Consistent icon size */
+  width: 20px;
   height: 20px;
 }
 
 .heart-btn.active {
-  color: #ff8e7f; /* Same color as heart-indicator.active */
-  animation: heartbeat 0.8s ease-in-out; /* Same animation as heart-indicator */
+  color: #ff8e7f;
+  animation: heartbeat 0.8s ease-in-out;
 }
 
 .heart-btn.active svg {
-  stroke: #ff8e7f; /* Only change stroke color to pink */
-  fill: none; /* Keep fill transparent - only outline shows */
+  stroke: #ff8e7f;
+  fill: none;
 }
 
 .heart-btn:hover {
-  color: rgba(255, 142, 127, 0.8); /* Hover effect like heart-indicator */
-  transform: scale(1.1); /* Scale effect like heart-indicator */
+  color: rgba(255, 142, 127, 0.8);
+  transform: scale(1.1);
 }
 
 .heart-btn.active:hover {
-  background-color: rgba(255, 142, 127, 0.1); /* Light background on hover when active */
+  background-color: rgba(255, 142, 127, 0.1);
 }
 
-/* Add heartbeat animation like heart-indicator */
 @keyframes heartbeat {
   0%, 100% { transform: scale(1); }
   30% { transform: scale(1.25); }
@@ -1036,77 +1166,154 @@ export default {
 
 /* 모달 콘텐츠 영역 */
 .modal-content {
-  padding: 1.75rem; /* Increased padding */
+  padding: 1.75rem;
   display: flex;
   flex-direction: column;
-  gap: 1.75rem; /* Consistent gap between sections */
+  gap: 1.75rem;
   overflow-y: auto;
 }
 
-/* 이미지와 지도를 수평으로 나란히 배치 */
-.visual-section {
+/* A. 지도 + 요약 섹션 (가로 배치) */
+.map-summary-section {
   display: flex;
-  gap: 1.75rem; /* Consistent gap */
+  gap: 1.75rem;
+  margin-bottom: 0;
+  height: 420px;
 }
 
-.detail-image-container, .detail-map-container {
-  flex: 1;
-  height: 380px; /* Adjusted height */
-  border-radius: 10px; /* Softer radius */
+.detail-map-container {
+  flex: 2;
+  height: 100%;
+  border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); /* Softer shadow */
-  background-color: #f0f2f5; /* Placeholder background */
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+  background-color: #f0f2f5;
 }
 
-.detail-image, .detail-map {
+.detail-map {
   width: 100%;
   height: 100%;
-  object-fit: cover;
 }
 
-/* 카카오 맵 오류 메시지 스타일 */
-.detail-map .kakao-map-error {
+/* 요약 정보 컨테이너 */
+.summary-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 12px;
+  height: 100%;
+}
+
+.stat-item {
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.stat-icon {
+  font-size: 20px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  background-color: #f0f2f5;
-  color: #666;
-  text-align: center;
-  padding: 20px;
-  font-size: 0.9rem;
-  font-family: 'Noto Sans KR', sans-serif;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
 }
 
-/* 이미지 플레이스홀더 스타일 */
-.placeholder-image {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  background-color: #f0f2f5;
-  color: #95a5a6;
-  font-size: 1rem;
-  font-family: 'Noto Sans KR', sans-serif;
+.stat-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  color: #6c757d;
   font-weight: 500;
+  margin-bottom: 4px;
+  font-family: 'Noto Sans KR', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-/* 각 섹션 스타일 */
-.detail-section {
-  padding: 1.5rem; /* Consistent padding */
-  border-radius: 10px; /* Softer radius */
-  background-color: #fdfdfe; /* Slightly off-white background */
-  border: 1px solid #eef2f7; /* Subtle border */
+.stat-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
-.detail-section h4 {
-  font-size: 1.15rem; /* Adjusted size */
+.rating-score {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #2c3e50;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.count-number {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #2c3e50;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.count-unit {
+  font-size: 0.8rem;
+  color: #6c757d;
+  font-weight: 500;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.rating-stars {
+  display: flex;
+  gap: 1px;
+}
+
+.rating-stars .star-filled {
+  color: #ffc107;
+  font-size: 0.8rem;
+}
+
+.rating-stars .star-empty {
+  color: #e9ecef;
+  font-size: 0.8rem;
+}
+
+/* 콘텐츠 섹션 공통 스타일 */
+.content-section {
+  padding: 1.5rem;
+  border-radius: 10px;
+  background-color: #fdfdfe;
+  border: 1px solid #eef2f7;
+}
+
+.content-section h4 {
+  font-size: 1.15rem;
   font-weight: 600;
-  color: #34495e; /* Dark blue-grey */
+  color: #34495e;
   margin: 0 0 1rem 0;
-  border-bottom: 1px solid #dde2e7; /* Lighter, thinner border */
-  padding-bottom: 0.75rem; /* Adjusted padding */
+  border-bottom: 1px solid #dde2e7;
+  padding-bottom: 0.75rem;
   font-family: 'Noto Sans KR', sans-serif;
 }
 
@@ -1118,12 +1325,12 @@ export default {
 }
 
 .tag {
-  background-color: #eaf6ff; /* Lighter blue */
-  color: #2979ff; /* Brighter blue text */
-  font-size: 0.85rem; /* Adjusted size */
+  background-color: #eaf6ff;
+  color: #2979ff;
+  font-size: 0.85rem;
   font-family: 'Noto Sans KR', sans-serif;
-  padding: 0.4rem 0.9rem; /* Adjusted padding */
-  border-radius: 16px; /* Pill shape */
+  padding: 0.4rem 0.9rem;
+  border-radius: 16px;
   cursor: pointer;
   transition: all 0.2s ease;
   font-weight: 500;
@@ -1136,281 +1343,185 @@ export default {
 }
 
 /* 설명 텍스트 */
-.detail-description {
-  font-size: 0.95rem; /* Adjusted size */
+.description-text {
+  font-size: 0.95rem;
   font-family: 'Noto Sans KR', sans-serif;
-  line-height: 1.75; /* Improved readability */
-  color: #52616B; /* Softer black */
+  line-height: 1.75;
+  color: #52616B;
   margin: 0;
 }
 
-/* 특성 분석 */
-.detail-dimensions {
+/* 방문자 인증 리뷰 (방문자 사진 갤러리) */
+.visitor-photos-container {
+  position: relative;
+}
+
+.visitor-photos-scroll {
   display: flex;
-  flex-direction: column;
-  gap: 0.8rem; /* Reduced gap */
+  gap: 16px;
+  overflow-x: auto;
+  padding: 16px 0;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
-.dimension-item {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+.visitor-photos-scroll::-webkit-scrollbar {
+  display: none;
 }
 
-.dimension-name {
-  width: 130px; /* Adjusted width */
-  font-size: 0.9rem;
-  font-family: 'Noto Sans KR', sans-serif;
-  color: #52616B;
-  font-weight: 500;
-}
-
-.dimension-bar-small {
-  flex: 1;
-  height: 8px; /* Thinner bar */
-  background-color: #e8eaed; /* Lighter grey */
-  border-radius: 4px;
+.visitor-photo-card {
+  flex-shrink: 0;
+  width: 280px;
+  height: 200px;
+  position: relative;
+  border-radius: 12px;
   overflow: hidden;
-}
-
-.dimension-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--logo-blue, #4fc3f7), var(--logo-green, #81c784)); /* Lighter gradient */
-  border-radius: 4px;
-  transition: width 0.6s ease-out;
-}
-
-.dimension-value {
-  width: 35px; /* Adjusted width */
-  font-size: 0.85rem;
-  font-family: 'Noto Sans KR', sans-serif;
-  font-weight: 500;
-  color: #52616B;
-  text-align: right;
-}
-
-/* 리뷰 섹션 */
-.reviews-container {
-  max-height: 400px;
-  overflow-y: auto;
-  padding-right: 8px;
-}
-
-.review-item {
-  background-color: #f8f9fa;
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 0.75rem;
-  border-left: 3px solid #007bff;
-  transition: all 0.2s ease;
-}
-
-.review-item:hover {
-  background-color: #e9ecef;
-  transform: translateY(-1px);
-}
-
-.review-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.5rem;
-}
-
-.reviewer-info {
-  flex: 1;
-}
-
-.reviewer-name {
-  font-weight: 600;
-  font-family: 'Noto Sans KR', sans-serif;
-  color: #2c3e50;
-  font-size: 0.9rem;
-}
-
-.review-date {
-  color: #6c757d;
-  font-size: 0.8rem;
-  font-family: 'Noto Sans KR', sans-serif;
-  margin-top: 2px;
-}
-
-.reviewer-details {
-  color: #6c757d;
-  font-size: 0.75rem;
-  font-family: 'Noto Sans KR', sans-serif;
-  margin-top: 2px;
-  font-style: italic;
-}
-
-.review-rating {
-  display: flex;
-  gap: 2px;
-}
-
-.star-filled {
-  color: #ffc107;
-  font-size: 1rem;
-}
-
-.star-empty {
-  color: #e9ecef;
-  font-size: 1rem;
-}
-
-.review-content {
-  color: #495057;
-  line-height: 1.5;
-  font-size: 0.9rem;
-  font-family: 'Noto Sans KR', sans-serif;
-  margin-top: 0.5rem;
-}
-
-/* 후기 로딩 및 빈 상태 스타일 */
-.reviews-loading,
-.no-reviews {
-  text-align: center;
-  padding: 2rem;
-  color: #6c757d;
-  font-family: 'Noto Sans KR', sans-serif;
-}
-
-.reviews-loading .spinner {
-  width: 24px;
-  height: 24px;
-  border: 2px solid #f3f3f3;
-  border-top: 2px solid #007bff;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 1rem;
-}
-
-/* 더보기 버튼 스타일 */
-.load-more-container {
-  text-align: center;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #e9ecef;
-}
-
-.load-more-btn {
-  background: linear-gradient(135deg, #007bff, #0056b3);
-  color: white;
-  border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 25px;
-  font-size: 0.9rem;
-  font-family: 'Noto Sans KR', sans-serif;
-  font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.load-more-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #0056b3, #004085);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
+.visitor-photo-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
-.load-more-btn:disabled {
-  background: #6c757d;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
+.visitor-photo-image {
+  width: 100%;
+  height: 100%;
+  position: relative;
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+.photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.modal-footer {
-  padding: 1.25rem 1.75rem; /* Consistent padding */
-  border-top: 1px solid #eef2f7; /* Lighter border */
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem; /* Adjusted gap */
-  position: sticky;
+.visitor-photo-overlay {
+  position: absolute;
   bottom: 0;
-  background-color: #f9fafb; /* Slightly off-white footer */
-  z-index: 1;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.4), transparent);
+  padding: 16px;
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
 }
 
-.cancel-btn {
-  padding: 0.6rem 1.25rem; /* Adjusted padding */
-  border-radius: 20px; /* Pill shape */
-  font-size: 0.9rem;
+.visitor-photo-card:hover .visitor-photo-overlay {
+  transform: translateY(0);
+}
+
+.visitor-info {
+  color: white;
+}
+
+.visitor-name {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 6px;
   font-family: 'Noto Sans KR', sans-serif;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  background-color: #e9ecef; /* Light grey button */
-  color: #495057; /* Darker text */
+}
+
+.visitor-rating {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+.visitor-rating .star-filled {
+  color: #ffc107;
+  font-size: 0.9rem;
+}
+
+.visitor-rating .star-empty {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.9rem;
+}
+
+.visitor-review-preview {
+  font-size: 0.85rem;
+  line-height: 1.4;
+  font-style: italic;
+  opacity: 0.9;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+/* 갤러리 스크롤 버튼 */
+.gallery-scroll-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.95);
   border: none;
-}
-
-.cancel-btn:hover {
-  background-color: #dee2e6; /* Darken on hover */
-  color: #343a40;
-}
-
-/* 스피너 스타일 */
-.spinner {
-  width: 50px; /* Adjusted size */
-  height: 50px;
-  border: 4px solid rgba(72, 176, 228, 0.15); /* Thicker border, adjusted color */
   border-radius: 50%;
-  border-top-color: #48b0e4;
-  animation: spin 0.8s linear infinite; /* Faster spin */
-  margin-bottom: 1.5rem;
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  font-weight: bold;
+  color: #666;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+.gallery-scroll-btn:hover {
+  background: white;
+  color: #333;
+  transform: translateY(-50%) scale(1.1);
 }
 
-/* 차트 스타일 */
+.gallery-scroll-btn.left {
+  left: -12px;
+}
+
+.gallery-scroll-btn.right {
+  right: -12px;
+}
+
+/* 통계 섹션 */
 .stats-section h4 {
-  text-align: left; /* Align with other section titles */
+  text-align: left;
 }
 
 .stats-charts {
   display: flex;
-  gap: 1.75rem; /* Consistent gap */
+  gap: 1.75rem;
   justify-content: space-around;
   align-items: flex-start;
-  padding: 0.5rem 0 0; /* Reduced top padding as h4 has bottom margin */
+  padding: 0.5rem 0 0;
   flex-wrap: wrap;
 }
 
 .chart-container {
   flex: 1 1 45%;
-  min-width: 280px; /* Adjusted min-width */
+  min-width: 280px;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 1rem;
   background-color: transparent;
   border-radius: 8px;
-  min-height: 372px; /* Equalize height with sibling chart container */
+  min-height: 372px;
 }
 
 .chart-container h5 {
-  font-size: 0.95rem; /* Adjusted size */
+  font-size: 0.95rem;
   font-weight: 500;
   font-family: 'Noto Sans KR', sans-serif;
   color: #495057;
-  margin-bottom: 1rem; /* Adjusted margin */
+  margin-bottom: 1rem;
   text-align: center;
 }
 
 .age-chart-wrapper {
   width: 100%;
-  max-width: 308px; /* Increased from 280px by 10% */
-  height: 308px; /* Increased from 280px by 10% */
+  max-width: 308px;
+  height: 308px;
   position: relative;
 }
 
@@ -1423,12 +1534,12 @@ export default {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 120px; /* Reduced height */
+  height: 120px;
   width: 100%;
-  color: #7f8c8d; /* Softer grey */
+  color: #7f8c8d;
   font-size: 0.85rem;
   font-family: 'Noto Sans KR', sans-serif;
-  background-color: #f0f2f5; /* Lighter background */
+  background-color: #f0f2f5;
   border-radius: 6px;
   padding: 1rem;
   text-align: center;
@@ -1440,20 +1551,20 @@ export default {
   flex-direction: column;
   align-items: center;
   width: 100%;
-  padding-top: 40px; /* Increased from 20px to push content down further */
+  padding-top: 40px;
 }
 
 .gender-icons-wrapper {
   display: flex;
   justify-content: center;
-  gap: 2rem; /* Adjusted gap */
-  margin-bottom: 1.25rem; /* Adjusted margin */
+  gap: 2rem;
+  margin-bottom: 1.25rem;
   width: 100%;
 }
 
 .gender-figure-container {
   display: flex;
-  gap: 1.5rem; /* Adjusted gap */
+  gap: 1.5rem;
 }
 
 .gender-icon {
@@ -1464,7 +1575,7 @@ export default {
 }
 
 .icon-container {
-  width: 80px; /* Adjusted size */
+  width: 80px;
   height: auto;
   margin-bottom: 0.5rem;
 }
@@ -1476,11 +1587,11 @@ export default {
 
 .male-icon-svg .icon-background,
 .female-icon-svg .icon-background {
-  fill: #eef2f7; /* Lighter background */
+  fill: #eef2f7;
 }
 
 .gender-label-percent {
-  font-size: 0.85rem; /* Adjusted size */
+  font-size: 0.85rem;
   font-weight: 500;
   font-family: 'Noto Sans KR', sans-serif;
   color: #343a40;
@@ -1492,12 +1603,12 @@ export default {
 
 .gender-percentage-bar {
   width: 100%;
-  max-width: 250px; /* Adjusted max width */
-  height: 10px; /* Adjusted height */
+  max-width: 250px;
+  height: 10px;
   display: flex;
   border-radius: 5px;
   overflow: hidden;
-  background-color: #eef2f7; /* Lighter background */
+  background-color: #eef2f7;
 }
 
 .male-percentage {
@@ -1522,48 +1633,290 @@ export default {
   font-family: 'Noto Sans KR', sans-serif;
 }
 
+.modal-footer {
+  padding: 1.25rem 1.75rem;
+  border-top: 1px solid #eef2f7;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  position: sticky;
+  bottom: 0;
+  background-color: #f9fafb;
+  z-index: 1;
+}
+
+.cancel-btn {
+  padding: 0.6rem 1.25rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: #e9ecef;
+  color: #495057;
+  border: none;
+}
+
+.cancel-btn:hover {
+  background-color: #dee2e6;
+  color: #343a40;
+}
+
+/* 스피너 스타일 */
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(72, 176, 228, 0.15);
+  border-radius: 50%;
+  border-top-color: #48b0e4;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 1.5rem;
+}
+
+/* 이미지 뷰어 모달 */
+.image-viewer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 2rem;
+}
+
+.image-viewer-container {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.image-viewer-close {
+  position: absolute;
+  top: -50px;
+  right: 0;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 2rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: color 0.2s ease;
+}
+
+.image-viewer-close:hover {
+  color: #ccc;
+}
+
+.image-viewer-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.viewer-image {
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.image-viewer-info {
+  margin-top: 1rem;
+  text-align: center;
+  color: white;
+}
+
+.viewer-user-info strong {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.viewer-rating {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+}
+
+.viewer-rating .star-filled {
+  color: #ffc107;
+  font-size: 1rem;
+}
+
+.viewer-rating .star-empty {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 1rem;
+}
+
+.image-viewer-navigation {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.nav-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  padding: 8px 12px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.nav-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.image-counter {
+  color: white;
+  font-size: 0.9rem;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
 /* Responsive styles */
-@media (max-width: 1100px) { /* Keep this for visual section and dimension name specifically */
-  .visual-section {
+@media (max-width: 1100px) {
+  .map-summary-section {
     flex-direction: column;
-    gap: 1.5rem; /* Gap when stacked */
+    height: auto;
+    gap: 1.5rem;
   }
   
-  .detail-image-container, 
   .detail-map-container {
     width: 100%;
-    height: 320px; /* Adjust height when stacked */
+    height: 320px;
+    flex: none;
   }
-  
-  .dimension-name {
-    width: 110px; /* Further adjust for medium screens */
+
+  .summary-container {
+    width: 100%;
+    flex: none;
+  }
+
+  .summary-stats {
+    height: auto;
+    min-height: 200px;
+  }
+
+  .visitor-photos-container {
+    width: 100%;
+  }
+
+  .visitor-photo-card {
+    width: 240px;
+    height: 180px;
   }
 }
 
 @media (max-width: 768px) {
   .modal-header {
-    padding: 1rem 1.25rem; /* Smaller padding on mobile */
+    padding: 1rem 1.25rem;
   }
   .modal-title-location h3 {
-    font-size: 1.25rem; /* Smaller title on mobile */
+    font-size: 1.25rem;
   }
   .modal-location {
     font-size: 0.85rem;
   }
   .modal-content {
-    padding: 1.25rem; /* Smaller padding */
+    padding: 1.25rem;
     gap: 1.25rem;
   }
-  .visual-section {
+
+  .map-summary-section {
     gap: 1.25rem;
+    margin-bottom: 0;
   }
-  .detail-image-container, .detail-map-container {
-    height: 280px; /* Adjust height for smaller screens */
+
+  .detail-map-container {
+    height: 280px;
   }
-  .detail-section {
+
+  .summary-stats {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(4, auto);
+    gap: 12px;
+    min-height: auto;
+  }
+
+  .stat-item {
+    padding: 16px;
+  }
+
+  .stat-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
+  }
+
+  .rating-score,
+  .count-number {
+    font-size: 1.2rem;
+  }
+
+  .visitor-photo-card {
+    width: 200px;
+    height: 150px;
+  }
+
+  .visitor-photo-overlay {
+    padding: 12px;
+  }
+
+  .visitor-name {
+    font-size: 0.9rem;
+  }
+
+  .visitor-rating .star-filled,
+  .visitor-rating .star-empty {
+    font-size: 0.8rem;
+  }
+
+  .visitor-review-preview {
+    font-size: 0.8rem;
+  }
+
+  .gallery-scroll-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+
+  .reviewer-avatar,
+  .reviewer-avatar-placeholder {
+    width: 32px;
+    height: 32px;
+    font-size: 0.9rem;
+  }
+
+  .reviewer-profile {
+    gap: 8px;
+  }
+
+  .review-image {
+    max-width: 150px;
+    max-height: 120px;
+  }
+
+  .content-section {
     padding: 1.25rem;
   }
-  .detail-section h4 {
+  .content-section h4 {
     font-size: 1.1rem;
     padding-bottom: 0.6rem;
     margin-bottom: 0.8rem;
@@ -1572,15 +1925,8 @@ export default {
     font-size: 0.8rem;
     padding: 0.35rem 0.8rem;
   }
-  .detail-description {
+  .description-text {
     font-size: 0.9rem;
-  }
-  .dimension-name {
-    width: 100px;
-    font-size: 0.85rem;
-  }
-  .dimension-item {
-    gap: 0.75rem;
   }
 
   .stats-charts {
@@ -1590,15 +1936,15 @@ export default {
   }
 
   .chart-container {
-    flex-basis: 100%; /* Full width for each chart container */
-    max-width: 100%; /* Allow full width on mobile */
+    flex-basis: 100%;
+    max-width: 100%;
     padding: 0.75rem;
-    min-height: 342px; /* Equalize height for mobile */
+    min-height: 342px;
   }
 
   .age-chart-wrapper {
-    max-width: 286px; /* Increased from 260px by 10% */
-    height: 286px; /* Increased from 260px by 10% */
+    max-width: 286px;
+    height: 286px;
   }
 
   .gender-icons-wrapper {
@@ -1606,7 +1952,7 @@ export default {
   }
 
   .icon-container {
-    width: 70px; /* Smaller icons */
+    width: 70px;
   }
   .modal-footer {
     padding: 1rem 1.25rem;
@@ -1615,11 +1961,30 @@ export default {
     padding: 0.5rem 1rem;
     font-size: 0.85rem;
   }
+
+  /* 이미지 뷰어 모바일 조정 */
+  .image-viewer-overlay {
+    padding: 1rem;
+  }
+
+  .image-viewer-close {
+    top: -40px;
+    font-size: 1.5rem;
+  }
+
+  .viewer-image {
+    max-height: 60vh;
+  }
+
+  .nav-btn {
+    font-size: 1.2rem;
+    padding: 6px 10px;
+  }
 }
 
 @media (max-width: 600px) {
   .modal-overlay {
-    padding: 1rem; /* Reduce overlay padding for small screens */
+    padding: 1rem;
   }
   .place-detail-modal {
     max-height: calc(100vh - 2rem);
@@ -1637,34 +2002,128 @@ export default {
     padding: 1rem;
     gap: 1rem;
   }
-  .visual-section {
+
+  .map-summary-section {
     gap: 1rem;
+    margin-bottom: 0;
   }
-  .detail-image-container, .detail-map-container {
+
+  .detail-map-container {
     height: 220px;
   }
-  .detail-section {
+
+  .summary-stats {
+    gap: 10px;
+  }
+
+  .stat-item {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .stat-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+  }
+
+  .rating-score,
+  .count-number {
+    font-size: 1.1rem;
+  }
+
+  .count-unit {
+    font-size: 0.8rem;
+  }
+
+  .rating-stars .star-filled,
+  .rating-stars .star-empty {
+    font-size: 0.8rem;
+  }
+
+  .visitor-photo-card {
+    width: 160px;
+    height: 120px;
+  }
+
+  .visitor-photo-overlay {
+    padding: 10px;
+  }
+
+  .visitor-name {
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+  }
+
+  .visitor-rating {
+    margin-bottom: 6px;
+  }
+
+  .visitor-rating .star-filled,
+  .visitor-rating .star-empty {
+    font-size: 0.75rem;
+  }
+
+  .visitor-review-preview {
+    font-size: 0.75rem;
+    line-height: 1.3;
+  }
+
+  .gallery-scroll-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+
+  .reviewer-avatar,
+  .reviewer-avatar-placeholder {
+    width: 28px;
+    height: 28px;
+    font-size: 0.8rem;
+  }
+
+  .review-image {
+    max-width: 120px;
+    max-height: 100px;
+  }
+
+  .content-section {
     padding: 1rem;
   }
-  .detail-section h4 {
+  .content-section h4 {
     font-size: 1rem;
   }
-  .dimension-item {
-    flex-direction: column; /* Stack dimension items */
-    align-items: flex-start;
-    gap: 0.3rem;
+
+  /* 이미지 뷰어 초소형 화면 조정 */
+  .image-viewer-overlay {
+    padding: 0.5rem;
   }
-  .dimension-name {
-    width: auto; /* Allow full width */
-    margin-bottom: 0.2rem;
+
+  .image-viewer-close {
+    top: -30px;
+    font-size: 1.25rem;
   }
-  .dimension-bar-small {
-    width: 100%;
+
+  .viewer-image {
+    max-height: 50vh;
   }
-  .dimension-value {
-    width: auto; /* Allow full width */
-    text-align: left;
-    margin-top: 0.1rem;
+
+  .image-viewer-navigation {
+    gap: 10px;
+    margin-top: 15px;
+  }
+
+  .nav-btn {
+    font-size: 1rem;
+    padding: 4px 8px;
+  }
+
+  .image-counter {
+    font-size: 0.8rem;
   }
 }
 </style> 
