@@ -901,20 +901,13 @@ export default {
       return 'place' + Math.floor(Math.random() * 1000000);
     });
     
-    // 현재 장소가 관심 장소에 있는지 확인하는 computed 속성
+    // 현재 장소가 관심 장소에 있는지 확인하는 computed 속성 (LookAround 방식)
     const isCurrentPlaceInWishlist = computed(() => {
       console.log('=== isCurrentPlaceInWishlist 체크 시작 ===');
       console.log('props.detail:', props.detail);
       console.log('props.userLikes:', props.userLikes);
-      console.log('placeDetailsData.value:', placeDetailsData.value);
       
-      // 1순위: 새로운 API 데이터의 likedByCurrentUser 사용
-      if (placeDetailsData.value && typeof placeDetailsData.value.likedByCurrentUser === 'boolean') {
-        console.log('새로운 API 데이터 사용 - likedByCurrentUser:', placeDetailsData.value.likedByCurrentUser);
-        return placeDetailsData.value.likedByCurrentUser;
-      }
-      
-      // 2순위: 기존 방식 (주소 기반 비교)
+      // LookAround와 동일한 방식: 오직 userLikes prop만 확인
       if (!props.detail || !props.userLikes || props.userLikes.length === 0) {
         console.log('조건 실패: detail이나 userLikes가 없음');
         return false;
@@ -928,6 +921,7 @@ export default {
         return false;
       }
       
+      // LookAround와 동일한 방식: userLikes에서 주소로 매칭
       const isInLikes = props.userLikes.some(like => {
         const likeAddress = like.place && like.place.address;
         console.log('비교 중:', { currentAddress, likeAddress, match: likeAddress === currentAddress });
@@ -962,6 +956,8 @@ export default {
         p_address: address
       };
       
+      // 부모 컴포넌트에 이벤트 전달 (LookAround 방식과 동일)
+      // 부모에서 userLikes를 업데이트하면 자동으로 반응됨
       emit('toggle-wishlist', itemWithAddress);
     };
     
