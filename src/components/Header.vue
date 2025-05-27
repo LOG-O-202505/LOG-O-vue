@@ -27,6 +27,7 @@
         <div class="nav-group">
           <!-- 로그인 상태에 따른 조건부 렌더링 -->
           <template v-if="isLoggedIn">
+            <span v-if="userInfo.nickname" class="user-welcome">{{ userInfo.nickname }}님</span>
             <button @click="handleLogout" class="nav-item logout-btn">LOGOUT</button>
             <router-link to="/mytravel" class="nav-item">MY JOURNEY</router-link>
           </template>
@@ -42,7 +43,7 @@
 <script>
 // LoginModal 컴포넌트와 auth 함수들 임포트
 import LoginModal from './LoginModal.vue';
-import { isAuthenticated, logout } from '@/services/auth';
+import { isAuthenticated, logout, apiGet } from '@/services/auth';
 
 export default {
   name: 'AppHeader',
@@ -74,7 +75,8 @@ export default {
   },
   data() {
     return {
-      isLoggedIn: false
+      isLoggedIn: false,
+      userInfo: {}
     };
   },
   mounted() {
@@ -84,6 +86,9 @@ export default {
   methods: {
     checkLoginStatus() {
       this.isLoggedIn = isAuthenticated();
+      if (this.isLoggedIn) {
+        this.fetchUserInfo();
+      }
     },
     async handleLogout() {
       try {
@@ -95,6 +100,18 @@ export default {
       } catch (error) {
         console.error('로그아웃 중 오류 발생:', error);
         // 오류가 발생해도 UI 상태는 업데이트
+        this.isLoggedIn = false;
+      }
+    },
+    async fetchUserInfo() {
+      try {
+        const response = await apiGet('/auth/me');
+        if (response.status === 'success' && response.data) {
+          this.userInfo = response.data;
+        }
+      } catch (error) {
+        console.error('유저 정보 가져오기 실패:', error);
+        // 인증 실패 시 로그인 상태 업데이트
         this.isLoggedIn = false;
       }
     }
@@ -269,6 +286,15 @@ export default {
   width: 100%;
   background-color: var(--logo-blue, #48b0e4);
   height: 2px;
+}
+
+.user-welcome {
+  font-family: 'Noto Sans KR', sans-serif;
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 500;
+  opacity: 0.9;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 @media (max-width: 900px) {

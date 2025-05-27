@@ -28,6 +28,7 @@
         <div class="nav-group">
           <!-- 로그인 상태에 따른 조건부 렌더링 -->
           <template v-if="isLoggedIn">
+            <span v-if="userInfo.nickname" class="user-welcome">{{ userInfo.nickname }}님</span>
             <button @click="handleLogout" class="nav-item logout-btn">LOGOUT</button>
             <a href="/mytravel" class="nav-item">MY JOURNEY</a>
           </template>
@@ -393,7 +394,7 @@
 import { ref, onMounted, onUnmounted, reactive, computed, watch, nextTick } from 'vue'
 // LoginModal 컴포넌트와 auth 함수들 임포트
 import LoginModal from '../components/LoginModal.vue';
-import { isAuthenticated, logout } from '@/services/auth';
+import { isAuthenticated, logout, apiGet } from '@/services/auth';
 import { useRouter } from 'vue-router';
 
 // Router setup
@@ -401,10 +402,28 @@ const router = useRouter();
 
 // 로그인 상태 관리
 const isLoggedIn = ref(false);
+const userInfo = ref({});
 
 // 로그인 상태 확인 함수
 const checkLoginStatus = () => {
   isLoggedIn.value = isAuthenticated();
+  if (isLoggedIn.value) {
+    fetchUserInfo();
+  }
+};
+
+// 사용자 정보 가져오기 함수
+const fetchUserInfo = async () => {
+  try {
+    const response = await apiGet('/auth/me');
+    if (response.status === 'success' && response.data) {
+      userInfo.value = response.data;
+    }
+  } catch (error) {
+    console.error('유저 정보 가져오기 실패:', error);
+    // 인증 실패 시 로그인 상태 업데이트
+    isLoggedIn.value = false;
+  }
 };
 
 // 로그아웃 함수
@@ -789,6 +808,7 @@ body {
   display: flex;
   gap: 2.5rem;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .nav-center {
@@ -1682,5 +1702,14 @@ body {
   .process-arrow {
     transform: rotate(90deg);
   }
+}
+
+.user-welcome {
+  font-family: 'Noto Sans KR', sans-serif;
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 500;
+  opacity: 0.9;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 </style>
