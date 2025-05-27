@@ -260,6 +260,17 @@
             <!-- 카카오 지도 -->
             <div class="map-container">
               <div id="kakao-map" ref="kakaoMapContainer" class="map-element"></div>
+              
+              <!-- 경로 계산 로딩 스피너 -->
+              <div v-if="isCalculatingRoute" class="route-loading-overlay">
+                <div class="route-loading-content">
+                  <div class="loader-container">
+                    <div class="loader"></div>
+                  </div>
+                  <p class="loading-text">이동 경로를 계산하는중</p>
+                </div>
+              </div>
+              
               <div class="map-legend" v-if="mapLoaded">
                 <div class="legend-item">
                   <div class="legend-dot start"></div>
@@ -546,6 +557,7 @@ import ExpenseDeleteModal from '@/components/ExpenseDeleteModal.vue';
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, toRefs } from 'vue';
 import EXIF from 'exif-js';
 import { safelyCleanupMap } from '@/utils/mapUtils';
+import config from '@/config';
 import {
   imageToEngDescription,
   EngDescriptionToVector,
@@ -804,6 +816,10 @@ export default {
 
     // 여행 루트 데이터
     const travelRoots = ref([]);
+
+    // 경로 관련 상태
+    const routePolylines = ref([]);
+    const isCalculatingRoute = ref(false);
 
     // 인증 데이터 저장 (tauid를 키로 하는 맵)
     const verificationData = ref({});
@@ -1092,12 +1108,16 @@ export default {
 
           // 마커 색상 설정
           let markerColor;
-          if (index === 0) {
-            markerColor = '#4CAF50';  // 첫 위치 (초록색)
+          if (item.verified) {
+            markerColor = '#4CAF50';  // 방문 인증 완료된 장소 (초록색)
+          } else if (dayItems.length === 1) {
+            markerColor = '#1A5276';  // 1개만 있는 경우 (파란색)
+          } else if (index === 0) {
+            markerColor = '#FF0000';  // 첫 번째 마커 (빨간색)
           } else if (index === dayItems.length - 1) {
-            markerColor = '#1A5276';  // 마지막 위치 (짙은 파란색)
+            markerColor = '#0000FF';  // 마지막 마커 (파란색)
           } else {
-            markerColor = '#3498DB';  // 중간 위치 (파란색)
+            markerColor = '#FFD700';  // 중간 마커 (노란색)
           }
 
           // 커스텀 오버레이 생성 (원형 마커 + 숫자)
@@ -1169,15 +1189,63 @@ export default {
 
         // 경로 표시 (2개 이상의 위치가 있을 경우)
         if (linePath.length >= 2) {
-          kakaoPolyline.value = new window.kakao.maps.Polyline({
-            path: linePath,
-            strokeWeight: 3,
-            strokeColor: '#db4040',
-            strokeOpacity: 0.7,
-            strokeStyle: 'solid'
-          });
+          // 기존 경로 폴리라인 제거
+          clearRoutePolylines();
+          
+          // 좌표가 있는 항목들만 필터링
+          const validLocations = dayItems.filter(item => 
+            item.coords && item.coords.lat && item.coords.lng
+          );
 
-          kakaoPolyline.value.setMap(kakaoMap.value);
+          if (validLocations.length >= 2) {
+            console.log('카카오모빌리티 API로 경로 계산 시작:', validLocations);
+            
+            // 로딩 상태 시작
+            isCalculatingRoute.value = true;
+            
+            // 카카오모빌리티 API를 사용하여 경로 계산 및 표시
+            calculateMultiWaypointRoute(validLocations)
+              .then(routeData => {
+                displayRouteOnMap(routeData);
+                
+                // 경로 정보 로깅
+                if (routeData.routes && routeData.routes.length > 0) {
+                  const route = routeData.routes[0];
+                  const distance = (route.summary?.distance / 1000).toFixed(1);
+                  const duration = Math.round(route.summary?.duration / 60);
+                  console.log(`경로 표시 완료! 총 거리: ${distance}km, 예상 시간: ${duration}분`);
+                }
+              })
+              .catch(error => {
+                console.error('카카오모빌리티 API 경로 계산 실패, 기본 폴리라인 사용:', error);
+                
+                // API 실패 시 기본 폴리라인으로 폴백
+                kakaoPolyline.value = new window.kakao.maps.Polyline({
+                  path: linePath,
+                  strokeWeight: 3,
+                  strokeColor: '#db4040',
+                  strokeOpacity: 0.7,
+                  strokeStyle: 'solid'
+                });
+
+                kakaoPolyline.value.setMap(kakaoMap.value);
+              })
+              .finally(() => {
+                // 로딩 상태 종료
+                isCalculatingRoute.value = false;
+              });
+          } else {
+            // 유효한 위치가 2개 미만일 때는 기본 폴리라인 사용
+            kakaoPolyline.value = new window.kakao.maps.Polyline({
+              path: linePath,
+              strokeWeight: 3,
+              strokeColor: '#db4040',
+              strokeOpacity: 0.7,
+              strokeStyle: 'solid'
+            });
+
+            kakaoPolyline.value.setMap(kakaoMap.value);
+          }
         }
 
         // 지도 범위 조정
@@ -1909,10 +1977,16 @@ export default {
       if (mapLoaded.value && kakaoMap.value) {
         console.log(`Updating map for day ${newDay} with ${tripDays.value[newDay]?.items?.length || 0} items`);
 
-        // 지도 업데이트를 약간 지연시켜 UI 업데이트 후 실행
+        // 날짜 변경 시 로딩 상태 시작
+        isCalculatingRoute.value = true;
+
+        // 디바운스된 함수 사용으로 성능 최적화
+        debouncedUpdateMapMarkers();
+        
+        // 로딩 상태 종료 (디바운스 시간 + 여유시간)
         setTimeout(() => {
-          updateMapMarkers();
-        }, 100);
+          isCalculatingRoute.value = false;
+        }, 800);
       }
     });
 
@@ -1950,9 +2024,9 @@ export default {
         activeDay.value = currentDay;
         console.log(`원래 날짜(${currentDay})로 복귀 완료`);
 
-        // 복귀 후 지도 업데이트
+        // 복귀 후 지도 업데이트 (디바운스 사용)
         if (mapLoaded.value) {
-          updateMapMarkers();
+          debouncedUpdateMapMarkers();
         }
       }, 10);
     };
@@ -2122,7 +2196,6 @@ export default {
         loadingMessage.value = '';
       }
     };
-
     // 영수증 데이터로 지출 항목 추가
     const addFromReceipt = (place, timeStr, price) => {
       let dateObj = new Date();
@@ -2364,7 +2437,6 @@ export default {
         weekday: 'long'
       });
     };
-
     // 방문 인증 함수
     const verifyVisit = (dayIndex, item) => {
       // 이미 인증된 항목이면 인증 취소
@@ -3620,6 +3692,160 @@ export default {
       });
     };
 
+    // 카카오모빌리티 내비 API를 사용하여 다중 경유지 경로 계산
+    const calculateMultiWaypointRoute = async (locations) => {
+      try {
+        if (locations.length < 2) {
+          throw new Error('경로 계산을 위해서는 최소 2개의 위치가 필요합니다.');
+        }
+
+        const origin = {
+          x: locations[0].coords.lng.toString(),
+          y: locations[0].coords.lat.toString(),
+          angle: 270 // 기본 진행방향 (서쪽)
+        };
+
+        const destination = {
+          x: locations[locations.length - 1].coords.lng.toString(),
+          y: locations[locations.length - 1].coords.lat.toString()
+        };
+
+        const waypoints = locations.slice(1, -1).map(location => ({
+          name: location.activity || '',
+          x: location.coords.lng,
+          y: location.coords.lat
+        }));
+
+        const requestData = {
+          origin,
+          destination,
+          waypoints,
+          priority: 'RECOMMEND',
+          car_fuel: 'GASOLINE',
+          car_hipass: false,
+          alternatives: false,
+          road_details: true,
+          summary: false
+        };
+
+        console.log('카카오모빌리티 경로 요청:', requestData);
+
+        const response = await fetch('https://apis-navi.kakaomobility.com/v1/waypoints/directions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `KakaoAK ${config.VUE_APP_KAKAO_MAPS_REST_KEY}`
+          },
+          body: JSON.stringify(requestData)
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('카카오모빌리티 API 오류:', response.status, errorText);
+          throw new Error(`경로 계산 실패: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('카카오모빌리티 경로 응답:', result);
+
+        return result;
+      } catch (error) {
+        console.error('경로 계산 오류:', error);
+        throw error;
+      }
+    };
+
+    // 경로 폴리라인을 지도에 표시
+    const displayRouteOnMap = (routeData) => {
+      try {
+        // 기존 경로 폴리라인 제거
+        clearRoutePolylines();
+
+        if (!routeData.routes || routeData.routes.length === 0) {
+          console.warn('표시할 경로 데이터가 없습니다.');
+          return;
+        }
+
+        const route = routeData.routes[0];
+        if (!route.sections || route.sections.length === 0) {
+          console.warn('경로 섹션 데이터가 없습니다.');
+          return;
+        }
+
+        // 10개의 다양한 색상 템플릿
+        const routeColors = [
+          '#ff5c8a', // 선명한 핑크
+          '#00c853', // 선명한 그린
+          '#00b8d4', // 선명한 하늘색
+          '#1e88e5', // 선명한 블루
+          '#7c4dff', // 선명한 보라
+          '#d500f9', // 선명한 퍼플
+          '#ff4081', // 강렬한 핑크
+          '#c51162', // 진한 마젠타
+          '#8d6e63', // 브라운 그레이
+          '#009688'  // 진한 청록
+        ];
+
+        route.sections.forEach((section, sectionIndex) => {
+          if (!section.roads || section.roads.length === 0) return;
+
+          // 구간별로 다른 색상 적용
+          const sectionColor = routeColors[sectionIndex % routeColors.length];
+
+          section.roads.forEach((road) => {
+            if (!road.vertexes || road.vertexes.length === 0) return;
+
+            // vertexes는 [lng, lat, lng, lat, ...] 형태의 배열
+            const coordinates = [];
+            for (let i = 0; i < road.vertexes.length; i += 2) {
+              const lng = road.vertexes[i];
+              const lat = road.vertexes[i + 1];
+              if (lng !== undefined && lat !== undefined) {
+                coordinates.push(new window.kakao.maps.LatLng(lat, lng));
+              }
+            }
+
+            if (coordinates.length > 1) {
+              const polyline = new window.kakao.maps.Polyline({
+                path: coordinates,
+                strokeWeight: 5,
+                strokeColor: sectionColor,
+                strokeOpacity: 1.0,
+                strokeStyle: 'solid'
+              });
+
+              polyline.setMap(kakaoMap.value);
+              routePolylines.value.push(polyline);
+            }
+          });
+        });
+
+        console.log(`총 ${routePolylines.value.length}개의 경로 폴리라인을 표시했습니다.`);
+      } catch (error) {
+        console.error('경로 표시 오류:', error);
+      }
+    };
+
+    // 경로 폴리라인 제거
+    const clearRoutePolylines = () => {
+      routePolylines.value.forEach(polyline => {
+        polyline.setMap(null);
+      });
+      routePolylines.value = [];
+    };
+
+    // 디바운스 함수 (성능 최적화)
+    const debounce = (func, delay) => {
+      let timeoutId;
+      return (...args) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func.apply(null, args), delay);
+      };
+    };
+
+    // 디바운스된 지도 업데이트 함수
+    const debouncedUpdateMapMarkers = debounce(updateMapMarkers, 300);
+
     return {
       // 로딩 및 에러 상태
       isLoading,
@@ -3773,7 +3999,14 @@ export default {
       closeDeleteTravelModal,
       confirmDeleteTravel,
       currentUserInfo,
-      fetchCurrentUserInfo
+      fetchCurrentUserInfo,
+      // 경로 관련
+      routePolylines,
+      calculateMultiWaypointRoute,
+      displayRouteOnMap,
+      clearRoutePolylines,
+      isCalculatingRoute,
+      debouncedUpdateMapMarkers
     };
   }
 };
@@ -3876,9 +4109,19 @@ export default {
   min-width: 120px;
 }
 
+.day-tab:hover {
+  background-color: #cbd5e0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
 .day-tab.active {
   background-color: #4299e1;
   color: white;
+}
+
+.day-tab.active:hover {
+  background-color: #3182ce;
 }
 
 .tab-date {
@@ -6336,4 +6579,78 @@ textarea {
   transform: scale(1.1);
 }
 
+.route-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(3px);
+  border-radius: 8px;
+}
+
+.route-loading-content {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.loader-container {
+  width: 120px; /* 기존 로더 너비 유지 */
+  height: 140px; /* 기존 로더 높이 유지 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto 1rem auto; /* 기존 로더 마진 유지 */
+}
+
+/* HTML: <div class="loader"></div> */
+.loader {
+  width: 60px;
+  aspect-ratio: .5;
+  display: grid;
+}
+.loader:before {
+  content: "";
+  width: 30%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  margin: auto auto 0;
+  background: #ff7936;
+  animation: l9-0 .5s cubic-bezier(0,800,1,800) infinite;
+}
+.loader:after {
+  content: "";
+  width: 80%; /* 기존 100%에서 약간 줄임 */
+  aspect-ratio: 1/cos(30deg);
+  margin: 0 auto auto;
+  clip-path: polygon(50% -50%,100% 50%,50% 150%,0 50%);
+  background: #58a9ff; /* 파스텔톤 하늘색 */
+  animation: l9-1 .5s linear infinite;
+}
+@keyframes l9-0 {
+  0%,2%  {translate: 0   0%}
+  98%,to {translate: 0 -.2%}
+}
+@keyframes l9-1 {
+  0%,5%  {rotate:  0deg}
+  95%,to {rotate:-60deg}
+}
+
+.loading-text {
+  font-size: 1.1rem;
+  color: #4a5568;
+  font-weight: 500;
+  margin: 0;
+}
+
 </style>
+
+
