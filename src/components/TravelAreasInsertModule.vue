@@ -201,16 +201,13 @@ export default {
 
     // 시간 선택 관련 상태
     const selectedAmPm = ref('AM');
-    const selectedHour = ref('9');
+    const selectedHour = ref('12');
     const selectedMinute = ref('00');
 
     // 시간 옵션 생성
     const hours = computed(() => {
-      const hourList = [];
-      for (let i = 1; i <= 12; i++) {
-        hourList.push(i.toString());
-      }
-      return hourList;
+      // 12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 순서로 생성
+      return ['12', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11'];
     });
 
     const minutes = computed(() => {
@@ -221,18 +218,33 @@ export default {
       return minuteList;
     });
 
-    // 선택된 시간을 HH:MM 형식으로 변환
+    // 선택된 시간을 HH:MM 형식으로 변환 (표시용)
     const getFormattedTime = () => {
-      const hour = parseInt(selectedHour.value);
-      let hour24 = hour;
+      console.log('❌ getFormattedTime 시작 - 원본 값들:', {
+        selectedAmPm: selectedAmPm.value,
+        selectedHour: selectedHour.value,
+        selectedMinute: selectedMinute.value
+      });
       
-      if (selectedAmPm.value === 'PM' && hour !== 12) {
-        hour24 = hour + 12;
-      } else if (selectedAmPm.value === 'AM' && hour === 12) {
-        hour24 = 0;
+      const hour = parseInt(selectedHour.value);
+      let hour24;
+      
+      console.log('❌ parseInt 후 hour:', hour);
+      
+      if (selectedAmPm.value === 'AM') {
+        // 오전: 12 -> 0시, 1-11 -> 1-11시
+        hour24 = hour === 12 ? 0 : hour;
+        console.log('❌ AM 처리 결과:', { hour, hour24 });
+      } else {
+        // 오후: 12 -> 12시, 1-11 -> 13-23시
+        hour24 = hour === 12 ? 12 : hour + 12;
+        console.log('❌ PM 처리 결과:', { hour, hour24 });
       }
       
-      return `${hour24.toString().padStart(2, '0')}:${selectedMinute.value}`;
+      const result = `${hour24.toString().padStart(2, '0')}:${selectedMinute.value}`;
+      console.log('❌ getFormattedTime 최종 결과:', result);
+      
+      return result;
     };
 
     // 지도 관련
@@ -438,8 +450,14 @@ export default {
       
       // 시간 드롭다운 초기화
       selectedAmPm.value = 'AM';
-      selectedHour.value = '9';
+      selectedHour.value = '12';
       selectedMinute.value = '00';
+      
+      console.log('❌ 장소 상세 열기 - 시간 초기화:', {
+        selectedAmPm: selectedAmPm.value,
+        selectedHour: selectedHour.value,
+        selectedMinute: selectedMinute.value
+      });
       
       // 다음 틱에서 지도 초기화
       nextTick(() => {
@@ -455,7 +473,7 @@ export default {
       
       // 시간 드롭다운 초기화
       selectedAmPm.value = 'AM';
-      selectedHour.value = '9';
+      selectedHour.value = '12';
       selectedMinute.value = '00';
       
       // 지도 정리
@@ -500,13 +518,84 @@ export default {
     const addSelectedPlace = async () => {
       if (!selectedPlace.value) return;
 
-      // 드롭다운에서 선택된 시간을 HH:MM 형식으로 변환
-      const formattedTime = getFormattedTime();
-      visitTime.value = formattedTime;
-
       try {
         isAdding.value = true;
         emit('show-toast', '일정을 추가하는 중...', 'processing');
+
+        // 선택된 날짜에 해당하는 travelRoot의 truid 찾기
+        const selectedTravelRoot = props.travelRoots.find(root => root.day === props.selectedDay + 1);
+        const travelDayId = selectedTravelRoot ? selectedTravelRoot.truid : props.selectedDay + 1;
+        
+        console.log('TravelRoots 데이터:', props.travelRoots);
+        console.log('선택된 날짜 (0-based):', props.selectedDay);
+        console.log('찾는 day (1-based):', props.selectedDay + 1);
+        console.log('선택된 TravelRoot:', selectedTravelRoot);
+        console.log('사용할 travel_day_id:', travelDayId);
+
+        // TravelRoot의 날짜를 기준으로 00:00:00에서 시작
+        let travelDate;
+        if (selectedTravelRoot && selectedTravelRoot.travelDate) {
+          // TravelRoot의 날짜를 사용하여 00:00:00으로 설정
+          travelDate = new Date(selectedTravelRoot.travelDate);
+          travelDate.setHours(0, 0, 0, 0);
+        } else {
+          // fallback: 여행 시작 날짜 + 선택된 날짜
+          const startDate = new Date(props.tripStartDate);
+          travelDate = new Date(startDate);
+          travelDate.setDate(startDate.getDate() + props.selectedDay);
+          travelDate.setHours(0, 0, 0, 0);
+        }
+        
+        console.log('❌ addSelectedPlace 시작 - 현재 시간 설정값:', {
+          selectedAmPm: selectedAmPm.value,
+          selectedHour: selectedHour.value,
+          selectedMinute: selectedMinute.value
+        });
+
+        // 선택된 시간 추가
+        const hour = parseInt(selectedHour.value);
+        const minute = parseInt(selectedMinute.value);
+        
+        console.log('❌ 파싱된 시간 값들:', { hour, minute });
+        
+        // 오전/오후 처리
+        let finalHour = hour;
+        if (selectedAmPm.value === 'AM') {
+          // 오전: 12시 -> 0시, 1-11시 -> 그대로
+          finalHour = hour === 12 ? 0 : hour;
+          console.log('❌ AM 처리:', { 원본hour: hour, finalHour });
+        } else {
+          // 오후: 12시 -> 12시, 1-11시 -> +12시간
+          finalHour = hour === 12 ? 12 : hour + 12;
+          console.log('❌ PM 처리:', { 원본hour: hour, finalHour });
+        }
+        
+        // 최종 시간 설정
+        console.log('❌ 시간 설정 전 travelDate:', travelDate.toString());
+        travelDate.setHours(finalHour, minute, 0, 0);
+        console.log('❌ 시간 설정 후 travelDate:', travelDate.toString());
+        
+        // 로컬 시간 기준으로 ISO 문자열 생성 (YYYY-MM-DDTHH:mm:ss.sss)
+        const year = travelDate.getFullYear();
+        const month = (travelDate.getMonth() + 1).toString().padStart(2, '0'); // 월은 0부터 시작하므로 +1
+        const day = travelDate.getDate().toString().padStart(2, '0');
+        const hours = travelDate.getHours().toString().padStart(2, '0');
+        const minutes = travelDate.getMinutes().toString().padStart(2, '0');
+        const seconds = travelDate.getSeconds().toString().padStart(2, '0');
+        const milliseconds = travelDate.getMilliseconds().toString().padStart(3, '0');
+
+        const localISOString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${milliseconds}`;
+        
+        console.log('❌ 최종 계산된 날짜와 시간 (로컬 ISO 문자열):', {
+          selectedAmPm: selectedAmPm.value,
+          selectedHour: selectedHour.value,
+          selectedMinute: selectedMinute.value,
+          finalHour: finalHour,
+          finalMinute: minute,
+          finalDateUTC: travelDate.toISOString(), // UTC 확인용
+          localString: travelDate.toString(), // 로컬 문자열 확인용
+          localISOStringToSend: localISOString // API 전송용
+        });
 
         // 좌표 추출
         const latitude = parseFloat(selectedPlace.value.y);
@@ -528,40 +617,13 @@ export default {
           throw new Error('지역 코드를 추출할 수 없습니다.');
         }
 
-        // 여행 시작 날짜 + 선택된 날짜로 실제 날짜 계산
-        const startDate = new Date(props.tripStartDate);
-        const travelDate = new Date(startDate);
-        travelDate.setDate(startDate.getDate() + props.selectedDay);
-        
-        // 시간 정보 추가
-        const [hours, minutes] = formattedTime.split(':');
-        travelDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-
-        // 선택된 날짜에 해당하는 travelRoot의 truid 찾기
-        const selectedTravelRoot = props.travelRoots.find(root => root.day === props.selectedDay + 1);
-        const travelDayId = selectedTravelRoot ? selectedTravelRoot.truid : props.selectedDay + 1;
-        
-        console.log('TravelRoots 데이터:', props.travelRoots);
-        console.log('선택된 날짜 (0-based):', props.selectedDay);
-        console.log('찾는 day (1-based):', props.selectedDay + 1);
-        console.log('선택된 TravelRoot:', selectedTravelRoot);
-        console.log('사용할 travel_day_id:', travelDayId);
-
-        // 선택된 TravelRoot의 날짜 확인 및 보정
-        if (selectedTravelRoot && selectedTravelRoot.travelDate) {
-          // TravelRoot의 실제 날짜를 사용
-          const rootDate = new Date(selectedTravelRoot.travelDate);
-          travelDate.setFullYear(rootDate.getFullYear(), rootDate.getMonth(), rootDate.getDate());
-          console.log('TravelRoot 날짜로 보정된 최종 날짜:', travelDate.toISOString());
-        }
-
         // API 요청 데이터 구성
         const requestData = {
           travel_id: props.travelId,
           travel_day_id: travelDayId, // travelRoot의 truid 사용
           region: parseInt(locationCodes.province_code),
           sig: parseInt(locationCodes.city_code),
-          start: travelDate.toISOString(),
+          start: localISOString, // 수정된 로컬 ISO 문자열 사용
           memo: placeMemo.value || '',
           address: selectedPlace.value.address_name || selectedPlace.value.road_address_name || '',
           name: selectedPlace.value.place_name,
@@ -569,16 +631,24 @@ export default {
           longitude: longitude
         };
 
-        console.log('서버에 전송할 데이터:', requestData);
+        console.log('❌ API 요청 데이터 - start 필드 중점 확인:', {
+          start: requestData.start,
+          startAsDate: new Date(requestData.start).toString(),
+          startAsLocalTime: new Date(requestData.start).toLocaleString(),
+          전체requestData: requestData
+        });
 
         // 서버 API 호출
         const result = await apiPost('/travel-areas/add', requestData);
-        console.log('서버 응답:', result);
+        console.log('❌ 서버 응답:', result);
 
         // 새 일정 아이템 데이터 구성
+        const formattedTimeForDisplay = getFormattedTime();
+        console.log('❌ 화면 표시용 시간:', formattedTimeForDisplay);
+        
         const newItem = {
           id: result.data?.tauid || Date.now(),
-          time: formattedTime,
+          time: formattedTimeForDisplay,
           activity: selectedPlace.value.place_name,
           location: selectedPlace.value.address_name || selectedPlace.value.road_address_name,
           memo: placeMemo.value,
@@ -594,6 +664,8 @@ export default {
             longitude: longitude
           }
         };
+
+        console.log('❌ 생성된 newItem:', newItem);
 
         // 부모 컴포넌트에 일정 추가 알림
         emit('place-added', { dayIndex: props.selectedDay, newItem });

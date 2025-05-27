@@ -260,6 +260,11 @@
             <!-- 카카오 지도 -->
             <div class="map-container">
               <div id="kakao-map" ref="kakaoMapContainer" class="map-element"></div>
+              <!-- 지도 로딩 애니메이션 오버레이 -->
+              <div v-if="!mapLoaded" class="map-loading-overlay">
+                <img src="@/assets/flight.gif" alt="Loading" class="loading-animation" />
+                <p class="loading-text">지도 불러오는중</p>
+              </div>
               <div class="map-legend" v-if="mapLoaded">
                 <div class="legend-item">
                   <div class="legend-dot start"></div>
@@ -715,20 +720,6 @@ export default {
               }
             });
 
-            // 각 날짜별 일정을 시간순으로 정렬
-            tripDays.value.forEach((day, index) => {
-              if (day.items && day.items.length > 0) {
-                day.items.sort((a, b) => {
-                  // 빈 시간은 가장 뒤로
-                  if (!a.time) return 1;
-                  if (!b.time) return -1;
-                  // 시간 비교 (HH:MM 형식)
-                  return a.time.localeCompare(b.time);
-                });
-                console.log(`Day ${index + 1} 일정 시간순 정렬 완료:`, day.items.map(item => `${item.time} - ${item.activity}`));
-              }
-            });
-
             console.log('=== TravelAreas 매핑 완료 ===');
             console.log('최종 일정 데이터:', tripDays.value);
           }
@@ -877,15 +868,8 @@ export default {
         return [];
       }
 
-      // 시간 기준으로 정렬된 배열 반환
-      return [...tripDays.value[activeDay.value].items].sort((a, b) => {
-        // 빈 시간은 가장 뒤로
-        if (!a.time) return 1;
-        if (!b.time) return -1;
-
-        // 시간 비교 (HH:MM 형식)
-        return a.time.localeCompare(b.time);
-      });
+      // 데이터를 그대로 반환 (API에서 이미 정렬되어 옴)
+      return tripDays.value[activeDay.value].items;
     });
 
     // 아이템 수정 저장
@@ -1563,7 +1547,6 @@ export default {
           // SDK가 로드되었으므로 지도 초기화 실행
           console.log("Kakao Maps SDK ready, initializing detail map");
           await initDetailMap();
-
         } catch (error) {
           console.error("Error in openPlaceDetails:", error);
         }
@@ -1880,12 +1863,9 @@ export default {
         console.log('추가할 새 일정:', newItem);
         console.log('현재 선택된 날짜:', selectedDay.value);
 
-        // 선택한 날짜의 일정에 추가
-        if (!tripDays.value[selectedDay.value].items) {
-          tripDays.value[selectedDay.value].items = [];
-        }
-
-        tripDays.value[selectedDay.value].items.push(newItem);
+        // 로컬 상태 업데이트 대신 API에서 최신 데이터 다시 불러오기
+        console.log('데이터 추가 완료, API에서 최신 데이터 불러오는 중...');
+        await fetchTravelData();
 
         // 모달 닫기
         closePlaceSearch();
@@ -3449,35 +3429,36 @@ export default {
     };
 
     // 장소 추가 이벤트 핸들러 (새로운 컴포넌트에서 발생)
-    const handlePlaceAdded = ({ dayIndex, newItem }) => {
+    const handlePlaceAdded = async ({ dayIndex, newItem }) => {
       console.log('장소 추가 이벤트:', { dayIndex, newItem });
 
-      // 선택한 날짜의 일정에 추가
-      if (!tripDays.value[dayIndex].items) {
-        tripDays.value[dayIndex].items = [];
+      try {
+        // 로컬 상태 업데이트 대신 API에서 최신 데이터 다시 불러오기
+        console.log('데이터 추가 완료, API에서 최신 데이터 불러오는 중...');
+        await fetchTravelData();
+        
+        // 활성 날짜를 선택한 날짜로 변경 (다른 날짜에 일정을 추가한 경우)
+        if (dayIndex !== activeDay.value) {
+          activeDay.value = dayIndex;
+        }
+
+        // 강제 화면 갱신
+        forceRefresh();
+        
+        console.log('데이터 동기화 완료');
+      } catch (error) {
+        console.error('데이터 동기화 실패:', error);
+        // 실패 시 기존 로직으로 폴백
+        if (!tripDays.value[dayIndex].items) {
+          tripDays.value[dayIndex].items = [];
+        }
+        tripDays.value[dayIndex].items.push(newItem);
+        
+        if (dayIndex !== activeDay.value) {
+          activeDay.value = dayIndex;
+        }
+        forceRefresh();
       }
-
-      tripDays.value[dayIndex].items.push(newItem);
-
-      // 해당 날짜의 일정을 시간순으로 자동 정렬
-      if (tripDays.value[dayIndex].items.length > 1) {
-        tripDays.value[dayIndex].items.sort((a, b) => {
-          // 빈 시간은 가장 뒤로
-          if (!a.time) return 1;
-          if (!b.time) return -1;
-          // 시간 비교 (HH:MM 형식)
-          return a.time.localeCompare(b.time);
-        });
-        console.log(`Day ${dayIndex + 1} 일정 자동 정렬 완료:`, tripDays.value[dayIndex].items.map(item => `${item.time} - ${item.activity}`));
-      }
-
-      // 활성 날짜를 선택한 날짜로 변경 (다른 날짜에 일정을 추가한 경우)
-      if (dayIndex !== activeDay.value) {
-        activeDay.value = dayIndex;
-      }
-
-      // 강제 화면 갱신
-      forceRefresh();
     };
 
     // 토스트 메시지 표시 핸들러
@@ -6345,6 +6326,42 @@ textarea {
 
 .section-actions .delete-travel-btn:hover svg {
   transform: scale(1.1);
+}
+
+/* 지도 로딩 애니메이션 오버레이 */
+.map-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+  border-radius: 8px;
+}
+
+.map-loading-overlay .loading-animation {
+  width: 120px;
+  height: 120px;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.map-loading-overlay .loading-text {
+  font-size: 1.1rem;
+  color: #2d3748;
+  font-weight: 500;
+  text-align: center;
+  margin: 10px 0;
 }
 
 </style>
