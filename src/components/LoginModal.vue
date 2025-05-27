@@ -24,7 +24,7 @@
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
           <polyline points="22 4 12 14.01 9 11.01"></polyline>
         </svg>
-        <span>로그인에 성공했습니다!</span>
+        <span>{{ toastMessage }}</span>
       </div>
     </transition>
 
@@ -205,6 +205,17 @@
               <h3 class="signup-header">회원 가입</h3>
 
               <div class="form-group">
+                <label for="signup-name" class="form-label">이름</label>
+                <input
+                  id="signup-name"
+                  type="text"
+                  v-model="signupName"
+                  class="form-input"
+                  required
+                />
+              </div>
+
+              <div class="form-group">
                 <label for="signup-password" class="form-label">비밀번호</label>
                 <input
                   id="signup-password"
@@ -248,6 +259,32 @@
                 />
               </div>
 
+              <div class="form-group">
+                <label class="form-label">성별</label>
+                <div class="gender-selection">
+                  <label class="gender-option">
+                    <input
+                      type="radio"
+                      name="gender"
+                      value="M"
+                      v-model="gender"
+                      required
+                    />
+                    <span class="gender-label">남성</span>
+                  </label>
+                  <label class="gender-option">
+                    <input
+                      type="radio"
+                      name="gender"
+                      value="F"
+                      v-model="gender"
+                      required
+                    />
+                    <span class="gender-label">여성</span>
+                  </label>
+                </div>
+              </div>
+
               <button class="signup-button" @click="handleSignup">회원 가입</button>
             </div>
           </div>
@@ -259,6 +296,7 @@
 
 <script>
 import { defineComponent } from 'vue';
+import { setAccessToken } from '@/services/auth.js';
 
 export default defineComponent({
   name: 'LoginModal',
@@ -279,6 +317,9 @@ export default defineComponent({
       socialButtonsHeight: 'auto',
       backendUrl: 'http://localhost:8080',
       animationId: null,
+      signupName: '',
+      gender: null,
+      toastMessage: '',
     }
   },
   
@@ -351,11 +392,14 @@ export default defineComponent({
       this.confirmPassword = ''
       this.nickname = ''
       this.birthdate = ''
+      this.signupName = ''
+      this.gender = null
       this.showSignup = false
       this.imageOpacity = 1
       this.showLogoLogin = false
       this.loginError = false
       this.socialButtonsHeight = 'auto'
+      this.toastMessage = ''
     },
     
     handleFormSubmit() {
@@ -374,28 +418,38 @@ export default defineComponent({
     },
     
     handleLogin() {
+      const loginData = {
+        id: this.email,
+        password: this.password
+      };
+      
       fetch(`${this.backendUrl}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          id: this.email,
-          password: this.password
-        }),
+        body: JSON.stringify(loginData),
         credentials: 'include'
       })
       .then(response => {
         if (!response.ok) {
-            return response.json().then(errData => { 
-                throw { status: response.status, data: errData }; 
-            });
+          return response.json().then(errData => { 
+            throw { status: response.status, data: errData }; 
+          });
         }
         return response.json();
       })
       .then(data => {
         console.log('일반 로그인 성공 응답:', data);
+        
+        // 응답에서 토큰이 있다면 저장 (쿠키나 다른 방식으로 올 수도 있음)
+        if (data.data && data.data.accessToken) {
+          setAccessToken(data.data.accessToken);
+        }
+        
+        // 로그인 성공 처리
         this.loginError = false;
+        this.toastMessage = '로그인에 성공했습니다!';
         this.isOpen = false;
         this.showSuccessToast = true;
         
@@ -404,8 +458,9 @@ export default defineComponent({
         setTimeout(() => {
           this.showSuccessToast = false;
           const returnTo = localStorage.getItem('returnToPath');
+          localStorage.removeItem('returnToPath'); // 사용 후 제거
           window.location.href = returnTo || '/';
-        }, 3000);
+        }, 1500); // 토스트 표시 시간을 1.5초로 단축
         
       })
       .catch(error => {
@@ -420,36 +475,55 @@ export default defineComponent({
         return;
       }
       
+      // 필수 필드 검증
+      if (!this.signupName || !this.nickname || !this.birthdate || !this.gender) {
+        alert('모든 필드를 입력해주세요.');
+        return;
+      }
+      
+      const signupData = {
+        id: this.email,
+        password: this.signupPassword,
+        name: this.signupName,
+        nickname: this.nickname,
+        email: this.email,
+        gender: this.gender,
+        birthday: this.birthdate,
+        profileImage: "https://example.com/profile.jpg", // 기본 프로필 이미지
+        role: "USER"
+      };
+      
       fetch(`${this.backendUrl}/api/auth/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          id: this.email,
-          password: this.signupPassword,
-          nickname: this.nickname,
-          birthday: this.birthdate
-        })
+        body: JSON.stringify(signupData)
       })
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === 'success') {
-          this.isOpen = false
-          this.showSuccessToast = true
-          
-          this.resetForm()
-          
-          setTimeout(() => {
-            this.showSuccessToast = false
-          }, 3000)
-        } else {
-          alert(data.message || '회원가입에 실패했습니다.');
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(errData => { 
+            throw { status: response.status, data: errData }; 
+          });
         }
+        return response.json();
+      })
+      .then(data => {
+        console.log('회원가입 성공:', data);
+        this.toastMessage = '회원가입을 성공했습니다!!';
+        this.isOpen = false;
+        this.showSuccessToast = true;
+        
+        this.resetForm();
+        
+        setTimeout(() => {
+          this.showSuccessToast = false;
+        }, 3000);
       })
       .catch(error => {
         console.error('회원가입 오류:', error);
-        alert('회원가입 중 오류가 발생했습니다.');
+        const message = error.data?.message || '회원가입 중 오류가 발생했습니다.';
+        alert(message);
       });
     },
     
@@ -877,6 +951,7 @@ export default defineComponent({
   border-radius: 0.375rem;
   font-size: 0.875rem;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  color: #111827;
 }
 
 .form-input:focus {
@@ -1089,5 +1164,37 @@ export default defineComponent({
 
 .hidden {
   display: none;
+}
+
+.gender-selection {
+  display: flex;
+  gap: 1rem;
+}
+
+.gender-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  transition: background-color 0.2s ease;
+}
+
+.gender-option:hover {
+  background-color: #f3f4f6;
+}
+
+.gender-option input[type="radio"] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+
+.gender-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
 }
 </style>

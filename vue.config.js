@@ -36,6 +36,23 @@ module.exports = defineConfig({
     port: 8090,
     open: true,
     proxy: {
+      // 백엔드 API 프록시 설정 (CORS 우회용)
+      '^/api': {
+        target: process.env.VUE_APP_API_BASE_URL || 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false,
+        logLevel: 'debug',
+        onProxyReq: (proxyReq, req, res) => {
+          console.log('Proxying request:', req.method, req.url);
+        },
+        onProxyRes: (proxyRes, req, res) => {
+          // CORS 헤더 추가
+          proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+          proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
+          proxyRes.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With';
+          proxyRes.headers['Access-Control-Allow-Credentials'] = 'true';
+        }
+      },
       // Ollama API 프록시 설정
       '^/api/ollama': {
         target: 'http://localhost:11434',

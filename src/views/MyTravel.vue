@@ -404,6 +404,28 @@
                     <div class="trip-people">{{ travel.peoples }}명</div>
                     <div v-if="travel.memo" class="trip-memo">{{ travel.memo }}</div>
                   </div>
+                  
+                  <!-- 여행 계획 버튼들 -->
+                  <div class="trip-actions" @click.stop>
+                    <button class="action-btn download-btn" @click="downloadTravelPlan(travel.tuid, travel.title)">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                      </svg>
+                      다운로드
+                    </button>
+                    <button class="action-btn notion-btn" @click="createNotionDocument(travel.tuid, travel.title)">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
+                      </svg>
+                      Notion
+                    </button>
+                  </div>
                 </div>
                 
                 <!-- 현재 연도의 마지막에 새 여행 계획 버튼 추가 -->
@@ -438,6 +460,39 @@
       :show="showToast" 
       @update:show="showToast = $event" 
     />
+
+    <!-- 다운로드 모달 -->
+    <div v-if="showDownloadModal" class="download-modal-overlay">
+      <div class="download-modal">
+        <div class="modal-header">
+          <h3>{{ isDownloadComplete ? '다운로드 준비 완료' : '여행 계획 파일 생성 중' }}</h3>
+          <button v-if="isDownloadComplete" class="close-modal-btn" @click="closeDownloadModal">×</button>
+        </div>
+        
+        <div class="modal-content">
+          <div class="claude-image-container">
+            <img src="@/assets/img/claude.png" alt="Claude AI" class="claude-image" />
+          </div>
+          
+          <div v-if="!isDownloadComplete" class="loading-section">
+            <p class="loading-message">Claude AI가 여행 계획서를 작성하고 있습니다...</p>
+            <div class="loader"></div>
+          </div>
+          
+          <div v-else class="download-ready-section">
+            <p class="success-message">{{ currentTravelTitle }} 여행 계획서가 준비되었습니다!</p>
+            <button class="download-final-btn" @click="downloadMarkdownFile">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              다운로드하기
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -484,6 +539,13 @@ export default {
     const showToast = ref(false);
     const toastMessage = ref('');
     const toastType = ref('success');
+    
+    // 다운로드 모달 상태
+    const showDownloadModal = ref(false);
+    const isDownloadComplete = ref(false);
+    const currentTravelTitle = ref('');
+    const currentTuid = ref('');
+    const markdownContent = ref('');
     
     // 여행 기간 계산
     const tripDuration = computed(() => {
@@ -2224,6 +2286,216 @@ export default {
       }
     };
 
+    // 다운로드 함수들
+    const downloadTravelPlan = async (tuid, title) => {
+      try {
+        currentTuid.value = tuid;
+        currentTravelTitle.value = title;
+        isDownloadComplete.value = false;
+        showDownloadModal.value = true;
+        
+        console.log('여행 계획 다운로드 시작:', tuid, title);
+        
+        // auth.js의 authenticatedFetch 사용
+        const { authenticatedFetch } = await import('@/services/auth');
+        const response = await authenticatedFetch(`/chat/anthropic/markdown/${tuid}`, {
+          method: 'GET'
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        // 응답을 텍스트로 읽기
+        const markdownText = await response.text();
+        
+        // Content-Disposition 헤더에서 파일명 추출 (있는 경우)
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let serverFilename = null;
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+          if (filenameMatch && filenameMatch[1]) {
+            serverFilename = filenameMatch[1].replace(/['"]/g, '');
+          }
+        }
+        
+        // 마크다운 콘텐츠 저장
+        markdownContent.value = markdownText;
+        
+        // 서버에서 제공한 파일명이 있으면 사용
+        if (serverFilename) {
+          currentTravelTitle.value = serverFilename.replace('.md', '');
+        }
+        
+        // 다운로드 준비 완료
+        isDownloadComplete.value = true;
+        
+        console.log('마크다운 콘텐츠 수신 완료');
+        
+      } catch (error) {
+        console.error('여행 계획 다운로드 오류:', error);
+        showToast.value = true;
+        toastMessage.value = '여행 계획 다운로드에 실패했습니다.';
+        toastType.value = 'error';
+        showDownloadModal.value = false;
+      }
+    };
+    
+    const downloadMarkdownFile = () => {
+      try {
+        // 파일명 생성 (서버 파일명 우선, 없으면 기본 형식)
+        let filename;
+        if (currentTravelTitle.value && !currentTravelTitle.value.includes('_여행계획서_')) {
+          // 서버에서 파일명을 제공하지 않은 경우
+          const now = new Date();
+          const dateStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
+          filename = `${currentTravelTitle.value}_여행계획서_${dateStr}.md`;
+        } else {
+          // 서버에서 파일명을 제공한 경우
+          filename = currentTravelTitle.value.endsWith('.md') 
+            ? currentTravelTitle.value 
+            : `${currentTravelTitle.value}.md`;
+        }
+        
+        // Blob 생성
+        const blob = new Blob([markdownContent.value], { type: 'text/markdown;charset=utf-8' });
+        
+        // 다운로드 링크 생성 및 클릭
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        // 성공 토스트 메시지
+        showToast.value = true;
+        toastMessage.value = '여행 계획서 다운로드가 완료되었습니다!';
+        toastType.value = 'success';
+        
+        // 모달 닫기
+        closeDownloadModal();
+        
+      } catch (error) {
+        console.error('파일 다운로드 오류:', error);
+        showToast.value = true;
+        toastMessage.value = '파일 다운로드에 실패했습니다.';
+        toastType.value = 'error';
+      }
+    };
+    
+    const closeDownloadModal = () => {
+      showDownloadModal.value = false;
+      isDownloadComplete.value = false;
+      currentTravelTitle.value = '';
+      currentTuid.value = '';
+      markdownContent.value = '';
+    };
+    
+    const createNotionDocument = async (tuid, title) => {
+      try {
+        console.log('Notion 문서 생성 요청:', { tuid, title });
+        
+        // 사용자 ID 확인
+        if (!userProfile.value || !userProfile.value.id) {
+          showToast.value = true;
+          toastMessage.value = '사용자 정보를 불러올 수 없습니다.';
+          toastType.value = 'error';
+          return;
+        }
+        
+        const userId = userProfile.value.id;
+        
+        // CORS 우회를 위한 개발용 설정
+        const isDevelopment = process.env.NODE_ENV === 'development';
+        
+        if (isDevelopment) {
+          console.log('개발 모드: CORS 우회 시도');
+          
+          // 방법 1: authenticatedFetch를 직접 사용하여 CORS 처리
+          try {
+            const { authenticatedFetch } = await import('@/services/auth');
+            const response = await authenticatedFetch(`/notion/${tuid}?userId=${userId}`, {
+              method: 'GET',
+              mode: 'cors', // CORS 명시적 허용
+              credentials: 'include', // 쿠키 포함
+              headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+              }
+            });
+            
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            console.log('Notion 문서 생성 응답:', result);
+            
+            showToast.value = true;
+            toastMessage.value = 'Notion 문서가 성공적으로 생성되었습니다!';
+            toastType.value = 'success';
+            return;
+            
+          } catch (corsError) {
+            console.warn('CORS 에러 발생, 대체 방법 시도:', corsError);
+            
+            // 방법 2: no-cors 모드로 요청 (응답은 받을 수 없지만 요청은 전송됨)
+            try {
+              const { authenticatedFetch } = await import('@/services/auth');
+              await authenticatedFetch(`/notion/${tuid}?userId=${userId}`, {
+                method: 'GET',
+                mode: 'no-cors', // CORS 우회하지만 응답 읽기 불가
+                credentials: 'include'
+              });
+              
+              console.log('no-cors 모드로 요청 전송됨');
+              showToast.value = true;
+              toastMessage.value = 'Notion 문서 생성 요청이 전송되었습니다. (CORS 제한으로 결과 확인 불가)';
+              toastType.value = 'info';
+              return;
+              
+            } catch (noCorsError) {
+              console.error('no-cors 모드도 실패:', noCorsError);
+            }
+          }
+        }
+        
+        // 일반적인 API 호출 (운영 환경 또는 CORS 설정이 완료된 경우)
+        const response = await apiGet(`/notion/${tuid}?userId=${userId}`);
+        
+        console.log('Notion 문서 생성 응답:', response);
+        
+        showToast.value = true;
+        toastMessage.value = 'Notion 문서가 성공적으로 생성되었습니다!';
+        toastType.value = 'success';
+        
+      } catch (error) {
+        console.error('Notion 문서 생성 오류:', error);
+        
+        // CORS 에러인지 확인
+        if (error.message.includes('CORS') || error.message.includes('Access-Control-Allow-Origin')) {
+          showToast.value = true;
+          toastMessage.value = 'CORS 정책으로 인해 요청이 차단되었습니다. 브라우저를 --disable-web-security 옵션으로 실행해보세요.';
+          toastType.value = 'warning';
+          
+          // 개발자를 위한 추가 정보 콘솔 출력
+          console.log('=== CORS 문제 해결 방법 ===');
+          console.log('1. Chrome: chrome.exe --disable-web-security --disable-features=VizDisplayCompositor --user-data-dir="C:/temp/chrome"');
+          console.log('2. 또는 백엔드에서 CORS 설정 추가');
+          console.log('3. 또는 프록시 서버 사용');
+          
+        } else {
+          showToast.value = true;
+          toastMessage.value = 'Notion 문서 생성에 실패했습니다.';
+          toastType.value = 'error';
+        }
+      }
+    };
+
     return {
       // 사용자 프로필 관련
       userProfile,
@@ -2255,6 +2527,13 @@ export default {
       showToast,
       toastMessage,
       toastType,
+      
+      // 다운로드 모달 상태
+      showDownloadModal,
+      isDownloadComplete,
+      currentTravelTitle,
+      currentTuid,
+      markdownContent,
       
       // 상태 변수
       mapContainer,
@@ -2303,7 +2582,13 @@ export default {
       logRegionVisitData,
       updateDetailMapSelection,
       getSelectedRegionName,
-      renderDefaultRadarChart
+      renderDefaultRadarChart,
+      
+      // 다운로드 함수들
+      downloadTravelPlan,
+      downloadMarkdownFile,
+      closeDownloadModal,
+      createNotionDocument
     };
   }
 };
@@ -2961,7 +3246,8 @@ export default {
   background-color: #e2e8f0;
 }
 
-.trip-item {
+/* 여행 아이템 수정 스타일 */
+.trip-item:not(.new-trip-item) {
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(8px);
   border-radius: 12px;
@@ -2976,10 +3262,24 @@ export default {
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.trip-item:hover {
+.trip-item:not(.new-trip-item):hover {
   transform: translateY(-8px);
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
   background: rgba(255, 255, 255, 0.95);
+}
+
+/* 새 여행 추가 버튼도 기본 크기와 위치 스타일 유지 */
+.trip-item.new-trip-item {
+  width: calc(25% - 1.125rem);
+  min-width: 220px;
+  margin-bottom: 1.5rem;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.trip-content {
+  /* 제거된 별도 스타일 */
 }
 
 /* No-trip message styling */
@@ -3185,16 +3485,18 @@ export default {
 
 /* 새 여행 계획 카드 스타일 */
 .new-trip-item {
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  border-top-color: #1e40af;
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important;
+  border-top-color: #1e40af !important;
+  color: white !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  position: relative;
+  overflow: visible;
 }
 
 .new-trip-item:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%) !important;
   transform: translateY(-8px);
-  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3) !important;
 }
 
 .new-trip-content {
@@ -3857,5 +4159,206 @@ export default {
   background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
   border-radius: 12px;
   border: 2px dashed #d1d5db;
+}
+
+/* 여행 액션 버튼 스타일 */
+.trip-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem 1rem;
+  border-top: 1px solid rgba(229, 231, 235, 0.3);
+  background: rgba(248, 250, 252, 0.5);
+}
+
+.action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.8rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.download-btn {
+  background: linear-gradient(135deg, #a8e6cf 0%, #88d8a3 100%);
+  color: #2d5a3d;
+  box-shadow: 0 2px 6px rgba(168, 230, 207, 0.3);
+}
+
+.download-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(168, 230, 207, 0.4);
+  background: linear-gradient(135deg, #96ddbf 0%, #7acc96 100%);
+}
+
+.notion-btn {
+  background: linear-gradient(135deg, #c8a8e9 0%, #b690d1 100%);
+  color: #4a2c5a;
+  box-shadow: 0 2px 6px rgba(200, 168, 233, 0.3);
+}
+
+.notion-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(200, 168, 233, 0.4);
+  background: linear-gradient(135deg, #be9de0 0%, #a884c7 100%);
+}
+
+/* 다운로드 모달 스타일 */
+.download-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.download-modal {
+  background: white;
+  border-radius: 16px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.close-modal-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.close-modal-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.modal-content {
+  padding: 2rem;
+  text-align: center;
+}
+
+.claude-image-container {
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.claude-image {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  object-fit: contain;
+}
+
+.loading-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.loading-message {
+  font-size: 1rem;
+  color: #4b5563;
+  margin: 0;
+}
+
+/* 로딩 스피너 스타일 */
+.loader {
+  height: 4px;
+  width: 130px;
+  --c: no-repeat linear-gradient(#6100ee 0 0);
+  background: var(--c), var(--c), #d7b8fc;
+  background-size: 60% 100%;
+  animation: l16 3s infinite;
+}
+
+@keyframes l16 {
+  0% {
+    background-position: -150% 0, -150% 0;
+  }
+  66% {
+    background-position: 250% 0, -150% 0;
+  }
+  100% {
+    background-position: 250% 0, 250% 0;
+  }
+}
+
+.download-ready-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.success-message {
+  font-size: 1rem;
+  color: #059669;
+  font-weight: 600;
+  margin: 0;
+}
+
+.download-final-btn {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.875rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.3);
+}
+
+.download-final-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(5, 150, 105, 0.4);
 }
 </style>
