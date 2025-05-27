@@ -1253,6 +1253,16 @@ export default {
 
             kakaoPolyline.value.setMap(kakaoMap.value);
           }
+        } else if (linePath.length === 1) {
+          // TravelArea가 1개인 경우 기존 경로 제거
+          console.log('TravelArea가 1개이므로 기존 경로를 제거합니다.');
+          clearRoutePolylines();
+          
+          // 기존 폴리라인도 제거
+          if (kakaoPolyline.value) {
+            kakaoPolyline.value.setMap(null);
+            kakaoPolyline.value = null;
+          }
         }
 
         // 지도 범위 조정
