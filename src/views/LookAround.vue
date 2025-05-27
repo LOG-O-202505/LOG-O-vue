@@ -498,7 +498,14 @@
         if (!foundItem) return false;
         
         const address = foundItem.address || foundItem._source?.p_address;
-        return userLikes.value.some(like => like.place && like.place.address === address);
+        const name = foundItem.name || foundItem._source?.p_name;
+        
+        // 주소와 이름이 모두 일치하는 경우에만 true
+        return userLikes.value.some(like => 
+          like.place && 
+          like.place.address === address && 
+          like.place.name === name
+        );
       };
 
       const toggleWishlist = async (item) => {

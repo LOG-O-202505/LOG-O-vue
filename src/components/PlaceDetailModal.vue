@@ -914,18 +914,27 @@ export default {
       }
       
       const currentAddress = getPlaceAddress.value;
+      const currentName = getPlaceName.value;
       console.log('현재 주소:', currentAddress);
+      console.log('현재 이름:', currentName);
       
-      if (!currentAddress) {
-        console.log('현재 주소가 없음');
+      if (!currentAddress || !currentName) {
+        console.log('현재 주소나 이름이 없음');
         return false;
       }
       
-      // LookAround와 동일한 방식: userLikes에서 주소로 매칭
+      // 주소와 이름이 모두 일치하는 경우에만 true
       const isInLikes = props.userLikes.some(like => {
         const likeAddress = like.place && like.place.address;
-        console.log('비교 중:', { currentAddress, likeAddress, match: likeAddress === currentAddress });
-        return likeAddress === currentAddress;
+        const likeName = like.place && like.place.name;
+        console.log('비교 중:', { 
+          currentAddress, likeAddress, 
+          currentName, likeName,
+          matchAddress: likeAddress === currentAddress,
+          matchName: likeName === currentName,
+          matchBoth: likeAddress === currentAddress && likeName === currentName
+        });
+        return likeAddress === currentAddress && likeName === currentName;
       });
       
       console.log('최종 결과:', isInLikes);

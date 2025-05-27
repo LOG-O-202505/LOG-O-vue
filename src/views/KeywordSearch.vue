@@ -262,14 +262,26 @@ export default {
         if (!foundItem) return false;
         
         const address = foundItem._source?.p_address;
-        return userLikes.value.some(like => like.place.address === address);
+        const name = foundItem._source?.p_name;
+        
+        // 주소와 이름이 모두 일치하는 경우에만 true
+        return userLikes.value.some(like => 
+          like.place && 
+          like.place.address === address && 
+          like.place.name === name
+        );
       }
       
       // 객체가 전달된 경우 (PlaceDetailModal에서 호출)
       const address = searchResultItem._source ? searchResultItem._source.p_address : searchResultItem.address;
+      const name = searchResultItem._source ? searchResultItem._source.p_name : searchResultItem.name;
       
-      // address를 기준으로 선호 장소에 있는지 확인 (TripPlan.vue와 동일한 방식)
-      return userLikes.value.some(like => like.place.address === address);
+      // 주소와 이름이 모두 일치하는 경우에만 true (TripPlan.vue와 동일한 방식)
+      return userLikes.value.some(like => 
+        like.place && 
+        like.place.address === address && 
+        like.place.name === name
+      );
     };
 
     const toggleWishlist = async (item) => {
