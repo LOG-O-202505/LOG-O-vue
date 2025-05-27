@@ -438,8 +438,11 @@ export default {
 
     // 위시리스트에 있는지 확인
     const isInWishlist = (place) => {
-      // address_name을 기준으로 비교 (API 응답 데이터와 카카오 검색 결과 매칭)
-      return wishlistPlaces.value.some(p => p.address_name === (place.address_name || place.road_address_name));
+      // address_name과 place_name이 모두 일치하는지 확인
+      return wishlistPlaces.value.some(p => 
+        p.address_name === (place.address_name || place.road_address_name) && 
+        p.place_name === place.place_name
+      );
     };
 
     // 장소 상세 정보 열기

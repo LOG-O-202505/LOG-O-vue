@@ -271,6 +271,11 @@
                 </div>
               </div>
               
+              <!-- 계획이 비어있을 때 표시 -->
+              <div v-if="mapLoaded && sortedScheduleItems.length === 0" class="empty-plan-overlay">
+                <p class="empty-plan-message">현재 아무런 계획이 존재하지 않습니다.</p>
+              </div>
+              
               <div class="map-legend" v-if="mapLoaded">
                 <div class="legend-item">
                   <div class="legend-dot start"></div>
@@ -998,7 +1003,9 @@ export default {
         // 맵 생성
         const options = {
           center: jejuCenter,
-          level: 9 // 확대 레벨 (숫자가 작을수록 확대)
+          level: 9, // 확대 레벨 (숫자가 작을수록 확대)
+          draggable: false, // 지도 이동 막기
+          zoomable: false   // 지도 확대/축소 막기
         };
 
         kakaoMap.value = new window.kakao.maps.Map(kakaoMapContainer.value, options);
@@ -1824,8 +1831,11 @@ export default {
 
     // 위시리스트에 있는지 확인
     const isInWishlist = (place) => {
-      // address_name을 기준으로 비교 (API 응답 데이터와 카카오 검색 결과 매칭)
-      return wishlistPlaces.value.some(p => p.address_name === (place.address_name || place.road_address_name));
+      // address_name과 place_name이 모두 일치하는지 확인
+      return wishlistPlaces.value.some(p => 
+        p.address_name === (place.address_name || place.road_address_name) && 
+        p.place_name === place.place_name
+      );
     };
 
     // 선택한 장소 일정에 추가
@@ -3396,6 +3406,9 @@ export default {
         // 상태 초기화 및 모달 닫기
         loadingPhase.value = 'imageAnalysis'; // 초기 상태로 재설정
         isVerifying.value = false; // 인증 상태 해제
+
+        // 지도의 마커 색상을 업데이트하기 위해 지도 갱신
+        updateMapMarkers();
 
         setTimeout(() => {
           showVerificationModal.value = false;
@@ -6649,6 +6662,31 @@ textarea {
   color: #4a5568;
   font-weight: 500;
   margin: 0;
+}
+
+.empty-plan-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+  border-radius: 8px;
+}
+
+.empty-plan-message {
+  font-size: 1.1rem;
+  color: #4a5568;
+  font-weight: 500;
+  text-align: center;
+  padding: 1rem;
+  border-radius: 6px;
+  background-color: #f7fafc;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 </style>
