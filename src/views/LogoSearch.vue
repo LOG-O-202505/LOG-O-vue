@@ -860,9 +860,20 @@ export default {
       isLoadingStats.value = true;
       try {
         const query = {
-          size: 0, query: { term: { p_id: parseInt(placeId) } },
+          size: 0,
+          query: { term: { p_id: parseInt(placeId) } },
           aggs: {
-            age_distribution: { terms: { field: "u_age", size: 10, order: { "_key": "asc" } } },
+            age_distribution: {
+              histogram: {
+                field: "u_age",
+                interval: 10,
+                min_doc_count: 0,  // 0개인 구간도 포함
+                extended_bounds: {
+                  min: 0,
+                  max: 99
+                }
+              }
+            },
             gender_distribution: { terms: { field: "u_gender", size: 2 } },
             total_visits: { value_count: { field: "p_id" } }
           }
@@ -874,10 +885,15 @@ export default {
         const data = await response.json();
         
         if (data?.aggregations?.age_distribution?.buckets) {
-          ageStats.value = [10, 20, 30, 40, 50, 60, 70, 80, 90].map(age => {
-            const bucket = data.aggregations.age_distribution.buckets.find(b => b.key === age);
-            return { age: age, value: bucket ? bucket.doc_count : 0 };
-          });
+          const ageRanges = data.aggregations.age_distribution.buckets.map(bucket => {
+            const startAge = bucket.key;
+            return {
+              age: startAge, // 기존 코드와의 호환성을 위해 유지
+              value: bucket.doc_count
+            };
+          }).filter(range => range.age >= 10 && range.age <= 90); // 10대~90대만 포함
+          
+          ageStats.value = ageRanges;
         } else { ageStats.value = []; }
         
         if (data?.aggregations?.gender_distribution?.buckets) {

@@ -2030,7 +2030,7 @@
         try {
           isLoadingStats.value = true;
           
-          // Elasticsearch 쿼리 구성
+          // Elasticsearch 쿼리 구성 (histogram 방식 사용)
           const query = {
             size: 0,
             query: {
@@ -2040,11 +2040,13 @@
             },
             aggs: {
               age_distribution: {
-                terms: {
+                histogram: {
                   field: "u_age",
-                  size: 10,
-                  order: {
-                    "_key": "asc"
+                  interval: 10,
+                  min_doc_count: 0,  // 0개인 구간도 포함
+                  extended_bounds: {
+                    min: 0,
+                    max: 99
                   }
                 }
               },
@@ -2077,20 +2079,21 @@
           
           const data = await response.json();
           
-          // 연령대별 통계 처리
+          // 연령대별 통계 처리 (histogram 결과 처리)
           if (data?.aggregations?.age_distribution?.buckets) {
-            // 모든 연령대 버킷 준비 (없는 데이터는 0으로)
-            const allAgeBuckets = [10, 20, 30, 40, 50, 60, 70, 80, 90].map(age => {
-              // 해당 연령대의 버킷 찾기
-              const foundBucket = data.aggregations.age_distribution.buckets.find(b => b.key === age);
+            const ageRanges = data.aggregations.age_distribution.buckets.map(bucket => {
+              const startAge = bucket.key;
+              const endAge = startAge + 9;
               return {
-                age: age,
-                label: `${age}대`,
-                value: foundBucket ? foundBucket.doc_count : 0
+                age: startAge, // 기존 코드와의 호환성을 위해 유지
+                ageRange: `${startAge}~${endAge}`,
+                label: `${startAge}대`, // 기존 형식 유지 (10대, 20대, ...)
+                value: bucket.doc_count,
+                startAge: startAge
               };
-            });
+            }).filter(range => range.startAge >= 10 && range.startAge <= 90); // 10대~90대만 포함
             
-            ageStats.value = allAgeBuckets;
+            ageStats.value = ageRanges;
           } else {
             ageStats.value = [];
           }
