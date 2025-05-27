@@ -543,10 +543,9 @@ import VerificationImageProcessSpinner from '@/components/VerificationImageProce
 import TravelAreasInsertModule from '@/components/TravelAreasInsertModule.vue';
 import DeleteConfirmModal from '@/components/DeleteConfirmModal.vue';
 import ExpenseDeleteModal from '@/components/ExpenseDeleteModal.vue';
-import { ref, computed, onMounted, watch, nextTick, onBeforeUnmount, toRefs } from 'vue';
-import config from '@/config';
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick, toRefs } from 'vue';
 import EXIF from 'exif-js';
-import { safelyCleanupMap, isKakaoMapsLoaded, waitForKakaoMapsSDK } from '@/utils/mapUtils';
+import { safelyCleanupMap } from '@/utils/mapUtils';
 import {
   imageToEngDescription,
   EngDescriptionToVector,
@@ -927,69 +926,31 @@ export default {
     const initializeMap = async () => {
       console.log("Initializing Kakao Map...");
 
-      // 카카오 지도 API 로드
-      const kakaoMapsApiKey = config.KAKAO_MAPS_API_KEY;
-      console.log("Kakao Maps API Key:", kakaoMapsApiKey);
+      try {
+        // SDK 로드 대기
+        await waitForKakaoSDK();
+        console.log("Kakao Maps SDK is ready");
 
-      // 스크립트가 이미 있는지 확인
-      const existingScript = document.getElementById('kakao-maps-sdk');
-      if (existingScript) {
-        // 이미 존재하면 스크립트 삭제하지 않고 재사용
-        if (isKakaoMapsLoaded()) {
-          console.log("Kakao Maps SDK already loaded, proceeding to map initialization");
-          await initGeocoderAndMap();
-          return;
-        }
-      }
-
-      // 스크립트 생성
-      const script = document.createElement('script');
-      script.id = 'kakao-maps-sdk';
-      script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${kakaoMapsApiKey}&libraries=services,clusterer,drawing&autoload=false`;
-
-      // 프로미스로 스크립트 로드 처리
-      await new Promise((resolve) => {
-        script.onload = () => {
-          console.log("Kakao Maps SDK script loaded");
-          window.kakao.maps.load(() => {
-            console.log("Kakao Maps API and libraries are loaded");
-            resolve();
-          });
-        };
-        script.onerror = () => {
-          console.error("Failed to load Kakao Maps SDK");
-          resolve(); // 에러 발생해도 진행
-        };
-        document.head.appendChild(script);
-      });
-
-      await initGeocoderAndMap();
-    };
-
-    // Geocoder 초기화 및 맵 로드
-    const initGeocoderAndMap = async () => {
-      if (!isKakaoMapsLoaded()) {
-        console.error("Kakao Maps SDK not available after loading attempt");
-        return;
-      }
-
-      // Geocoder 초기화
-      if (window.kakao.maps.services && window.kakao.maps.services.Geocoder) {
-        try {
-          geocoder.value = new window.kakao.maps.services.Geocoder();
-          console.log("Geocoder initialized successfully");
-        } catch (error) {
-          console.error("Error initializing Geocoder:", error);
+        // Geocoder 초기화
+        if (window.kakao.maps.services && window.kakao.maps.services.Geocoder) {
+          try {
+            geocoder.value = new window.kakao.maps.services.Geocoder();
+            console.log("Geocoder initialized successfully");
+          } catch (error) {
+            console.error("Error initializing Geocoder:", error);
+            geocoder.value = null;
+          }
+        } else {
+          console.error("Kakao Maps Services or Geocoder constructor not available");
           geocoder.value = null;
         }
-      } else {
-        console.error("Kakao Maps Services or Geocoder constructor not available");
-        geocoder.value = null;
-      }
 
-      // nextTick으로 DOM 업데이트 후 지도 로드
-      await nextTick();
-      loadMap();
+        // 지도 로드
+        await nextTick();
+        loadMap();
+      } catch (error) {
+        console.error("Failed to initialize Kakao Map:", error);
+      }
     };
 
     // 카카오 맵 로드 및 초기화
@@ -997,7 +958,7 @@ export default {
       console.log("Loading Kakao Map...");
 
       // 카카오맵 SDK가 로드되었는지 확인
-      if (!isKakaoMapsLoaded()) {
+      if (!window.kakao || !window.kakao.maps) {
         console.error("Kakao Maps SDK not available when loadMap is called");
         return;
       }
@@ -1026,6 +987,20 @@ export default {
 
         kakaoMap.value = new window.kakao.maps.Map(kakaoMapContainer.value, options);
         console.log("Kakao Map created successfully");
+
+        // Geocoder 초기화
+        if (window.kakao.maps.services && window.kakao.maps.services.Geocoder) {
+          try {
+            geocoder.value = new window.kakao.maps.services.Geocoder();
+            console.log("Geocoder initialized successfully");
+          } catch (error) {
+            console.error("Error initializing Geocoder:", error);
+            geocoder.value = null;
+          }
+        } else {
+          console.error("Kakao Maps Services or Geocoder constructor not available");
+          geocoder.value = null;
+        }
 
         // 확대 축소 컨트롤러 추가
         const zoomControl = new window.kakao.maps.ZoomControl();
@@ -1540,10 +1515,10 @@ export default {
       // 지도 초기화를 비동기적으로 처리
       nextTick(async () => {
         try {
-          // SDK 로드 여부 확인 및 대기 - 새로 생성한 유틸리티 함수 사용
-          if (!isKakaoMapsLoaded()) {
+          // SDK 로드 여부 확인 및 대기 - 전역 SDK 사용
+          if (!window.kakaoMapsReady) {
             console.log("Kakao Maps SDK not ready. Waiting...");
-            const sdkLoaded = await waitForKakaoMapsSDK(5000);
+            const sdkLoaded = await waitForKakaoSDK();
 
             if (!sdkLoaded) {
               console.error("Kakao Maps SDK 로드 타임아웃");
@@ -1593,9 +1568,9 @@ export default {
         }
 
         // Kakao SDK 로드 확인 및 대기
-        if (!isKakaoMapsLoaded()) {
+        if (!window.kakaoMapsReady) {
           console.log("Waiting for Kakao Maps SDK to load...");
-          const isLoaded = await waitForKakaoMapsSDK(3000);
+          const isLoaded = await waitForKakaoSDK();
           if (!isLoaded) {
             console.error("Kakao Maps SDK 로드 실패");
             return;
@@ -1921,15 +1896,8 @@ export default {
       try {
         await fetchTravelData();
         
-        // Kakao 지도 SDK 로드 확인 및 초기화
-        if (await isKakaoMapsLoaded()) {
-          console.log("카카오 지도 SDK가 이미 로드되어 있습니다.");
-          await initializeMap();
-        } else {
-          console.log("카카오 지도 SDK를 기다리는 중...");
-          await waitForKakaoMapsSDK();
-          await initializeMap();
-        }
+        // 카카오 지도 초기화
+        await initializeMap();
       } catch (error) {
         console.error("TripPlan Component 초기화 오류:", error);
       }
@@ -3629,6 +3597,27 @@ export default {
         console.error('사용자 정보 조회 실패:', error);
         // 실패 시 기본값 유지
       }
+    };
+
+    // 전역 카카오 맵 SDK가 준비될 때까지 대기하는 함수
+    const waitForKakaoSDK = () => {
+      return new Promise((resolve) => {
+        // 이미 로드된 경우
+        if (window.kakao && window.kakao.maps && window.kakaoMapsReady) {
+          resolve();
+          return;
+        }
+
+        // 로드될 때까지 폴링
+        const checkSDK = () => {
+          if (window.kakao && window.kakao.maps && window.kakaoMapsReady) {
+            resolve();
+          } else {
+            setTimeout(checkSDK, 100);
+          }
+        };
+        checkSDK();
+      });
     };
 
     return {
