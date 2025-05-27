@@ -573,31 +573,30 @@ export default {
           console.log('❌ PM 처리:', { 원본hour: hour, finalHour });
         }
         
-        // 최종 시간 설정
+        // 최종 시간 설정 - UTC를 사용하지 않고 로컬 시간 그대로 설정
         console.log('❌ 시간 설정 전 travelDate:', travelDate.toString());
         travelDate.setHours(finalHour, minute, 0, 0);
         console.log('❌ 시간 설정 후 travelDate:', travelDate.toString());
         
-        // 로컬 시간 기준으로 ISO 문자열 생성 (YYYY-MM-DDTHH:mm:ss.sss)
+        // 로컬 시간 기준으로 ISO 문자열 생성 (YYYY-MM-DDTHH:mm:ss 형식)
         const year = travelDate.getFullYear();
-        const month = (travelDate.getMonth() + 1).toString().padStart(2, '0'); // 월은 0부터 시작하므로 +1
+        const month = (travelDate.getMonth() + 1).toString().padStart(2, '0');
         const day = travelDate.getDate().toString().padStart(2, '0');
         const hours = travelDate.getHours().toString().padStart(2, '0');
         const minutes = travelDate.getMinutes().toString().padStart(2, '0');
         const seconds = travelDate.getSeconds().toString().padStart(2, '0');
-        const milliseconds = travelDate.getMilliseconds().toString().padStart(3, '0');
 
-        const localISOString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${milliseconds}`;
+        // UTC 변환하지 않고 입력한 시간 그대로 사용
+        const localTimeString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
         
-        console.log('❌ 최종 계산된 날짜와 시간 (로컬 ISO 문자열):', {
+        console.log('❌ 최종 계산된 날짜와 시간 (로컬 시간 유지):', {
           selectedAmPm: selectedAmPm.value,
           selectedHour: selectedHour.value,
           selectedMinute: selectedMinute.value,
           finalHour: finalHour,
           finalMinute: minute,
-          finalDateUTC: travelDate.toISOString(), // UTC 확인용
-          localString: travelDate.toString(), // 로컬 문자열 확인용
-          localISOStringToSend: localISOString // API 전송용
+          localTimeString: localTimeString,
+          inputIntendedTime: `${finalHour}:${minute.toString().padStart(2, '0')}`
         });
 
         // 좌표 추출
@@ -626,7 +625,7 @@ export default {
           travel_day_id: travelDayId, // travelRoot의 truid 사용
           region: parseInt(locationCodes.province_code),
           sig: parseInt(locationCodes.city_code),
-          start: localISOString, // 수정된 로컬 ISO 문자열 사용
+          start: localTimeString, // 수정된 로컬 ISO 문자열 사용
           memo: placeMemo.value || '',
           address: selectedPlace.value.address_name || selectedPlace.value.road_address_name || '',
           name: selectedPlace.value.place_name,
@@ -638,6 +637,7 @@ export default {
           start: requestData.start,
           startAsDate: new Date(requestData.start).toString(),
           startAsLocalTime: new Date(requestData.start).toLocaleString(),
+          입력한시간: `${finalHour}:${minute.toString().padStart(2, '0')}`,
           전체requestData: requestData
         });
 

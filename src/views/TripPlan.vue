@@ -222,6 +222,18 @@
                   </div>
                   <!-- 방문 인증 버튼 부분 수정 -->
                   <div class="verification-button-container">
+                    <!-- 지도에서 위치 바로보기 버튼 추가 -->
+                    <button v-if="item.address || (item.place && item.place.address)" 
+                            class="view-on-map-btn" 
+                            @click="openNaverMap(item.address || item.place.address)">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                        <circle cx="12" cy="10" r="3"></circle>
+                      </svg>
+                      지도에서 위치 바로보기
+                    </button>
+                    
                     <button v-if="!item.verified" class="visit-verification-btn" @click="verifyVisit(activeDay, item)">
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -711,8 +723,8 @@ export default {
               if (dayIndex >= 0 && dayIndex < tripDays.value.length) {
                 const scheduleItem = {
                   time: area.startTime ? formatTimeFromArray(area.startTime) : '',
-                  activity: area.place?.name || '장소 미정',
-                  location: area.memo || '',
+                  activity: area.place?.name || area.memo || '장소 미정',
+                  location: area.memo || area.place?.address || '',
                   address: area.place?.address || '',
                   latitude: area.place?.latitude || null,
                   longitude: area.place?.longitude || null,
@@ -3869,6 +3881,34 @@ export default {
     // 디바운스된 지도 업데이트 함수
     const debouncedUpdateMapMarkers = debounce(updateMapMarkers, 300);
 
+    // 네이버 지도로 연결하는 함수 (주소 검색 방식)
+    const openNaverMap = (address) => {
+      try {
+        console.log('네이버 지도 연결 시작 - 주소:', address);
+        
+        if (!address || address.trim() === '') {
+          displayToast('주소 정보가 없어 지도를 열 수 없습니다.', 'error');
+          return;
+        }
+        
+        // 주소를 URI 인코딩
+        const encodedAddress = encodeURIComponent(address.trim());
+        
+        // 네이버 지도 검색 URL 생성
+        const naverMapUrl = `https://map.naver.com/v5/search/${encodedAddress}`;
+        
+        console.log('네이버 지도 URL:', naverMapUrl);
+        
+        // 새 창에서 네이버 지도 열기
+        window.open(naverMapUrl, '_blank');
+        
+        displayToast('네이버 지도에서 위치를 확인하세요.', 'success');
+      } catch (error) {
+        console.error('네이버 지도 연결 오류:', error);
+        displayToast('지도 연결 중 오류가 발생했습니다.', 'error');
+      }
+    };
+
     return {
       // 로딩 및 에러 상태
       isLoading,
@@ -3957,6 +3997,7 @@ export default {
       cancelEditInfo,
       formatDateFull,
       verifyVisit, // 방문 인증 함수 추가
+      openNaverMap, // 네이버 지도 연결 함수 추가
       showVerificationModal,
       verificationPhotoPreview,
       verificationPhotoFile,
@@ -5711,9 +5752,13 @@ textarea {
 .verification-button-container {
   padding: 0 0.75rem 0.5rem 0.75rem;
   display: flex;
-  justify-content: flex-end;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
 }
 
+.view-on-map-btn,
 .visit-verification-btn {
   display: flex;
   align-items: center;
@@ -5721,13 +5766,27 @@ textarea {
   padding: 0.35rem 0.75rem;
   border-radius: 20px;
   border: none;
-  background-color: #f1f5f9;
-  color: #64748b;
   font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+}
+
+.view-on-map-btn {
+  background-color: #48bb78;
+  color: white;
+}
+
+.view-on-map-btn:hover {
+  background-color: #38a169;
+  transform: translateY(-1px);
+}
+
+.visit-verification-btn {
+  background-color: #f1f5f9;
+  color: #64748b;
 }
 
 .visit-verification-btn:hover {
