@@ -709,6 +709,22 @@ export default {
 
             // travelAreas를 일정으로 매핑
             backendData.travelAreas.forEach(area => {
+              // 🔍 백엔드에서 받아온 원본 TravelAreas 데이터의 place.puid 확인
+              console.log('🔍 ===== 백엔드 원본 TravelAreas 데이터 확인 =====');
+              console.log('🏷️  TravelArea ID (tauid):', area.tauid);
+              console.log('📂 전체 area 데이터:', area);
+              console.log('🏢 place 데이터:', area.place);
+              console.log('🆔 원본 place.puid:', area.place?.puid);
+              console.log('🔢 place.puid 타입:', typeof area.place?.puid);
+              
+              if (!area.place?.puid) {
+                console.error('🚨 CRITICAL: 백엔드에서 받은 TravelAreas에 place.puid가 없습니다!');
+                console.error('   이 경우 ElasticSearch에 잘못된 p_id가 저장됩니다!');
+              } else {
+                console.log('✅ 백엔드 원본 place.puid 정상:', area.place.puid);
+              }
+              console.log('===============================================');
+              
               // travelDayId를 travelRoot의 truid와 매칭하여 실제 day 찾기
               const matchingRoot = travelRoots.value.find(root => root.truid === area.travelDayId);
               const dayIndex = matchingRoot ? matchingRoot.day - 1 : -1; // day는 1-based이므로 0-based로 변환
@@ -735,6 +751,20 @@ export default {
                   tauid: area.tauid,
                   place: area.place
                 };
+
+                // 🔍 scheduleItem 생성 직후 place.puid 확인
+                console.log('🔍 ===== scheduleItem 생성 후 place.puid 확인 =====');
+                console.log('📦 생성된 scheduleItem:', scheduleItem);
+                console.log('🏢 scheduleItem.place:', scheduleItem.place);
+                console.log('🆔 scheduleItem.place?.puid:', scheduleItem.place?.puid);
+                console.log('🔄 원본과 동일한가?', area.place?.puid === scheduleItem.place?.puid ? '✅ YES' : '❌ NO');
+                
+                if (area.place?.puid !== scheduleItem.place?.puid) {
+                  console.error('🚨 CRITICAL: scheduleItem 생성 과정에서 place.puid가 변경됨!');
+                  console.error('   원본 area.place?.puid:', area.place?.puid);
+                  console.error('   생성된 scheduleItem.place?.puid:', scheduleItem.place?.puid);
+                }
+                console.log('============================================');
 
                 tripDays.value[dayIndex].items.push(scheduleItem);
                 console.log(`✅ Day ${dayIndex + 1}에 일정 추가:`, scheduleItem.activity);
@@ -3218,6 +3248,27 @@ export default {
         console.log('item.place?.puid:', item.place?.puid);
         console.log('=========================');
         
+        // 🔍 실제 데이터 구조 확인을 위한 상세 디버깅
+        console.log('🔍 ===== 실제 방문 장소 ID 확인 =====');
+        console.log('🏷️  TravelArea ID (tauid):', item.tauid);
+        console.log('🏢 장소 이름 (place.name):', item.place?.name);
+        console.log('📍 장소 주소 (place.address):', item.place?.address);
+        console.log('🆔 실제 방문 장소 ID (place.puid):', item.place?.puid);
+        console.log('🔢 place.puid의 타입:', typeof item.place?.puid);
+        console.log('📌 이 puid가 ElasticSearch p_id로 사용됨!');
+        
+        // ⭐ CRITICAL CHECK: place.puid 값 검증
+        if (item.place?.puid === undefined) {
+          console.error('🚨 CRITICAL: item.place.puid is undefined!');
+        } else if (item.place?.puid === null) {
+          console.error('🚨 CRITICAL: item.place.puid is null!');
+        } else if (typeof item.place?.puid !== 'number') {
+          console.warn('⚠️  WARNING: item.place.puid is not a number:', item.place?.puid, 'Type:', typeof item.place?.puid);
+        } else {
+          console.log('✅ place.puid 정상:', item.place.puid);
+        }
+        console.log('=====================================');
+        
         tempVerificationData.value = {
           item,
           imageId,
@@ -3233,12 +3284,25 @@ export default {
           locationInfo,
           locationText,
           // ElasticSearch 저장에 필요한 추가 데이터
-          p_id: item.place?.puid,
+          p_id: item.place?.puid, // ✨ 실제 방문 장소 ID (TravelAreas.place.puid)
           u_id: currentUserInfo.value.uuid,
           u_age: currentUserInfo.value.age,
           u_gender: currentUserInfo.value.gender,
           addressName: verifyingItemInfo.value.location || verifyingItemInfo.value.place_name || verifyingItemInfo.value.address_name || ''
         };
+
+        // 🎯 tempVerificationData 설정 직후 검증
+        console.log('🎯 ===== tempVerificationData.p_id 설정 확인 =====');
+        console.log('원본 item.place?.puid:', item.place?.puid);
+        console.log('설정된 tempVerificationData.p_id:', tempVerificationData.value.p_id);
+        console.log('값이 동일한가?', item.place?.puid === tempVerificationData.value.p_id ? '✅ YES' : '❌ NO');
+        
+        if (item.place?.puid !== tempVerificationData.value.p_id) {
+          console.error('🚨 CRITICAL: tempVerificationData.p_id 설정 과정에서 값이 변경됨!');
+          console.error('   item.place?.puid:', item.place?.puid, 'Type:', typeof item.place?.puid);
+          console.error('   tempVerificationData.p_id:', tempVerificationData.value.p_id, 'Type:', typeof tempVerificationData.value.p_id);
+        }
+        console.log('=======================================');
 
         // 성공적으로 완료되었으므로 로딩 상태 업데이트
         loadingPhase.value = 'completed';
@@ -3334,6 +3398,19 @@ export default {
       console.log('item.place:', item.place);
       console.log('item.place?.puid:', item.place?.puid);
       console.log('===================================');
+
+      // 🔍 관리자 인증에서도 TravelAreas.place.puid 확인
+      console.log('🔍 ===== 관리자 인증 TravelAreas.place.puid 확인 =====');
+      console.log('🏷️  TravelArea ID (tauid):', item.tauid);
+      console.log('🆔 관리자 인증에서 사용할 p_id:', item.place?.puid);
+      console.log('📌 이 puid가 ElasticSearch p_id로 사용됨!');
+      
+      if (!item.place?.puid) {
+        console.warn('⚠️  WARNING: 관리자 인증에서도 TravelAreas.place.puid가 null입니다!');
+      } else {
+        console.log('✅ 관리자 인증 - TravelAreas.place.puid 존재함:', item.place.puid);
+      }
+      console.log('===============================================');
       
       tempVerificationData.value = {
         item,
@@ -3386,6 +3463,21 @@ export default {
         console.log('data.item.place?.puid:', data.item.place?.puid);
         console.log('최종 사용될 p_id:', data.p_id);
         console.log('=======================');
+
+        // 🎯 최종 p_id 검증 로그
+        console.log('🎯 ===== ElasticSearch 저장 시 p_id 최종 검증 =====');
+        console.log('🏷️  TravelArea ID (tauid):', data.item.tauid);
+        console.log('🆔 ElasticSearch에 저장될 p_id:', data.p_id);
+        console.log('📋 이는 TravelAreas.place.puid와 동일한가?', data.item.place?.puid === data.p_id ? '✅ YES' : '❌ NO');
+        
+        if (data.item.place?.puid !== data.p_id) {
+          console.error('🚨 CRITICAL: p_id 불일치 발견!');
+          console.error('   TravelAreas.place.puid:', data.item.place?.puid);
+          console.error('   저장될 p_id:', data.p_id);
+        } else {
+          console.log('✅ p_id 일치 확인됨. 올바른 장소로 인증됩니다.');
+        }
+        console.log('==============================================');
 
         // ElasticSearch에 저장
         const esResponse = await saveToElasticsearch(
@@ -3516,6 +3608,98 @@ export default {
       }
     };
 
+    // TravelAreas 데이터만 부분적으로 로드하는 함수 (새로운 장소 추가 후 실제 puid 동기화)
+    const fetchTravelAreasOnly = async () => {
+      try {
+        console.log('🔄 TravelAreas 데이터만 다시 로드 중... (실제 puid 동기화)');
+
+        // API에서 전체 데이터를 가져와서 TravelAreas 부분만 업데이트
+        const response = await apiGet(`/travels/${tuid.value}/detail`);
+
+        if (response.status === 'success' && response.data) {
+          const backendData = response.data;
+
+          // TravelRoots 정보도 업데이트 (필요한 경우)
+          if (backendData.travelRoots && Array.isArray(backendData.travelRoots)) {
+            travelRoots.value = backendData.travelRoots;
+          }
+
+          // travelAreas 데이터만 업데이트
+          if (backendData.travelAreas && Array.isArray(backendData.travelAreas)) {
+            console.log('🔄 ===== TravelAreas만 갱신 시작 =====');
+            console.log('🆕 새로운 TravelAreas 데이터:', backendData.travelAreas);
+
+            // 기존 tripDays의 items를 모두 초기화
+            tripDays.value.forEach(day => {
+              day.items = [];
+            });
+
+            // 새로운 travelAreas를 다시 매핑
+            backendData.travelAreas.forEach(area => {
+              // 🔍 실제 백엔드 puid 확인
+              console.log('🔍 ===== 갱신된 TravelAreas의 실제 puid 확인 =====');
+              console.log('🏷️  TravelArea ID (tauid):', area.tauid);
+              console.log('🆔 실제 백엔드 place.puid:', area.place?.puid);
+              console.log('🔢 puid 타입:', typeof area.place?.puid);
+              
+              if (!area.place?.puid) {
+                console.error('🚨 CRITICAL: 갱신된 TravelAreas에도 place.puid가 없습니다!');
+              } else {
+                console.log('✅ 실제 백엔드 place.puid 확인됨:', area.place.puid);
+              }
+              console.log('=============================================');
+
+              // travelDayId를 travelRoot의 truid와 매칭하여 실제 day 찾기
+              const matchingRoot = travelRoots.value.find(root => root.truid === area.travelDayId);
+              const dayIndex = matchingRoot ? matchingRoot.day - 1 : -1;
+
+              if (dayIndex >= 0 && dayIndex < tripDays.value.length) {
+                const scheduleItem = {
+                  time: area.startTime ? formatTimeFromArray(area.startTime) : '',
+                  activity: area.place?.name || area.memo || '장소 미정',
+                  location: area.memo || area.place?.address || '',
+                  address: area.place?.address || '',
+                  latitude: area.place?.latitude || null,
+                  longitude: area.place?.longitude || null,
+                  coords: area.place?.latitude && area.place?.longitude ? {
+                    lat: area.place.latitude,
+                    lng: area.place.longitude
+                  } : null,
+                  tauid: area.tauid,
+                  place: area.place // ✨ 실제 백엔드의 place.puid가 포함된 데이터
+                };
+
+                tripDays.value[dayIndex].items.push(scheduleItem);
+                console.log(`✅ Day ${dayIndex + 1}에 갱신된 일정 추가:`, scheduleItem.activity, '(실제 puid:', scheduleItem.place?.puid, ')');
+              }
+            });
+
+            // 각 날짜별 일정을 시간순으로 정렬
+            tripDays.value.forEach((day, index) => {
+              if (day.items && day.items.length > 0) {
+                day.items.sort((a, b) => {
+                  if (!a.time) return 1;
+                  if (!b.time) return -1;
+                  return a.time.localeCompare(b.time);
+                });
+                console.log(`Day ${index + 1} 갱신된 일정 시간순 정렬 완료`);
+              }
+            });
+
+            console.log('🔄 ===== TravelAreas만 갱신 완료 =====');
+            console.log('✅ 실제 백엔드 puid로 모든 일정이 업데이트됨');
+
+            // 인증 데이터도 다시 매핑
+            await loadVerificationData();
+          }
+        }
+      } catch (error) {
+        console.error('TravelAreas 데이터 로드 실패:', error);
+        console.log('전체 데이터 로드로 폴백...');
+        await fetchTravelData();
+      }
+    };
+
     const handlePaymentAdded = async () => {
       console.log("지출 데이터가 서버에 추가됨, 지출 데이터만 다시 로드합니다.");
       // 지출 데이터만 다시 로드하여 스크롤 위치 유지
@@ -3524,31 +3708,53 @@ export default {
     };
 
     // 장소 추가 이벤트 핸들러 (새로운 컴포넌트에서 발생)
-    const handlePlaceAdded = ({ dayIndex, newItem }) => {
-      console.log('장소 추가 이벤트:', { dayIndex, newItem });
-
-      // 선택한 날짜의 일정에 추가
-      if (!tripDays.value[dayIndex].items) {
-        tripDays.value[dayIndex].items = [];
-      }
-
-      tripDays.value[dayIndex].items.push(newItem);
-
-      // 해당 날짜의 일정을 시간순으로 자동 정렬
-      if (tripDays.value[dayIndex].items.length > 1) {
-        tripDays.value[dayIndex].items.sort((a, b) => {
-          // 빈 시간은 가장 뒤로
-          if (!a.time) return 1;
-          if (!b.time) return -1;
-          // 시간 비교 (HH:MM 형식)
-          return a.time.localeCompare(b.time);
-        });
-        console.log(`Day ${dayIndex + 1} 일정 자동 정렬 완료:`, tripDays.value[dayIndex].items.map(item => `${item.time} - ${item.activity}`));
-      }
+    const handlePlaceAdded = async ({ dayIndex, newItem }) => {
+      console.log('🆕 ===== 새로운 장소 추가 이벤트 =====');
+      console.log('📍 추가된 장소:', newItem);
+      console.log('📅 추가 대상 날짜:', dayIndex);
+      console.log('🔍 임시 place.puid:', newItem.place?.puid);
+      console.log('=======================================');
 
       // 활성 날짜를 선택한 날짜로 변경 (다른 날짜에 일정을 추가한 경우)
       if (dayIndex !== activeDay.value) {
         activeDay.value = dayIndex;
+      }
+
+      try {
+        // 🔄 새로운 장소가 추가되었으므로 TravelAreas 데이터를 백엔드에서 다시 가져와 실제 puid로 동기화
+        console.log('🔄 새로운 장소 추가 완료 -> TravelAreas 데이터 동기화 시작...');
+        await fetchTravelAreasOnly();
+        
+        console.log('✅ TravelAreas 데이터 동기화 완료! 이제 모든 place.puid가 실제 백엔드 값입니다.');
+        
+        displayToast('새로운 장소가 추가되고 데이터가 동기화되었습니다!', 'success');
+        
+      } catch (error) {
+        console.error('TravelAreas 동기화 실패:', error);
+        
+        // 동기화 실패 시 기존 방식으로 폴백 (임시 데이터 사용)
+        console.log('❌ 동기화 실패 -> 임시 데이터로 폴백');
+        
+        // 선택한 날짜의 일정에 추가
+        if (!tripDays.value[dayIndex].items) {
+          tripDays.value[dayIndex].items = [];
+        }
+
+        tripDays.value[dayIndex].items.push(newItem);
+
+        // 해당 날짜의 일정을 시간순으로 자동 정렬
+        if (tripDays.value[dayIndex].items.length > 1) {
+          tripDays.value[dayIndex].items.sort((a, b) => {
+            // 빈 시간은 가장 뒤로
+            if (!a.time) return 1;
+            if (!b.time) return -1;
+            // 시간 비교 (HH:MM 형식)
+            return a.time.localeCompare(b.time);
+          });
+          console.log(`Day ${dayIndex + 1} 일정 자동 정렬 완료:`, tripDays.value[dayIndex].items.map(item => `${item.time} - ${item.activity}`));
+        }
+        
+        displayToast('장소가 추가되었지만 데이터 동기화에 실패했습니다.', 'warning');
       }
 
       // 강제 화면 갱신
@@ -3915,6 +4121,7 @@ export default {
       loadingError,
       fetchTravelData,
       fetchExpensesOnly,
+      fetchTravelAreasOnly,
       travelRoots,
 
       tripData,

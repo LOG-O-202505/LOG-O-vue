@@ -479,6 +479,21 @@ export const saveToElasticsearch = async (
     
     // 추가 파라미터 로깅
     console.log('장소 ID (p_id):', p_id);
+    console.log('🔍 ===== saveToElasticsearch에서 받은 p_id 검증 =====');
+    console.log('🆔 받은 p_id 값:', p_id);
+    console.log('🔢 받은 p_id 타입:', typeof p_id);
+    console.log('🚨 p_id가 기본값 1인가?', p_id === 1 ? '❌ YES (문제!)' : '✅ NO (정상)');
+    
+    if (p_id === 1) {
+      console.error('🚨 CRITICAL: saveToElasticsearch에서 p_id가 기본값 1로 받아짐!');
+      console.error('   이는 TravelAreas.place.puid가 제대로 전달되지 않았음을 의미합니다.');
+    } else if (p_id === null || p_id === undefined) {
+      console.error('🚨 CRITICAL: saveToElasticsearch에서 p_id가 null/undefined로 받아짐!');
+    } else {
+      console.log('✅ saveToElasticsearch에서 올바른 p_id 받음:', p_id);
+    }
+    console.log('====================================================');
+    
     console.log('사용자 ID (u_id):', u_id);
     console.log('사용자 나이 (u_age):', u_age);
     console.log('사용자 성별 (u_gender):', u_gender);
