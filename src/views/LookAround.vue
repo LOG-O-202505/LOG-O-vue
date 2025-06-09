@@ -93,8 +93,8 @@
       :isLoadingStats="isLoadingStats"
       :userLikes="userLikes"
       @close="closeDetailModal"
-      @toggle-wishlist="toggleWishlist"
-      @apply-keyword="applyKeyword"
+      @toggleWishlist="toggleWishlist"
+      @applyKeyword="applyKeyword"
     />
   </template>
   
@@ -533,7 +533,21 @@
             throw new Error('장소 주소가 없습니다.');
           }
           
-          if (isInWishlist(item.id)) {
+          // 현재 장소가 관심 장소에 있는지 주소와 이름으로 판단 (ID 대신)
+          const isCurrentlyInWishlist = userLikes.value.some(like => 
+            like.place && 
+            like.place.address === address && 
+            like.place.name === itemName
+          );
+          
+          console.log('관심 장소 상태 확인 (LookAround):', { 
+            itemName, 
+            address, 
+            isCurrentlyInWishlist,
+            userLikesCount: userLikes.value.length 
+          });
+          
+          if (isCurrentlyInWishlist) {
             // 선호 장소에서 제거 - address 기반 삭제 API 사용
             console.log('선호 장소 삭제 요청 (LookAround):', address);
             

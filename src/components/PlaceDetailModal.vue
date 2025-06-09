@@ -97,7 +97,7 @@
               v-for="(tag, index) in getPlaceTags" 
               :key="index" 
               class="tag" 
-              @click="$emit('apply-keyword', tag); closeModal();"
+              @click="$emit('applyKeyword', tag); closeModal();"
             >
               {{ tag }}
             </span>
@@ -289,6 +289,8 @@ export default {
     isLoadingStats: Boolean,
     userLikes: Array
   },
+  
+  emits: ['close', 'toggleWishlist', 'applyKeyword'],
   
   setup(props, { emit }) {
     // 차트 관련 변수
@@ -904,43 +906,34 @@ export default {
       return 'place' + Math.floor(Math.random() * 1000000);
     });
     
-    // 현재 장소가 관심 장소에 있는지 확인하는 computed 속성 (LookAround 방식)
+    // 현재 장소가 관심 장소에 있는지 확인하는 computed 속성 (주소와 이름 기반 판단)
     const isCurrentPlaceInWishlist = computed(() => {
-      console.log('=== isCurrentPlaceInWishlist 체크 시작 ===');
-      console.log('props.detail:', props.detail);
-      console.log('props.userLikes:', props.userLikes);
-      
-      // LookAround와 동일한 방식: 오직 userLikes prop만 확인
+      // 기본 데이터 검증
       if (!props.detail || !props.userLikes || props.userLikes.length === 0) {
-        console.log('조건 실패: detail이나 userLikes가 없음');
         return false;
       }
       
       const currentAddress = getPlaceAddress.value;
       const currentName = getPlaceName.value;
-      console.log('현재 주소:', currentAddress);
-      console.log('현재 이름:', currentName);
       
       if (!currentAddress || !currentName) {
-        console.log('현재 주소나 이름이 없음');
         return false;
       }
       
-      // 주소와 이름이 모두 일치하는 경우에만 true
+      // 주소와 이름이 모두 일치하는 경우에만 true (ID 대신 안정적인 비교)
       const isInLikes = props.userLikes.some(like => {
         const likeAddress = like.place && like.place.address;
         const likeName = like.place && like.place.name;
-        console.log('비교 중:', { 
-          currentAddress, likeAddress, 
-          currentName, likeName,
-          matchAddress: likeAddress === currentAddress,
-          matchName: likeName === currentName,
-          matchBoth: likeAddress === currentAddress && likeName === currentName
-        });
         return likeAddress === currentAddress && likeName === currentName;
       });
       
-      console.log('최종 결과:', isInLikes);
+      console.log('PlaceDetailModal 관심 장소 상태:', { 
+        currentName, 
+        currentAddress, 
+        isInLikes,
+        userLikesCount: props.userLikes.length 
+      });
+      
       return isInLikes;
     });
     
@@ -970,7 +963,7 @@ export default {
       
       // 부모 컴포넌트에 이벤트 전달 (LookAround 방식과 동일)
       // 부모에서 userLikes를 업데이트하면 자동으로 반응됨
-      emit('toggle-wishlist', itemWithAddress);
+      emit('toggleWishlist', itemWithAddress);
     };
     
     return {
