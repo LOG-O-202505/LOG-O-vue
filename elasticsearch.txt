@@ -1,0 +1,258 @@
+// ====================================
+// LOG:O 서비스 ElasticSearch 설정 파일
+// ====================================
+
+// 기존 travel_places 인덱스 완전 삭제
+DELETE /travel_places 
+
+// travel_places 인덱스의 모든 문서 데이터 삭제 (인덱스 구조는 유지)
+POST travel_places/_delete_by_query
+{
+  "query": {
+    "match_all": {}  // 모든 문서 대상
+  }
+}
+
+// travel_places 인덱스 생성 및 매핑 설정
+PUT /travel_places 
+{ 
+  "settings": { 
+    "number_of_shards": 1,      // 샤드 개수 (단일 노드 환경)
+    "number_of_replicas": 0,    // 복제본 개수 (개발 환경이므로 0)
+    "analysis": { 
+      "analyzer": { 
+        "korean": {             // 한국어 형태소 분석기 설정
+          "type": "nori"        // 엘라스틱서치 한국어 플러그인
+        } 
+      } 
+    } 
+  }, 
+  "mappings": { 
+    "properties": { 
+      "p_id": { "type": "long" },                    // 장소 고유 ID
+      "p_name": {                                    // 장소명
+        "type": "text", 
+        "analyzer": "korean",                        // 한국어 검색 가능
+        "fields": { 
+          "keyword": {                               // 정확한 매칭용 키워드 필드
+            "type": "keyword", 
+            "ignore_above": 256 
+          } 
+        } 
+      }, 
+      "p_address": {                                 // 장소 주소
+        "type": "text", 
+        "analyzer": "korean",                        // 한국어 검색 가능
+        "fields": { 
+          "keyword": { 
+            "type": "keyword", 
+            "ignore_above": 256 
+          } 
+        } 
+      }, 
+      "p_region": {                                  // 시/도 지역 코드
+        "type": "integer", 
+        "fields": { 
+          "keyword": { 
+            "type": "keyword" 
+          } 
+        } 
+      }, 
+      "p_description": {                             // 한국어 장소 설명
+        "type": "text", 
+        "analyzer": "korean" 
+      }, 
+      "p_description_en": {                          // 영문 장소 설명 (Llava 분석 결과)
+        "type": "text",
+        "analyzer": "english"
+      }, 
+      "p_image": {                                   // 이미지 바이너리 데이터
+        "type": "binary" 
+      }, 
+      "p_vector": {                                  // Llama 3.2로 생성한 10차원 벡터
+        "type": "dense_vector", 
+        "dims": 10,                                  // 벡터 차원 수
+        "index": true,                               // 벡터 검색 인덱싱 활성화
+        "similarity": "cosine"                       // 코사인 유사도 사용
+      }, 
+      "p_sig": {                                     // 시/군/구 지역 코드
+        "type": "integer", 
+        "fields": { 
+          "keyword": { 
+            "type": "keyword" 
+          } 
+        } 
+      }, 
+      "p_tags": {                                    // 장소 태그 (키워드)
+        "type": "text", 
+        "analyzer": "korean", 
+        "fields": { 
+          "keyword": { 
+            "type": "keyword" 
+          } 
+        } 
+      },
+      "p_stars": {                                   // 사용자 별점 (1-5)
+        "type": "byte",
+        "fields": {
+          "keyword": {
+            "type": "keyword"
+          }
+        }
+      },
+      "p_review": {                                  // 사용자 리뷰 텍스트
+        "type": "text",
+        "analyzer": "korean",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "p_tuid": {                                    // 여행 고유 ID
+        "type": "long",
+        "fields": {
+          "keyword": {
+            "type": "keyword"
+          }
+        }
+      },
+      "p_tauid": {                                   // 여행 인증 고유 ID
+        "type": "long",
+        "fields": {
+          "keyword": {
+            "type": "keyword"
+          }
+        }
+      },
+      "u_id": {                                      // 사용자 고유 ID
+        "type": "long" 
+      }, 
+      "u_name": {                                    // 사용자명
+        "type": "text",
+        "analyzer": "korean",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "u_age": {                                     // 사용자 연령
+        "type": "integer" 
+      }, 
+      "u_gender": {                                  // 사용자 성별
+        "type": "keyword" 
+      }, 
+      "upload_date": {                               // 데이터 업로드 날짜
+        "type": "date" 
+      } 
+    } 
+  } 
+}
+
+// ====================================
+// 데이터 조회 쿼리
+// ====================================
+
+// 전체 장소 데이터 조회 (이미지 제외)
+GET travel_places/_search
+{
+  "query": {
+    "match_all": {}                    // 모든 문서 조회
+  },
+  "_source": {
+    "excludes": ["p_image"]           // 용량이 큰 이미지 필드 제외
+  }
+}
+
+// 특정 여행 ID와 장소 ID로 리뷰 정보 조회
+GET /travel_places/_search
+{
+  "query": {
+    "bool": {
+      "must": [                       // AND 조건
+        {
+          "term": {
+            "p_tuid": 1               // 여행 ID가 1인 데이터
+          }
+        },
+        {
+          "term": {
+            "p_id": 1                 // 장소 ID가 1인 데이터
+          }
+        }
+      ]
+    }
+  },
+  "_source": {
+    "includes": [                     // 필요한 필드만 조회
+      "p_stars",                      // 별점
+      "p_review",                     // 리뷰 내용
+      "p_tauid",                      // 인증 ID
+      "upload_date"                   // 업로드 날짜
+    ]
+  }
+}
+
+// ====================================
+// 키워드 분석기 설정 (한국어 최적화)
+// ====================================
+
+// 기존 store_index 삭제
+delete store_index
+
+// 한국어 키워드 분석을 위한 커스텀 인덱스 생성
+PUT /store_index
+{
+  "settings": {
+    "analysis": {
+      "tokenizer": {
+        "my_nori_tokenizer": {                    // 커스텀 한국어 토크나이저
+          "type": "nori_tokenizer",
+          "decompound_mode": "mixed",             // 복합어 분해 모드 (혼합)
+          "discard_punctuation": true             // 구두점 제거
+        }
+      },
+      "filter": {
+        "my_pos_filter": {                        // 품사 필터링
+          "type": "nori_part_of_speech",
+          "stoptags": ["E", "J", "MAG", "MAJ", "MM", "SP", "XSN", "XSA", "XSV", "UNA"]  // 불필요한 품사 제거
+        },
+        "number_filter": {                        // 숫자만으로 구성된 토큰 제거
+          "type": "pattern_replace",
+          "pattern": "^\\d+$",
+          "replacement": ""
+        },
+        "length_filter": {                        // 최소 길이 필터 (2글자 이상)
+          "type": "length",
+          "min": 2
+        }
+      },
+      "analyzer": {
+        "my_nori_analyzer": {                     // 커스텀 한국어 분석기
+          "type": "custom",
+          "tokenizer": "my_nori_tokenizer",       // 위에서 정의한 토크나이저 사용
+          "filter": ["my_pos_filter", "number_filter", "length_filter"]  // 필터 체인 적용
+        }
+      }
+    }
+  },
+  "mappings": { /* 기존 매핑 동일 */ }
+}
+
+// ====================================
+// 분석기 테스트
+// ====================================
+
+// 한국어 분석기가 주소를 어떻게 토큰화하는지 테스트
+GET /store_index/_analyze
+{
+  "analyzer": "my_nori_analyzer",                     // 위에서 정의한 커스텀 분석기 사용
+  "text": "서울특별시 동작구 상도로 369 숭실대학교 중앙도서관"    // 분석할 텍스트 (주소 예시)
+}
+
+// 결과: ["서울특별시", "동작구", "상도로", "숭실대학교", "중앙도서관"] 같은 의미있는 토큰들로 분해됨
+
+
