@@ -2587,10 +2587,45 @@ export default {
     // 임시 인증 데이터 저장용
     const tempVerificationData = ref(null);
 
-    // 방문 인증 모달 닫기
+    // 방문 인증 모달 닫기 (연속 인증 시 상태 완전 초기화)
     const closeVerificationModal = () => {
+      console.log('🔄 ===== 방문 인증 모달 닫기 & 상태 완전 초기화 =====');
+      
+      // 기본 모달 상태
       showVerificationModal.value = false;
+      
+      // 인증 상태 초기화
+      isVerifying.value = false;
+      loadingPhase.value = 'imageAnalysis';
+      
+      // 인증 결과 초기화
+      verificationResult.value = null;
+      tempVerificationData.value = null;
+      
+      // 사진 관련 상태 초기화
       clearVerificationPhoto();
+      
+      // 진행 시간 초기화
+      imageAnalysisDuration.value = null;
+      meaningAnalysisDuration.value = null;
+      keywordExtractionDuration.value = null;
+      morphologicalAnalysisDuration.value = null;
+      processingResultsDuration.value = null;
+      
+      // 인증 대상 아이템 초기화
+      verifyingItem.value = null;
+      verifyingItemInfo.value = null;
+      
+      // 위치 정보 초기화
+      distanceFromTarget.value = null;
+      photoMetadata.value = null;
+      
+      // 리뷰 데이터 초기화
+      reviewRating.value = 0;
+      reviewText.value = '';
+      
+      console.log('✅ 방문 인증 모달 상태 완전 초기화 완료');
+      console.log('==============================================');
     };
 
     // 사진 파일 입력 트리거
@@ -3517,16 +3552,12 @@ export default {
 
         displayToast('방문 인증이 저장되었습니다!', 'success');
 
-        // 상태 초기화 및 모달 닫기
-        loadingPhase.value = 'imageAnalysis'; // 초기 상태로 재설정
-        isVerifying.value = false; // 인증 상태 해제
-
         // 지도의 마커 색상을 업데이트하기 위해 지도 갱신
         updateMapMarkers();
 
+        // 상태 초기화 및 모달 닫기 (완전한 정리)
         setTimeout(() => {
-          showVerificationModal.value = false;
-          tempVerificationData.value = null; // 임시 데이터 초기화
+          closeVerificationModal(); // 완전한 상태 초기화 함수 사용
         }, 1000);
 
       } catch (error) {

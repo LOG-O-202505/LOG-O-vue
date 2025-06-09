@@ -174,7 +174,7 @@
 </template>
 
 <script>
-import { ref, watch } from 'vue';
+import { ref, watch, onBeforeUnmount } from 'vue';
 import EXIF from 'exif-js';
 
 export default {
@@ -223,6 +223,29 @@ export default {
     const error = ref(null);
     const previewUrl = ref(null);
 
+    // ✅ createPreviewUrl 함수를 watch 이전에 정의
+    const createPreviewUrl = (selectedFile) => {
+      if (previewUrl.value) {
+        URL.revokeObjectURL(previewUrl.value);
+      }
+      if (selectedFile && selectedFile.type.startsWith('image/')) {
+        previewUrl.value = URL.createObjectURL(selectedFile);
+      }
+    };
+
+    // ✅ resetState 함수도 watch에서 사용되므로 미리 정의
+    const resetState = () => {
+      if (previewUrl.value) {
+        URL.revokeObjectURL(previewUrl.value);
+        previewUrl.value = null;
+      }
+      file.value = null;
+      status.value = 'idle';
+      progress.value = 0;
+      error.value = null;
+      emit('file-remove');
+    };
+
     // Watch for external file changes
     watch(() => props.currentFile, (newFile) => {
       if (newFile !== file.value) {
@@ -235,15 +258,6 @@ export default {
         }
       }
     }, { immediate: true });
-
-    const createPreviewUrl = (selectedFile) => {
-      if (previewUrl.value) {
-        URL.revokeObjectURL(previewUrl.value);
-      }
-      if (selectedFile && selectedFile.type.startsWith('image/')) {
-        previewUrl.value = URL.createObjectURL(selectedFile);
-      }
-    };
 
     const handleFileValidation = (selectedFile) => {
       error.value = null;
@@ -491,17 +505,6 @@ export default {
       return R * c; // 거리 (km)
     };
 
-    const resetState = () => {
-      file.value = null;
-      status.value = 'idle';
-      progress.value = 0;
-      error.value = null;
-      if (previewUrl.value) {
-        URL.revokeObjectURL(previewUrl.value);
-        previewUrl.value = null;
-      }
-    };
-
     const handleRemoveFile = () => {
       resetState();
       emit('file-remove');
@@ -601,6 +604,14 @@ export default {
         event.target.value = '';
       }
     };
+
+    // 컴포넌트 언마운트 시 URL 객체 정리 (메모리 누수 방지)
+    onBeforeUnmount(() => {
+      if (previewUrl.value) {
+        URL.revokeObjectURL(previewUrl.value);
+        previewUrl.value = null;
+      }
+    });
 
     return {
       fileInputRef,
