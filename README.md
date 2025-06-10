@@ -1,5 +1,67 @@
 # LOG:O Vue.js 프론트엔드 프로젝트
 
+## 🔧 초기 설정 가이드
+
+### 환경 변수 설정 (필수)
+
+프로젝트를 실행하기 전에 루트 디렉토리에 `.env` 파일을 생성하고 다음 환경 변수들을 설정해야 합니다:
+
+```bash
+# Ollama API 설정
+VUE_APP_OLLAMA_API=http://localhost:11434/api
+
+# ElasticSearch API 설정  
+VUE_APP_ES_API=http://localhost:9200
+
+# Ollama 모델명 설정
+VUE_APP_MODEL_NAME=light_2
+
+# Google Maps API 키
+VUE_APP_GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
+
+# 카카오맵 JavaScript API 키
+VUE_APP_KAKAO_MAPS_API_KEY=your_kakao_maps_api_key_here
+
+# Google Cloud Vision API 키
+VUE_APP_GOOGLE_CLOUD_API_KEY=your_google_cloud_api_key_here
+
+# 카카오맵 REST API 키
+VUE_APP_KAKAO_MAPS_REST_KEY=your_kakao_maps_rest_key_here
+
+# 백엔드 API 기본 URL
+VUE_APP_BASE_URL=http://localhost:8080
+```
+
+### 사전 준비사항
+
+1. **Ollama 설치 및 모델 설정**
+   - LOG-O-Ollama 디렉토리의 README.md를 참고하여 Ollama 설치
+   - 필요한 모델들(`light_2`, `OCR_basic`, `ko_2`, `ko_3`) 생성
+
+2. **ElasticSearch 설치 및 설정**
+   - LOG-O-ELK 디렉토리의 README.md를 참고하여 ElasticSearch 및 Kibana 설치
+   - travel_places 인덱스 생성 및 데이터 입력
+
+3. **API 키 발급**
+   - [Google Maps Platform](https://developers.google.com/maps)에서 Google Maps API 키 발급
+   - [카카오 Developers](https://developers.kakao.com)에서 카카오맵 API 키 발급  
+   - [Google Cloud Console](https://console.cloud.google.com)에서 Vision API 키 발급
+
+### 프로젝트 실행
+
+```bash
+# 의존성 설치
+npm install
+
+# 개발 서버 실행
+npm run serve
+
+# 프로덕션 빌드
+npm run build
+```
+
+---
+
 ## 📖 프로젝트 개요
 
 LOG:O는 **AI 기반 멀티모달 여행 검색 엔진 및 자동 가계부 서비스**를 제공하는 Vue.js 기반의 프론트엔드 애플리케이션입니다. 사용자들이 감정과 분위기를 기반으로 여행지를 검색하고, 여행 계획을 세우며, 실제 방문을 인증할 수 있는 혁신적인 여행 플랫폼입니다.
