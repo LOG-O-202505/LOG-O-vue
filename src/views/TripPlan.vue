@@ -2548,6 +2548,7 @@ export default {
       photoMetadata.value = null;
       verificationResult.value = null;
       distanceFromTarget.value = null;
+      isAdminVerification.value = false; // 관리자 인증 플래그 초기화
 
       // 모달 열기
       showVerificationModal.value = true;
@@ -2575,6 +2576,9 @@ export default {
       latitude: null,
       longitude: null
     });
+    
+    // 관리자 인증 플래그 추가
+    const isAdminVerification = ref(false);
 
     // 로딩 스피너 관련 상태
     const loadingPhase = ref('imageAnalysis'); // 현재 로딩 단계
@@ -2601,6 +2605,9 @@ export default {
       // 인증 결과 초기화
       verificationResult.value = null;
       tempVerificationData.value = null;
+      
+      // 관리자 인증 플래그 초기화
+      isAdminVerification.value = false;
       
       // 사진 관련 상태 초기화
       clearVerificationPhoto();
@@ -2700,13 +2707,22 @@ export default {
       };
       distanceFromTarget.value = data.distance;
 
-      // 성공 토스트 메시지 표시
-      displayToast('방문 인증에 성공했습니다! 후기를 작성해주세요.', 'success', 3000);
+      // 관리자 인증인지 확인
+      if (data.isAdminForced) {
+        console.log('===== 관리자 당근 인증 감지 =====');
+        isAdminVerification.value = true;
+        
+        // 성공 토스트 메시지 표시
+        displayToast('관리자 권한으로 거리 인증을 우회했습니다! 후기를 작성해주세요.', 'success', 3000);
+      } else {
+        // 성공 토스트 메시지 표시
+        displayToast('방문 인증에 성공했습니다! 후기를 작성해주세요.', 'success', 3000);
+      }
 
-      // 인증 결과 설정
+      // 인증 결과 설정 (관리자든 일반이든 동일하게 처리)
       verificationResult.value = {
         success: true,
-        message: '방문 인증이 확인되었습니다!'
+        message: data.isAdminForced ? '관리자 권한으로 거리 인증을 우회했습니다!' : '방문 인증이 확인되었습니다!'
       };
     };
 
@@ -2766,12 +2782,17 @@ export default {
               } else {
                 console.log('GPS 정보를 찾을 수 없습니다.');
 
-                // 사용자에게 위치 정보 없음 경고 표시
-                verificationResult.value = {
-                  success: false,
-                  message: '이미지에 위치 정보(GPS)가 없습니다. 위치 정보가 포함된 사진을 사용해주세요.'
-                };
-                isVerifying.value = false;
+                // 관리자 인증이 아닌 경우에만 실패 처리
+                if (!isAdminVerification.value) {
+                  // 사용자에게 위치 정보 없음 경고 표시
+                  verificationResult.value = {
+                    success: false,
+                    message: '이미지에 위치 정보(GPS)가 없습니다. 위치 정보가 포함된 사진을 사용해주세요.'
+                  };
+                  isVerifying.value = false;
+                } else {
+                  console.log('관리자 인증 - GPS 체크 우회');
+                }
               }
 
               // 날짜/시간 정보 추출
@@ -3139,6 +3160,11 @@ export default {
       try {
         isVerifying.value = true;
         loadingPhase.value = 'imageAnalysis';
+        
+        // 관리자 인증인지 로그만 남기고 정상적으로 처리
+        if (isAdminVerification.value) {
+          console.log('===== 관리자 인증 - 거리 체크 우회하여 이미지 분석 진행 =====');
+        }
 
         imageAnalysisDuration.value = null;
         meaningAnalysisDuration.value = null;
@@ -3331,6 +3357,7 @@ export default {
         console.log('원본 item.place?.puid:', item.place?.puid);
         console.log('설정된 tempVerificationData.p_id:', tempVerificationData.value.p_id);
         console.log('값이 동일한가?', item.place?.puid === tempVerificationData.value.p_id ? '✅ YES' : '❌ NO');
+        console.log('관리자 인증 여부:', isAdminVerification.value ? '✅ 관리자 인증' : '❌ 일반 인증');
         
         if (item.place?.puid !== tempVerificationData.value.p_id) {
           console.error('🚨 CRITICAL: tempVerificationData.p_id 설정 과정에서 값이 변경됨!');
@@ -3493,6 +3520,7 @@ export default {
 
         console.log('ElasticSearch에 최종 저장 시작...');
         console.log('=== 최종 p_id 확인 ===');
+        console.log('인증 방식:', isAdminVerification.value ? '관리자 인증 (거리 체크 우회)' : '일반 GPS 인증');
         console.log('data.item:', data.item);
         console.log('data.item.place:', data.item.place);
         console.log('data.item.place?.puid:', data.item.place?.puid);
@@ -3550,7 +3578,7 @@ export default {
         data.item.rating = reviewRating.value;
         data.item.review = reviewText.value;
 
-        displayToast('방문 인증이 저장되었습니다!', 'success');
+        displayToast(isAdminVerification.value ? '관리자 인증이 저장되었습니다!' : '방문 인증이 저장되었습니다!', 'success');
 
         // 지도의 마커 색상을 업데이트하기 위해 지도 갱신
         updateMapMarkers();
@@ -4308,7 +4336,9 @@ export default {
       displayRouteOnMap,
       clearRoutePolylines,
       isCalculatingRoute,
-      debouncedUpdateMapMarkers
+      debouncedUpdateMapMarkers,
+      // 관리자 인증 플래그
+      isAdminVerification
     };
   }
 };
